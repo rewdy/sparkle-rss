@@ -11,18 +11,27 @@ data "aws_iam_policy_document" "github_trust" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # Match on stable claims rather than `sub`: some GitHub accounts issue
-    # sub values with embedded IDs (`repo:owner@123/name@456:ref:…`), which
-    # makes sub-patterns brittle.
+    # Match stable claims where possible, but AWS requires the trust policy to
+    # scope on `sub` (or job_workflow_ref) as well. Some GitHub accounts issue
+    # sub values with embedded IDs (`repo:owner@123/name@456:ref:…`), so match
+    # both shapes; the `repository` equals-condition keeps this pinned to one repo.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:repository"
       values   = [var.github_repo]
     }
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:ref"
       values   = ["refs/heads/main"]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:${var.github_repo}:ref:refs/heads/main",
+        "repo:*@*/${local.repo_name}@*:ref:refs/heads/main",
+      ]
     }
   }
 }
@@ -40,6 +49,10 @@ resource "aws_iam_openid_connect_provider" "github" {
 data "aws_iam_openid_connect_provider" "github" {
   count = var.create_oidc_provider ? 0 : 1
   url   = "https://token.actions.githubusercontent.com"
+}
+
+locals {
+  repo_name = element(split("/", var.github_repo), 1)
 }
 
 resource "aws_iam_role" "deploy" {
