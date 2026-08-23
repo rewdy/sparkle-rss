@@ -1,0 +1,31 @@
+{
+  "name": "@sparkle/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node scripts/build-lambdas.mjs",
+    "build:lambdas": "node scripts/build-lambdas.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.0",
+    "@sparkle/core": "workspace:*",
+    "@sparkle/db": "workspace:*",
+    "dotenv": "^17.3.1",
+    "hono": "^4.13.3",
+    "jose": "^6.1.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@sparkle/tooling": "workspace:*",
+    "@types/aws-lambda": "^8.10.152",
+    "archiver": "^7.0.1",
+    "esbuild": "^0.25.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

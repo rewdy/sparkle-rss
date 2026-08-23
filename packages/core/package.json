@@ -1,0 +1,23 @@
+{
+  "name": "@sparkle/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./greader/time": "./src/greader/time.ts",
+    "./greader/id": "./src/greader/id.ts",
+    "./greader/cursor": "./src/greader/cursor.ts",
+    "./greader/auth-header": "./src/greader/auth-header.ts",
+    "./greader/path": "./src/greader/path.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@sparkle/tooling": "workspace:*",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
