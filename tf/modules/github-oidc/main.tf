@@ -11,12 +11,18 @@ data "aws_iam_policy_document" "github_trust" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
+    # Match on stable claims rather than `sub`: some GitHub accounts issue
+    # sub values with embedded IDs (`repo:owner@123/name@456:ref:…`), which
+    # makes sub-patterns brittle.
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository"
+      values   = [var.github_repo]
+    }
     condition {
       test     = "StringLike"
-      variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_repo}:*",
-      ]
+      variable = "token.actions.githubusercontent.com:ref"
+      values   = ["refs/heads/main"]
     }
   }
 }
