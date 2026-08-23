@@ -11,3 +11,7 @@ coverage/
 *.tfstate.*
 .vitest-cache/
 tsconfig.tsbuildinfo
+
+# local backend config (copy of example, per-developer)
+tf/envs/prod/backend.conf
+tfplan

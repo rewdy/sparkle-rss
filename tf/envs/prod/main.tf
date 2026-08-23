@@ -1,3 +1,10 @@
+terraform {
+  required_version = ">= 1.10"
+
+  # Real values come from -backend-config flags (CI) or a local backend.conf.
+  backend "s3" {}
+}
+
 locals {
   app_fqdn    = "${var.app_hostname}.${var.root_domain}"
   web_origins = concat(["https://${local.app_fqdn}"], var.enable_local_dev_callbacks ? ["http://localhost:5173"] : [])
