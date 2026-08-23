@@ -43,6 +43,18 @@ jobs:
       - name: build web + lambdas
         run: pnpm build
 
+      - name: DEBUG decode oidc token
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+            console.log('aud:', payload.aud);
+            console.log('sub:', payload.sub);
+            console.log('iss:', payload.iss);
+            console.log('exp-iat:', payload.exp - payload.iat);
+
       - name: configure aws credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
