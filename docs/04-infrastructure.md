@@ -13,19 +13,26 @@ tf/
 │  │                # execution roles, log groups, alarms
 │  ├─ ingest/       # EventBridge Scheduler, SQS queue + DLQ + redrive,
 │  │                # orchestrator & worker Lambdas, roles
-│  └─ db/           # Aurora DSQL cluster + IAM policy wiring
+│  ├─ db/           # Aurora DSQL cluster + IAM policy wiring
+│  └─ github-oidc/  # OIDC provider lookup/creation + deploy role for CI
 └─ envs/
+   ├─ dev/            # ephemeral spike env (apply locally, destroy after)
    └─ prod/
-      ├─ main.tf        # module composition, providers, shared tags
-      ├─ backend.tf     # S3 remote state + native locking (TF >= 1.10)
-      └─ terraform.tfvars   # domain name, alert emails, sizing knobs
+      ├─ main.tf            # module composition (backend block lives here)
+      ├─ variables.tf       # fork-configurable: domains, prefixes, repo
+      ├─ terraform.tfvars   # committed defaults (no secrets)
+      └─ backend.conf.example  # copy to backend.conf for laptop runs (gitignored)
 ```
 
 Conventions:
 
-- **State**: single state per environment in S3 (`sparkle-rss-tfstate-<acct>` bucket,
-  `use_lockfile = true` — no DynamoDB lock table). One environment (`prod`) to start;
-  adding `staging` is a new directory under `envs/`, not a fork of modules.
+- **State**: single state per environment in S3 (`drewmey--devops-tf-state` bucket,
+  key `sparkle-rss/prod/terraform.tfstate`, `use_lockfile = true` — no DynamoDB lock
+  table). Bucket name is passed via `-backend-config` flags (CI reads the
+  `TF_STATE_BUCKET` repo variable) or a local `backend.conf`; forks change one or both.
+  One environment (`prod`) is live; `envs/dev` exists for ephemeral spikes. Gotcha from
+  bring-up: keep the `terraform { backend "s3" {} }` block intact — losing it silently
+  pins runs to local state (see decisions.md).
 - **Provider pinning**: `aws ~> 6.x`, pinned per-module via `.terraform.lock.hcl`.
 - **Region**: app region configurable (default `us-east-1` to keep edge certs simple).
 - **Lambda packaging**: CI runs `pnpm build:lambdas` (esbuild →

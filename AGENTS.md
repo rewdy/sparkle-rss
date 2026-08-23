@@ -41,6 +41,10 @@ docs/            Source of truth for design
 - Local dev: `pnpm dev` runs web + API via node adapters against Dockerized Postgres
   (`docker compose up db`). DSQL has no emulator — production parity comes from keeping all
   SQL extension-free.
+- Terraform state lives in S3 (`drewmey--devops-tf-state`, key
+  `sparkle-rss/prod/terraform.tfstate`). Laptop runs need
+  `cp tf/envs/prod/backend.conf.example tf/envs/prod/backend.conf` first (gitignored).
+  Deploys happen by pushing to main; hand-applies are for breakage only.
 
 ## Architecture invariants (do not break without a decision-log entry)
 
