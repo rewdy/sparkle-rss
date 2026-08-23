@@ -20,3 +20,11 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "dsql_cluster_arn" {
+  type = string
+}
+
+variable "dsql_endpoint" {
+  type = string
+}

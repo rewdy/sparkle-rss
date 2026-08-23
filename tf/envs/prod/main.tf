@@ -53,6 +53,8 @@ module "api" {
   cognito_issuer    = module.auth.issuer
   cognito_client_id = module.auth.client_id
   web_origins       = local.web_origins
+  dsql_cluster_arn  = module.db.cluster_arn
+  dsql_endpoint     = module.db.endpoint
 }
 
 module "web" {

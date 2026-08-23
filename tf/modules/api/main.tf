@@ -32,6 +32,19 @@ resource "aws_iam_role_policy_attachment" "basic_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+data "aws_iam_policy_document" "dsql_connect" {
+  statement {
+    effect    = "Allow"
+    actions   = ["dsql:DbConnect", "dsql:DbConnectAdmin"]
+    resources = [var.dsql_cluster_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "dsql_connect" {
+  role   = aws_iam_role.api.id
+  policy = data.aws_iam_policy_document.dsql_connect.json
+}
+
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/aws/lambda/sparkle-rss-api"
   retention_in_days = 14
@@ -55,6 +68,7 @@ resource "aws_lambda_function" "api" {
       COGNITO_CLIENT_ID = var.cognito_client_id
       WEB_ORIGINS       = join(",", var.web_origins)
       NODE_ENV          = "production"
+      DSQL_ENDPOINT     = var.dsql_endpoint
     }
   }
 
