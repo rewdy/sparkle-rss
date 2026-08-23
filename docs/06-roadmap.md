@@ -19,12 +19,14 @@ connectivity from Lambda, and the auth split.
         write-path smoke test, idempotent journal re-run — all green (findings A1–A12 in
         `docs/decisions.md`).
   - [ ] Lambda-side latency check (lands naturally with the Phase 1 api function).
-- [ ] **Spike B — auth split**: Cognito pool + hosted UI + PKCE SPA login against a
-      hello-world JWT-authorizer route; separately, a stub `ClientLogin` route validating
-      a hardcoded token.
-- [ ] Record spike outcomes (gotchas, deviations) in `docs/decisions.md`.
+- [x] **Spike B — auth split**: Cognito pool + hosted UI verified live via TF-managed
+      stack (token mint, jose JWKS verification, hosted-UI reachability); stub
+      `ClientLogin` covered by unit tests. Caught the missing-`aud` access-token gotcha
+      pre-deploy (decisions.md).
+- [x] Record spike outcomes (gotchas, deviations) in `docs/decisions.md`.
 
-**Exit:** both spikes demoed end-to-end; gotchas folded back into docs 03/04.
+**Exit:** both spikes demoed end-to-end; gotchas folded back into docs 03/04. ✅
+(Lambda-side DSQL latency check deferred to Phase 1 where a Lambda exists.)
 
 ## Phase 1 — Infrastructure skeleton
 

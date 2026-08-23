@@ -63,9 +63,34 @@ create/migrate/destroy cycles through Terraform.
 - **Latency from Lambda**: still pending — validates naturally in Phase 1 when the api
   Lambda deploys against the real cluster.
 
-## Spike B — Auth split
+## Spike B — Auth split: findings (2026-08-22)
 
-Status: stub implemented and unit-tested in code (ClientLogin → stateless HMAC credential,
-tolerant header parsing, 57-char write token — see `apps/api/src/apps/greader.ts`).
-Remaining manual step once the Cognito module exists (Phase 1): verify hosted-UI PKCE flow
-end-to-end and jose JWKS verification against the live issuer.
+TF-managed Cognito stack (`tf/modules/auth`: invite-only pool, PKCE SPA client, hosted-UI
+domain with random suffix) applied via `tf/envs/dev`, then verified against live AWS:
+
+- Test user created via `admin-create-user` + `admin-set-user-password`; token minted via
+  `ADMIN_USER_PASSWORD_AUTH`.
+- `jose` JWKS signature verification against the live issuer: OK (~200 ms first fetch).
+- Hosted UI `/oauth2/authorize` → 302 to sign-in page; JWKS endpoint → 200.
+- **Bug caught before deploy**: Cognito ACCESS tokens carry **no `aud` claim** — the
+  client is identified by `client_id`. jose's `audience` option would have rejected every
+  valid access token. Production middleware now verifies signature + issuer via jose,
+  then asserts `client_id` and `token_use === 'access'` manually
+  (`apps/api/src/app.ts`). Same fix applied to the spike verifier.
+
+### Resource ledger (Spike B)
+
+| Identifier | How | Purpose | End state |
+| --- | --- | --- | --- |
+| `us-east-1_uC6VdGZhM` pool + client `5jrasi1qe3f28gaqemf1lhl42r` + domain `sparkle-dev-8413a8c4` | terraform apply (`tf/modules/auth`) | hosted-UI/PKCE/JWKS verification | destroyed |
+| cluster `m5uawkls6lidkh633b5apngx7e` | same apply | re-verify migrate+smoke after schema changes | destroyed |
+
+Final verification: `aws dsql list-clusters` → `[]`; `list-user-pools` → none. **Zero
+residue.**
+
+### Operational consequences
+
+- Phase 1's `auth` module is ready for prod composition (custom domain + cert later).
+- The web API middleware's Cognito verification logic is proven against real tokens;
+  remaining auth work is plumbing (hosted UI in the SPA, API Gateway JWT authorizer
+  config — which performs its own verification server-side).

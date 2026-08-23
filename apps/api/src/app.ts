@@ -23,14 +23,17 @@ webApiApp.use('/me/*', async (c, next) => {
   }
   const token = (c.req.header('Authorization') ?? '').replace(/^Bearer\s+/i, '');
   try {
+    // Cognito ACCESS tokens have no `aud` claim — the client is identified by
+    // `client_id`, which jose does not treat as an audience. Verify signature +
+    // issuer here, then assert client_id/token_use manually.
     const { payload } = await jwtVerify(
       token,
       createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`)),
-      {
-        issuer,
-        audience,
-      },
+      { issuer },
     );
+    if (payload.client_id !== audience || payload.token_use !== 'access') {
+      return c.json({ error: 'unauthorized' }, 401);
+    }
     c.set('userId', String(payload.sub ?? ''));
   } catch {
     return c.json({ error: 'unauthorized' }, 401);
