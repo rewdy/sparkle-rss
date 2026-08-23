@@ -32,14 +32,20 @@ connectivity from Lambda, and the auth split.
 
 **Goal:** empty-but-real deployment through the full pipeline.
 
-- [ ] Terraform remote state (S3 + native locking), OIDC deploy role, `envs/prod`.
-- [ ] Modules: dns, web, auth, api, ingest, db — deployed with hello-world handlers.
-- [ ] CloudFront serves the SPA at the real domain; `/api/*` reaches the Lambda;
-      Cognito login works in production.
-- [ ] GH Actions: PR plan + main-branch apply pipeline, lambda zip packaging.
+- [x] Terraform remote state (S3 + native locking via `use_lockfile`), OIDC deploy role
+      (`sparkle-rss-github-deploy`), `envs/prod` composed from modules.
+- [x] Modules: dns, web, auth, api, ingest, db — deployed; ingest runs stub handlers on a
+      5-minute schedule with SQS+DLQ wired.
+- [x] CloudFront serves the SPA at the real domain; `/api/*` reaches the Lambda;
+      Cognito login works in production (admin-created user verified end-to-end).
+- [x] GH Actions: main-branch apply pipeline (`deploy.yaml`, OIDC, no static keys);
+      lambda zip packaging. PR-level terraform plan deferred (solo-maintainer repo).
 
-**Exit:** `https://<domain>` loads the SPA, logs in via Cognito, and calls a protected
-`/api/v1/ping` returning `{ok:true}` — all deployed by CI from a clean checkout.
+**Exit:** ✅ `https://app.sparklerss.com` loads the SPA, Cognito tokens authenticate
+through the API Gateway JWT authorizer, and a protected `/api/v1/ping` returns
+`{ok:true}` — deployed by CI from a clean checkout.
+(First apply was bootstrapped from laptop before the OIDC role existed; logged in
+decisions.md. Lambda↔DSQL latency measurement still open for Phase 2.)
 
 ## Phase 2 — Domain core
 

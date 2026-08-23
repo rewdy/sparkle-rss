@@ -49,6 +49,12 @@ jobs:
 
       - run: pnpm build
 
+      - name: terraform fmt + validate
+        run: |
+          terraform fmt -check -recursive tf
+          terraform -chdir=tf/envs/prod init -backend=false
+          terraform -chdir=tf/envs/prod validate
+
       - uses: actions/upload-artifact@v4
         with:
           name: lambda-zips

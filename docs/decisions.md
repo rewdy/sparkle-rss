@@ -94,3 +94,20 @@ residue.**
 - The web API middleware's Cognito verification logic is proven against real tokens;
   remaining auth work is plumbing (hosted UI in the SPA, API Gateway JWT authorizer
   config — which performs its own verification server-side).
+
+## Phase 1 — production bring-up (2026-08-23)
+
+- `tf/envs/prod` composes all modules; state in S3 (`drewmey--devops-tf-state`,
+  native locking via `use_lockfile`). First apply bootstrapped from laptop because the
+  GitHub OIDC role is itself Terraform-managed (chicken-and-egg); every later apply runs
+  through `deploy.yaml`.
+- Live endpoints verified: SPA 200, SPA-fallback route 200, `/api/greader.php` → OK,
+  protected `/api/v1/ping` → `{ok:true}` with a Cognito access token, `/api/v1/me`
+  returns the real `sub`. JWT authorizer correctly rejects anonymous calls.
+- Config errors hit during first apply (all fixed in modules): DSQL policy needs explicit
+  `Version`; HTTP API v2 access logs reject `$context.http.method/path`; Lambda reserves
+  the `AWS_REGION` env var; CloudFront managed policy names carry a `Managed-` prefix.
+- Prod user creation stays manual/ops (`admin-create-user`) per invite-only decision D2.
+- Fork configuration surface: `tf/envs/prod/terraform.tfvars` (domain, prefixes, repo) +
+  backend bucket via `-backend-config` / repo variable `TF_STATE_BUCKET` + GitHub
+  variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`.

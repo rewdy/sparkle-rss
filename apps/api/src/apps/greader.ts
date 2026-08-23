@@ -35,17 +35,6 @@ export function requireGreaderAuth(): MiddlewareHandler<Env> {
 
 export const greaderApp = new Hono<Env>();
 
-greaderApp.use('*', async (c, next) => {
-  c.header('Access-Control-Allow-Origin', '*');
-  c.header('Access-Control-Allow-Headers', 'Authorization');
-  c.header('Access-Control-Allow-Methods', 'GET, POST');
-  c.header('Access-Control-Max-Age', '600');
-  if (c.req.method === 'OPTIONS') {
-    return c.body(null, 204);
-  }
-  await next();
-});
-
 greaderApp.onError((_error, c) => c.text('', 500));
 
 greaderApp.get('/', (c) => c.text('OK'));

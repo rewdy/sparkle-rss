@@ -1,0 +1,88 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TF_DIR: tf/envs/prod
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: quality gate
+        run: |
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+
+      - name: build web + lambdas
+        run: pnpm build
+
+      - name: configure aws credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="key=sparkle-rss/prod/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="use_lockfile=true"
+
+      - name: terraform plan
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform plan -input=false -out=tfplan
+
+      - name: terraform apply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: collect outputs
+        id: tfout
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          echo "db_endpoint=$(terraform output -raw db_endpoint)" >> "$GITHUB_OUTPUT"
+          echo "assets_bucket=$(terraform output -raw assets_bucket_name)" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(terraform output -raw distribution_id)" >> "$GITHUB_OUTPUT"
+
+      - name: db migrations
+        working-directory: ${{ github.workspace }}
+        run: pnpm --filter @sparkle/db exec tsx src/migrate.ts
+        env:
+          DSQL_ENDPOINT: ${{ steps.tfout.outputs.db_endpoint }}
+
+      - name: publish web assets
+        run: |
+          aws s3 sync apps/web/dist "s3://${{ steps.tfout.outputs.assets_bucket }}" --delete
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.tfout.outputs.distribution_id }}" \
+            --paths "/index.html" "/assets/*"

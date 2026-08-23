@@ -13,6 +13,7 @@ export const env = {
   cognitoIssuer: optional('COGNITO_ISSUER'),
   cognitoClientId: optional('COGNITO_CLIENT_ID'),
   awsRegion: optional('AWS_REGION') ?? 'us-east-1',
+  webOrigins: (optional('WEB_ORIGINS') ?? 'http://localhost:5173').split(',').map((s) => s.trim()),
 };
 
 export function spikeCredentialsConfigured(): boolean {

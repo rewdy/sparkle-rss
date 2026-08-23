@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { greaderApp } from './apps/greader';
 import { env } from './env';
+import { corsMiddleware } from './middleware/cors';
 
 type Env = { Variables: { userId: string } };
 
@@ -46,6 +47,8 @@ webApiApp.get('/me', (c) => {
 });
 
 export const app = new Hono();
+
+app.use('*', corsMiddleware());
 
 app.route('/api/v1', webApiApp);
 app.route('/api/greader.php', greaderApp);

@@ -20,6 +20,8 @@ resource "aws_dsql_cluster_policy" "this" {
 }
 
 data "aws_iam_policy_document" "connect" {
+  version = "2012-10-17"
+
   statement {
     sid     = "SparkleDbConnect"
     effect  = "Allow"
