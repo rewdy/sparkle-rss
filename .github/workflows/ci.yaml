@@ -49,6 +49,11 @@ jobs:
 
       - run: pnpm build
 
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~> 1.15'
+          terraform_wrapper: false
+
       - name: terraform fmt + validate
         run: |
           terraform fmt -check -recursive tf

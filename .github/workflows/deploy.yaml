@@ -55,6 +55,11 @@ jobs:
             console.log('iss:', payload.iss);
             console.log('exp-iat:', payload.exp - payload.iat);
 
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~> 1.15'
+          terraform_wrapper: false
+
       - name: configure aws credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
