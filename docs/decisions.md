@@ -111,3 +111,27 @@ residue.**
 - Fork configuration surface: `tf/envs/prod/terraform.tfvars` (domain, prefixes, repo) +
   backend bucket via `-backend-config` / repo variable `TF_STATE_BUCKET` + GitHub
   variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`.
+
+## Phase 1 — pipeline debugging (2026-08-23)
+
+Three issues found and fixed while standing up the deploy pipeline:
+
+1. **GitHub OIDC `sub` format**: this account mints tokens with embedded IDs
+   (`repo:rewdy@412050/sparkle-rss@1343344919:ref:refs/heads/main`), so standard
+   sub patterns never matched. AWS also *requires* trust policies to scope on
+   `sub`/`job_workflow_ref` (dropping it is rejected). Final policy: `aud` equals,
+   `repository` equals, `ref` equals, plus dual-shape scoped `sub` StringLike.
+2. **Terraform removed from GitHub hosted runners** → `hashicorp/setup-terraform@v3`
+   (`terraform_wrapper: false`) added to both workflows.
+3. **Backend block lost**: a main.tf rewrite dropped `terraform { backend "s3" {} }`,
+   silently pinning both laptop and CI to local state. Diagnosed via
+   EntityAlreadyExists storms on CI; fixed by restoring the block and force-migrating
+   the 67-resource state to S3. Lesson: after any backend-affecting refactor, run
+   `terraform init -no-color` and read the warnings.
+
+Deploy role IAM was widened incrementally (route53 tags/change, OIDC provider CRUD) —
+each gap surfaced as an AccessDenied during plan/refresh.
+
+**End state**: `deploy.yaml` runs green end-to-end on push to main: quality gate →
+build → OIDC assume → tf init/plan/apply (S3 state + native locking) → DSQL migrations →
+asset sync + CloudFront invalidation.
