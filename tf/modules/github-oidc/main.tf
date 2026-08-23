@@ -113,8 +113,15 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     sid       = "IamRead"
     effect    = "Allow"
-    actions   = ["iam:ListRoles", "iam:GetPolicyVersion", "iam:GetPolicy", "sts:GetCallerIdentity"]
+    actions   = ["iam:ListRoles", "iam:GetPolicyVersion", "iam:GetPolicy", "iam:ListOpenIDConnectProviders", "iam:GetOpenIDConnectProvider", "sts:GetCallerIdentity"]
     resources = ["*"]
+  }
+
+  statement {
+    sid       = "IamOidcProvider"
+    effect    = "Allow"
+    actions   = ["iam:CreateOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint"]
+    resources = ["arn:aws:iam::*:oidc-provider/token.actions.githubusercontent.com"]
   }
 }
 
