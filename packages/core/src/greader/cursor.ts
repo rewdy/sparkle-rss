@@ -1,15 +1,18 @@
 export type CursorDirection = 'asc' | 'desc';
+export type CursorSortKey = 'published' | 'starred';
 
 export interface StreamCursor {
-  publishedAtMs: number;
-  entryId: string;
+  sortKey: CursorSortKey;
   direction: CursorDirection;
+  primaryAtMs: number;
+  entryId: string;
 }
 
 interface CursorPayload {
+  k: CursorSortKey;
+  d: CursorDirection;
   p: number;
   i: string;
-  d: CursorDirection;
 }
 
 function encode(payload: CursorPayload): string {
@@ -21,11 +24,20 @@ function decode(token: string): CursorPayload | null {
     const json = Buffer.from(token, 'base64url').toString('utf8');
     const parsed: unknown = JSON.parse(json);
     if (typeof parsed !== 'object' || parsed === null) return null;
-    const { p, i, d } = parsed as Record<string, unknown>;
-    if (typeof p !== 'number' || Number.isNaN(p)) return null;
-    if (typeof i !== 'string' || !/^\d{1,19}$/.test(i)) return null;
-    if (d !== 'asc' && d !== 'desc') return null;
-    return { p, i, d };
+    const legacy = parsed as Record<string, unknown>;
+    // Legacy shape (pre-sortKey): {p,i,d}
+    const k =
+      typeof legacy.k === 'string' && (legacy.k === 'published' || legacy.k === 'starred')
+        ? legacy.k
+        : typeof legacy.d === 'string'
+          ? 'published'
+          : null;
+    const d =
+      typeof legacy.d === 'string' && (legacy.d === 'asc' || legacy.d === 'desc') ? legacy.d : null;
+    if (!k || !d) return null;
+    if (typeof legacy.p !== 'number' || Number.isNaN(legacy.p)) return null;
+    if (typeof legacy.i !== 'string' || !/^\d{1,19}$/.test(legacy.i)) return null;
+    return { k, d, p: legacy.p, i: legacy.i };
   } catch {
     return null;
   }
@@ -33,18 +45,25 @@ function decode(token: string): CursorPayload | null {
 
 export function encodeCursor(cursor: StreamCursor): string {
   return encode({
-    p: cursor.publishedAtMs,
-    i: cursor.entryId,
+    k: cursor.sortKey,
     d: cursor.direction,
+    p: cursor.primaryAtMs,
+    i: cursor.entryId,
   });
 }
 
 export function decodeCursor(
   token: string,
-  expected?: { direction?: CursorDirection },
+  expected?: { sortKey?: CursorSortKey; direction?: CursorDirection },
 ): StreamCursor | null {
   const payload = decode(token);
   if (!payload) return null;
+  if (expected?.sortKey && payload.k !== expected.sortKey) return null;
   if (expected?.direction && payload.d !== expected.direction) return null;
-  return { publishedAtMs: payload.p, entryId: payload.i, direction: payload.d };
+  return {
+    sortKey: payload.k,
+    direction: payload.d,
+    primaryAtMs: payload.p,
+    entryId: payload.i,
+  };
 }

@@ -1,19 +1,18 @@
-import { Hono } from 'hono';
+import { AppError } from '@sparkle/core';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { greaderApp } from './apps/greader';
+import { createWebApiApp } from './apps/web-api';
 import { env } from './env';
 import { corsMiddleware } from './middleware/cors';
 
-type Env = { Variables: { userId: string } };
+type Env = { Variables: { cognitoSub: string; username?: string } };
 
-export const webApiApp = new Hono<Env>();
-
-webApiApp.get('/ping', (c) => c.json({ ok: true, ts: Date.now() }));
-
-webApiApp.use('/me/*', async (c, next) => {
+const cognitoAuth: MiddlewareHandler<Env> = async (c, next) => {
   if (env.allowInsecureDevAuth) {
     const devUser = c.req.header('X-Dev-User') ?? 'dev-user';
-    c.set('userId', devUser);
+    c.set('cognitoSub', devUser);
+    c.set('username', devUser);
     await next();
     return;
   }
@@ -35,23 +34,40 @@ webApiApp.use('/me/*', async (c, next) => {
     if (payload.client_id !== audience || payload.token_use !== 'access') {
       return c.json({ error: 'unauthorized' }, 401);
     }
-    c.set('userId', String(payload.sub ?? ''));
+    c.set('cognitoSub', String(payload.sub ?? ''));
+    c.set('username', typeof payload.username === 'string' ? payload.username : undefined);
   } catch {
     return c.json({ error: 'unauthorized' }, 401);
   }
   await next();
-});
-
-webApiApp.get('/me', (c) => {
-  return c.json({ userId: c.get('userId'), spike: true });
-});
+};
 
 export const app = new Hono();
 
+// Middleware must be registered before the routes they guard.
 app.use('*', corsMiddleware());
+app.use('/api/v1', cognitoAuth);
+app.use('/api/v1/*', cognitoAuth);
 
-app.route('/api/v1', webApiApp);
+app.route('/api/v1', createWebApiApp());
 app.route('/api/greader.php', greaderApp);
 app.route('/greader.php', greaderApp);
+
+app.onError((error, c) => {
+  if (error instanceof AppError) {
+    return c.json(
+      { error: error.code ?? 'bad_request', message: error.message },
+      error.status as 400 | 404 | 409 | 422 | 502,
+    );
+  }
+  if (error instanceof Error && error.name === 'ZodError') {
+    return c.json(
+      { error: 'validation_failed', message: error.message },
+      400 as 400 | 404 | 409 | 422 | 502,
+    );
+  }
+  console.error(JSON.stringify({ level: 'error', msg: 'unhandled', err: (error as Error).stack }));
+  return c.json({ error: 'internal_error' }, 500 as 400 | 404 | 409 | 422 | 502);
+});
 
 app.notFound((c) => c.text('', 404));

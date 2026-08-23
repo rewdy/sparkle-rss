@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-process.env.ALLOW_INSECURE_DEV_AUTH = '';
+process.env.ALLOW_INSECURE_DEV_AUTH = 'true';
 process.env.SPIKE_USERNAME = 'spike';
 process.env.SPIKE_API_TOKEN = 'spike-token-change-me';
 process.env.AWS_REGION = 'us-east-1';
