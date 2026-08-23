@@ -1,0 +1,29 @@
+{
+  "name": "sparkle-rss",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @sparkle/api --filter web dev",
+    "build": "pnpm -r --if-present build",
+    "build:web": "pnpm --filter web build",
+    "build:lambdas": "pnpm --filter @sparkle/api build:lambdas",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:up": "docker compose up -d db",
+    "db:generate": "pnpm --filter @sparkle/db generate",
+    "db:migrate": "pnpm --filter @sparkle/db migrate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
