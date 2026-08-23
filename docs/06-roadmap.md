@@ -51,15 +51,21 @@ decisions.md. Lambda↔DSQL latency measurement still open for Phase 2.)
 
 **Goal:** real data model and the first-party API the web UI will consume.
 
-- [ ] Drizzle schema + migrations (all tables from doc 03) applied to DSQL.
-- [ ] `packages/core` services: subscriptions, folders, entries, streams, settings.
-- [ ] `/api/v1`: me, folders CRUD, subscribe/unsubscribe (with URL discovery),
-      rename/move, entry listing (keyset pagination), mark read/star, mark-all-read,
-      settings, API-token mint/revoke.
-- [ ] Integration tests against Dockerized Postgres (same migrations).
+- [x] Drizzle schema + migrations (all tables from doc 03) applied to DSQL.
+- [x] `packages/core` services: users, folders, subscriptions (+ URL discovery),
+      entries (keyset pagination / unread / starred / mark-all-read), settings,
+      api tokens, opml import/export.
+- [x] `/api/v1`: me, folders CRUD, subscribe/unsubscribe, rename/move,
+      entry listing with cursors, read/star toggles, mark-all-read, unread-counts,
+      settings, OPML, API-token mint/revoke. Zod-validated, AppError-mapped.
+- [x] Integration suites: service layer (`packages/db/test`) + HTTP contract
+      (`apps/api/test/api.int.test.ts`) against Dockerized Postgres; migrations
+      verified on DSQL (spike + pipeline migrate step).
 
-**Exit:** API contract test suite green against DSQL; curl walkthrough of every
-`/api/v1` route documented in a test script.
+**Exit:** ✅ contract suite green (62 tests) and live curl walkthrough of every
+`/api/v1` route against production — including real-feed discovery
+(hnrss.org → "Hacker News: Front Page"), folder move, OPML round-trip, token mint.
+Remaining Phase-2+ follow-up: first-fetch backfill of entries lands with Phase 3 ingest.
 
 ## Phase 3 — Ingestion pipeline
 
