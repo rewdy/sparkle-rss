@@ -91,14 +91,21 @@ mechanics identical to the verified single-feed path.
 
 **Goal:** NetNewsWire syncs. This is the compatibility milestone.
 
-- [ ] Implement every endpoint in doc 02 behind `/api/greader.php`, sharing `packages/core`
-      services with `/api/v1`.
-- [ ] **Conformance suite**: scripted curl/fixture tests per endpoint (golden JSON
-      snapshots, ID-form round-trips, timestamp unit conversions, token quirks).
-- [ ] NetNewsWire E2E checklist (doc 02) against a real device.
+- [x] Every endpoint from doc 02 implemented behind `/api/greader.php`, sharing
+      `packages/core` services with `/api/v1` (ClientLogin via DB-backed API tokens +
+      stateless HMAC credentials; HMAC key in Secrets Manager).
+- [x] **Conformance suite** (`apps/api/test/greader.conformance.test.ts`): 15 contract
+      tests covering auth guard, discovery subscribe, dual id forms, timestamp units
+      (sec/msec/usec strings), continuation pagination, xt filters, write-token quirks
+      (empty/x tolerated, forged rejected), folder lifecycle through tags, OPML
+      round-trip, mark-all-as-read ns bounds.
+- [ ] NetNewsWire E2E checklist (doc 02) against a real device — **manual, pending**.
+      Server URL `https://app.sparklerss.com/api/greader.php`; username `andrew`;
+      password = an `srk_…` API token minted in settings.
 
-**Exit:** every checklist box ticked on iOS *and* macOS NetNewsWire; conformance suite in
-CI.
+**Exit:** conformance suite green in CI ✅ and live-verified 2026-08-24 (auth → list →
+streams → edit-tag → unread-count against production data). Device E2E remains the final
+gate before calling the milestone fully done.
 
 ## Phase 5 — Web reader MVP
 
