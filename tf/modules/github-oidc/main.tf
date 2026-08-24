@@ -78,6 +78,18 @@ locals {
     "route53:ListTagsForResource",
     "route53:GetChange",
     "acm:*",
+    "cloudwatch:PutMetricAlarm",
+    "cloudwatch:DeleteAlarms",
+    "cloudwatch:DescribeAlarms",
+    "cloudwatch:SetAlarmState",
+    "sns:CreateTopic",
+    "sns:DeleteTopic",
+    "sns:GetTopicAttributes",
+    "sns:SetTopicAttributes",
+    "sns:Subscribe",
+    "sns:Unsubscribe",
+    "sns:ListSubscriptionsByTopic",
+    "sns:Publish",
   ]
 }
 
