@@ -139,6 +139,53 @@ describe.skipIf(!databaseUrl)('core services (docker Postgres)', () => {
       );
     });
 
+    it('invokes onSubscribed once on fresh subscribes, never on duplicates', async () => {
+      const feedXml =
+        '<?xml version="1.0"?><rss version="2.0"><channel><title>Hooked</title></channel></rss>';
+      const fetchImpl = (async (url: string) => {
+        if (String(url).endsWith('/')) {
+          return new Response(
+            `<html><link rel="alternate" type="application/rss+xml" href="feed.xml"></html>`,
+            {
+              status: 200,
+            },
+          );
+        }
+        return new Response(feedXml, { status: 200 });
+      }) as unknown as typeof fetch;
+
+      const calls: number[] = [];
+      const hooked = createSubscriptionsService(
+        { db },
+        {
+          onSubscribed: (feedId) => calls.push(feedId),
+        },
+      );
+
+      const result = await hooked.subscribe(userId, 'https://hook.example/', {
+        fetch: fetchImpl as never,
+      });
+      expect(calls).toEqual([Number(result.subscription.feedId)]);
+
+      await expect(
+        hooked.subscribe(userId, 'https://hook.example/', { fetch: fetchImpl as never }),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(calls).toHaveLength(1); // 409 path must not re-trigger the hook
+
+      const directCalls: number[] = [];
+      const direct = createSubscriptionsService(
+        { db },
+        {
+          onSubscribed: (feedId) => directCalls.push(feedId),
+        },
+      );
+      const dto = await direct.subscribeDirect(userId, 'https://hook2.example/rss.xml', {});
+      expect(directCalls).toEqual([Number(dto.feedId)]);
+
+      await direct.subscribeDirect(userId, 'https://hook2.example/rss.xml', {});
+      expect(directCalls).toHaveLength(1); // existing subscription, nothing inserted
+    });
+
     it('unsubscribes and removes that user’s entries', async () => {
       const created = await subs.subscribeDirect(userId, 'https://gone.example/rss.xml', {});
       const feedId = Number(created.feedId);

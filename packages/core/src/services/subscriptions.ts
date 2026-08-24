@@ -27,11 +27,22 @@ export function guidHash(guid: string): string {
   return createHash('sha256').update(guid).digest('hex');
 }
 
-export function createSubscriptionsService({ db }: ServicesDeps) {
-  async function ensureFeedRow(feedUrl: string, discoveredTitle: string | null): Promise<number> {
+export function createSubscriptionsService(
+  { db }: ServicesDeps,
+  hooks: { onSubscribed?: (feedId: number) => void } = {},
+) {
+  async function ensureFeedRow(
+    feedUrl: string,
+    discoveredTitle: string | null,
+    discoveredIconUrl = '',
+  ): Promise<number> {
     await db
       .insert(schema.feeds)
-      .values({ url: feedUrl, title: discoveredTitle ?? '' })
+      .values({
+        url: feedUrl,
+        title: discoveredTitle ?? '',
+        ...(discoveredIconUrl ? { iconUrl: discoveredIconUrl } : {}),
+      })
       .onConflictDoNothing();
     const rows = await db.select().from(schema.feeds).where(eq(schema.feeds.url, feedUrl));
     const row = rows[0];
@@ -109,7 +120,7 @@ export function createSubscriptionsService({ db }: ServicesDeps) {
         const discovered = await discoverFeed(inputUrl, opts.fetch);
         siteUrl = discovered.siteUrl;
         if (!resolvedTitle && discovered.title) resolvedTitle = discovered.title;
-        feedId = await ensureFeedRow(discovered.feedUrl, resolvedTitle);
+        feedId = await ensureFeedRow(discovered.feedUrl, resolvedTitle, discovered.iconUrl);
       }
 
       const inserted = await db
@@ -126,6 +137,8 @@ export function createSubscriptionsService({ db }: ServicesDeps) {
       if (inserted.length === 0) {
         throw new AppError(409, 'already subscribed to this feed');
       }
+
+      hooks.onSubscribed?.(feedId);
 
       const list = await this.list(userId);
       const dto = list.find((s) => s.feedId === feedId.toString());
@@ -156,13 +169,13 @@ export function createSubscriptionsService({ db }: ServicesDeps) {
         .insert(schema.feeds)
         .values({ url: feedUrl, title: opts.title ?? '', siteUrl: opts.siteUrl ?? '' })
         .onConflictDoNothing();
+      const feedId =
+        (await db.select().from(schema.feeds).where(eq(schema.feeds.url, feedUrl))).at(0)?.id ?? -1;
       const inserted = await db
         .insert(schema.subscriptions)
         .values({
           userId,
-          feedId:
-            (await db.select().from(schema.feeds).where(eq(schema.feeds.url, feedUrl))).at(0)?.id ??
-            -1,
+          feedId,
           categoryId: opts.categoryId ?? null,
           title: opts.title ?? null,
         })
@@ -171,7 +184,7 @@ export function createSubscriptionsService({ db }: ServicesDeps) {
       const list = await this.list(userId);
       const dto = list.find((s) => s.url === feedUrl);
       if (!dto) throw new AppError(500, 'subscription missing after insert');
-      void inserted;
+      if (inserted.length > 0) hooks.onSubscribed?.(feedId);
       return dto;
     },
 

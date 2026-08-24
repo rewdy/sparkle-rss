@@ -22,6 +22,7 @@ export interface ListEntriesQuery {
   cursor?: string;
   crawledAfter?: Date;
   crawledBefore?: Date;
+  publishedFrom?: Date;
 }
 
 export interface EntryDto {
@@ -105,6 +106,9 @@ export function createEntriesService({ db }: ServicesDeps) {
       }
       if (query.crawledBefore) {
         conditions.push(lte(schema.userEntries.crawledAt, query.crawledBefore));
+      }
+      if (query.publishedFrom) {
+        conditions.push(gte(schema.userEntries.publishedAt, query.publishedFrom));
       }
 
       const primary = starredStream ? schema.userEntries.starredAt : schema.userEntries.publishedAt;

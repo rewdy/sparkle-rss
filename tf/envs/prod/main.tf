@@ -72,6 +72,8 @@ module "api" {
   dsql_cluster_arn  = module.db.cluster_arn
   dsql_endpoint     = module.db.endpoint
   hmac_secret_arn   = aws_secretsmanager_secret.greader_hmac.arn
+  refresh_queue_url = module.ingest.refresh_queue_url
+  refresh_queue_arn = module.ingest.refresh_queue_arn
 }
 
 locals {

@@ -11,6 +11,7 @@ import {
 import * as schema from '@sparkle/db';
 import { createPoolFromEnv } from '@sparkle/db';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { requestRefreshSafe } from './refresh';
 
 export interface Services {
   users: ReturnType<typeof createUsersService>;
@@ -58,7 +59,9 @@ function createServices(db: NodePgDatabase<typeof schema>): Services {
   return {
     users: createUsersService(deps),
     folders: createFoldersService(deps),
-    subscriptions: createSubscriptionsService(deps),
+    subscriptions: createSubscriptionsService(deps, {
+      onSubscribed: (feedId) => requestRefreshSafe(feedId),
+    }),
     entries: createEntriesService(deps),
     settings: createSettingsService(deps),
     apiTokens: createApiTokensService(deps),

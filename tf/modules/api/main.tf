@@ -48,6 +48,14 @@ data "aws_iam_policy_document" "hmac_secret" {
   }
 }
 
+data "aws_iam_policy_document" "refresh_queue" {
+  statement {
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [var.refresh_queue_arn]
+  }
+}
+
 resource "aws_iam_role_policy" "hmac_secret" {
   role   = aws_iam_role.api.id
   policy = data.aws_iam_policy_document.hmac_secret.json
@@ -56,6 +64,11 @@ resource "aws_iam_role_policy" "hmac_secret" {
 resource "aws_iam_role_policy" "dsql_connect" {
   role   = aws_iam_role.api.id
   policy = data.aws_iam_policy_document.dsql_connect.json
+}
+
+resource "aws_iam_role_policy" "refresh_queue" {
+  role   = aws_iam_role.api.id
+  policy = data.aws_iam_policy_document.refresh_queue.json
 }
 
 resource "aws_cloudwatch_log_group" "api" {
@@ -83,6 +96,7 @@ resource "aws_lambda_function" "api" {
       NODE_ENV          = "production"
       DSQL_ENDPOINT     = var.dsql_endpoint
       HMAC_SECRET_ARN   = var.hmac_secret_arn
+      QUEUE_URL         = var.refresh_queue_url
     }
   }
 

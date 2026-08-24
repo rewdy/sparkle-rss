@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { guidHash } from '@sparkle/core';
 import * as schema from '@sparkle/db';
-import { sql } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -212,6 +212,102 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)('api v1 http surface', () => {
     expect(((await res.json()) as { updated: number }).updated).toBeGreaterThan(0);
     const counts = await app.request('/api/v1/unread-counts', { headers: H });
     expect(((await counts.json()) as { total: number }).total).toBe(0);
+  });
+
+  async function seedEntry(
+    userId: string,
+    guid: string,
+    title: string,
+    publishedAt: Date,
+  ): Promise<number> {
+    const rows = await db
+      .insert(schema.userEntries)
+      .values({
+        userId,
+        feedId,
+        guid,
+        guidHash: guidHash(guid),
+        title,
+        url: `https://api-test.example/${guid}`,
+        publishedAt,
+        enclosures: [],
+      })
+      .returning({ id: schema.userEntries.id });
+    const id = rows.at(0)?.id;
+    if (id === undefined) throw new Error('seed row missing');
+    return id;
+  }
+
+  const devUserId = async (): Promise<string> => {
+    const rows = await db
+      .select()
+      .from(schema.users)
+      .where(sql`${schema.users.username} = ${DEV_USER}`);
+    const id = rows.at(0)?.id;
+    if (!id) throw new Error('user row missing');
+    return id;
+  };
+
+  it('filters entry listings by published_at (pubFrom)', async () => {
+    const userId = await devUserId();
+    const seeded = [
+      await seedEntry(userId, 'pub-1', 'Pub 1', new Date(Date.UTC(2026, 5, 1))),
+      await seedEntry(userId, 'pub-2', 'Pub 2', new Date(Date.UTC(2026, 5, 2))),
+      await seedEntry(userId, 'pub-3', 'Pub 3', new Date(Date.UTC(2026, 5, 3))),
+    ];
+    try {
+      const res = await app.request(
+        `/api/v1/entries?stream=feed:${feedId}&pubFrom=${encodeURIComponent(
+          '2026-06-02T00:00:00.000Z',
+        )}`,
+        { headers: H },
+      );
+      const body = (await res.json()) as { items: Array<{ title: string }> };
+      expect(res.status).toBe(200);
+      expect(body.items.map((e) => e.title)).toEqual(['Pub 3', 'Pub 2']);
+
+      const exact = await app.request(
+        `/api/v1/entries?stream=feed:${feedId}&pubFrom=${encodeURIComponent(
+          '2026-06-03T00:00:00.000Z',
+        )}`,
+        { headers: H },
+      );
+      const exactBody = (await exact.json()) as { items: Array<{ title: string }> };
+      expect(exactBody.items.map((e) => e.title)).toEqual(['Pub 3']); // bound is inclusive
+    } finally {
+      await db.delete(schema.userEntries).where(inArray(schema.userEntries.id, seeded));
+    }
+  });
+
+  it('fetches a single entry by id', async () => {
+    const userId = await devUserId();
+    const mine = await seedEntry(
+      userId,
+      'single-1',
+      'Single Entry',
+      new Date(Date.UTC(2026, 5, 5)),
+    );
+    try {
+      const res = await app.request(`/api/v1/entries/${mine}`, { headers: H });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { entry: { id: string; title: string } };
+      expect(body.entry.id).toBe(String(mine));
+      expect(body.entry.title).toBe('Single Entry');
+
+      const missing = await app.request('/api/v1/entries/999999999', { headers: H });
+      expect(missing.status).toBe(404);
+
+      const bad = await app.request('/api/v1/entries/not-a-number', { headers: H });
+      expect(bad.status).toBe(400);
+
+      // another user's entry is invisible: 404 (not 403), no existence leak
+      const other = await app.request(`/api/v1/entries/${mine}`, {
+        headers: { 'X-Dev-User': `other-${randomUUID().slice(0, 8)}` },
+      });
+      expect(other.status).toBe(404);
+    } finally {
+      await db.delete(schema.userEntries).where(inArray(schema.userEntries.id, [mine]));
+    }
   });
 
   it('exports opml with folders intact', async () => {

@@ -32,3 +32,13 @@ variable "dsql_endpoint" {
 variable "hmac_secret_arn" {
   type = string
 }
+
+variable "refresh_queue_url" {
+  description = "SQS queue the api Lambda enqueues immediate feed refreshes to"
+  type        = string
+}
+
+variable "refresh_queue_arn" {
+  description = "SQS queue ARN for the api Lambda's sqs:SendMessage policy"
+  type        = string
+}

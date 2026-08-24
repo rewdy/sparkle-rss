@@ -88,6 +88,11 @@ Unique keys: `users.cognito_sub`, `users.username`, `api_tokens.token_hash`,
 > `user_entries`; deleting a category nulls `subscriptions.category_id`; disabling a user
 > blocks at the auth layer. These invariants get dedicated unit tests in Phase 2.
 
+Feeds start due immediately (`next_fetch_after` defaults to `now()`); a successful
+subscribe additionally enqueues an immediate refresh on the ingest queue (same
+`{ feedId }` message the orchestrator sends), so a newly subscribed feed is fetched
+within seconds instead of waiting for the next 5-minute orchestrator run.
+
 ## Cursor format
 
 GReader clients treat continuation tokens as opaque, so we use one canonical encoding for

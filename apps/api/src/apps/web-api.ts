@@ -141,6 +141,7 @@ export function createWebApiApp(): Hono<Env> {
         cursor: z.string().optional(),
         ot: z.coerce.date().optional(),
         nt: z.coerce.date().optional(),
+        pubFrom: z.coerce.date().optional(),
       })
       .parse({
         stream: q.stream ?? 'all',
@@ -150,6 +151,7 @@ export function createWebApiApp(): Hono<Env> {
         cursor: q.cursor,
         ot: q.ot,
         nt: q.nt,
+        pubFrom: q.pubFrom,
       });
 
     const s = await getServices();
@@ -161,8 +163,18 @@ export function createWebApiApp(): Hono<Env> {
       cursor: parsed.cursor,
       crawledAfter: parsed.ot,
       crawledBefore: parsed.nt,
+      publishedFrom: parsed.pubFrom,
     });
     return c.json(page);
+  });
+
+  app.get('/entries/:id', async (c) => {
+    const id = Number(c.req.param('id'));
+    if (!Number.isInteger(id) || id <= 0) throw new AppError(400, 'invalid entry id');
+    const s = await getServices();
+    const [entry] = await s.entries.getByIds(await userIdOf(s, c), [id]);
+    if (!entry) throw new AppError(404, 'entry not found');
+    return c.json({ entry });
   });
 
   app.patch('/entries/read', async (c) => {

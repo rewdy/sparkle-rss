@@ -279,3 +279,11 @@ resource "aws_cloudwatch_metric_alarm" "orchestrator_errors" {
 output "alerts_topic_arn" {
   value = aws_sns_topic.alerts.arn
 }
+
+output "refresh_queue_url" {
+  value = aws_sqs_queue.refresh.url
+}
+
+output "refresh_queue_arn" {
+  value = aws_sqs_queue.refresh.arn
+}
