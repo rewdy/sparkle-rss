@@ -1,7 +1,7 @@
 import { AppError } from '@sparkle/core';
 import { Hono, type MiddlewareHandler } from 'hono';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { greaderApp } from './apps/greader';
+import { createGreaderApp } from './apps/greader';
 import { createWebApiApp } from './apps/web-api';
 import { env } from './env';
 import { corsMiddleware } from './middleware/cors';
@@ -50,8 +50,8 @@ app.use('/api/v1', cognitoAuth);
 app.use('/api/v1/*', cognitoAuth);
 
 app.route('/api/v1', createWebApiApp());
-app.route('/api/greader.php', greaderApp);
-app.route('/greader.php', greaderApp);
+app.route('/api/greader.php', createGreaderApp());
+app.route('/greader.php', createGreaderApp());
 
 app.onError((error, c) => {
   if (error instanceof AppError) {

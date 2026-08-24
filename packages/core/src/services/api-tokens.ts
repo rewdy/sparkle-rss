@@ -13,6 +13,8 @@ export interface UsersService {
     username: string;
     email: string;
   }>;
+  getByUsername(username: string): Promise<{ id: string; username: string } | null>;
+  getById(id: string): Promise<{ id: string; username: string } | null>;
 }
 
 export function createUsersService({ db }: ServicesDeps): UsersService {
@@ -26,6 +28,18 @@ export function createUsersService({ db }: ServicesDeps): UsersService {
       const row = rows[0];
       if (!row) throw new Error('user missing after upsert');
       return { id: row.id, username: row.username, email: row.email };
+    },
+
+    async getByUsername(username) {
+      const rows = await db.select().from(schema.users).where(eq(schema.users.username, username));
+      const row = rows.at(0);
+      return row ? { id: row.id, username: row.username } : null;
+    },
+
+    async getById(id) {
+      const rows = await db.select().from(schema.users).where(eq(schema.users.id, id));
+      const row = rows.at(0);
+      return row ? { id: row.id, username: row.username } : null;
     },
   };
 }
@@ -76,6 +90,14 @@ export function createApiTokensService({ db }: ServicesDeps) {
         .where(and(eq(schema.apiTokens.userId, userId), eq(schema.apiTokens.id, tokenId)))
         .returning({ id: schema.apiTokens.id });
       if (updated.length === 0) throw new Error('token not found');
+    },
+
+    async listHashes(userId: string): Promise<Array<{ id: string; tokenHash: string }>> {
+      const rows = await db
+        .select({ id: schema.apiTokens.id, tokenHash: schema.apiTokens.tokenHash })
+        .from(schema.apiTokens)
+        .where(and(eq(schema.apiTokens.userId, userId), isNull(schema.apiTokens.revokedAt)));
+      return rows;
     },
 
     /** Used by the greader ClientLogin surface to resolve a bearer API token. */

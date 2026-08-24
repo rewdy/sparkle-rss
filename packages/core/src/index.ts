@@ -16,6 +16,7 @@ export {
 } from './services/entries';
 export { AppError } from './services/errors';
 export { createFoldersService, type FolderDto } from './services/folders';
+export { deriveAuthSecret, deriveWriteToken, sha256Hex } from './services/greader-auth';
 export { backoffMinutes, createIngestService, type FeedRow } from './services/ingest';
 export { createOpmlService } from './services/opml';
 export { createSettingsService, type SettingsData } from './services/settings';

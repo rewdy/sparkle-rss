@@ -47,6 +47,22 @@ module "auth" {
   logout_urls   = local.logout_urls
 }
 
+resource "random_password" "greader_hmac" {
+  length  = 64
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "greader_hmac" {
+  name                    = "${var.name_prefix}/prod/greader-hmac-key"
+  recovery_window_in_days = 0
+  tags                    = { component = "auth" }
+}
+
+resource "aws_secretsmanager_secret_version" "greader_hmac" {
+  secret_id     = aws_secretsmanager_secret.greader_hmac.id
+  secret_string = random_password.greader_hmac.result
+}
+
 module "api" {
   source            = "../../modules/api"
   lambda_zip_path   = "${var.lambda_zip_dir}/api.zip"
@@ -55,6 +71,7 @@ module "api" {
   web_origins       = local.web_origins
   dsql_cluster_arn  = module.db.cluster_arn
   dsql_endpoint     = module.db.endpoint
+  hmac_secret_arn   = aws_secretsmanager_secret.greader_hmac.arn
 }
 
 module "web" {

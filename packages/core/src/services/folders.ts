@@ -105,6 +105,14 @@ export function createFoldersService({ db }: ServicesDeps) {
       if (deleted.length === 0) throw new AppError(404, 'folder not found');
     },
 
+    async findByName(userId: string, name: string): Promise<number | null> {
+      const rows = await db
+        .select({ id: schema.categories.id })
+        .from(schema.categories)
+        .where(and(eq(schema.categories.userId, userId), eq(schema.categories.name, name)));
+      return rows.at(0)?.id ?? null;
+    },
+
     async assertOwned(userId: string, categoryId: number | null): Promise<void> {
       if (categoryId === null) return;
       const rows = await db

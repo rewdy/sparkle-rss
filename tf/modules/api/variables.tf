@@ -28,3 +28,7 @@ variable "dsql_cluster_arn" {
 variable "dsql_endpoint" {
   type = string
 }
+
+variable "hmac_secret_arn" {
+  type = string
+}

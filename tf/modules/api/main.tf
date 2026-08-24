@@ -40,6 +40,19 @@ data "aws_iam_policy_document" "dsql_connect" {
   }
 }
 
+data "aws_iam_policy_document" "hmac_secret" {
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [var.hmac_secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "hmac_secret" {
+  role   = aws_iam_role.api.id
+  policy = data.aws_iam_policy_document.hmac_secret.json
+}
+
 resource "aws_iam_role_policy" "dsql_connect" {
   role   = aws_iam_role.api.id
   policy = data.aws_iam_policy_document.dsql_connect.json
@@ -69,6 +82,7 @@ resource "aws_lambda_function" "api" {
       WEB_ORIGINS       = join(",", var.web_origins)
       NODE_ENV          = "production"
       DSQL_ENDPOINT     = var.dsql_endpoint
+      HMAC_SECRET_ARN   = var.hmac_secret_arn
     }
   }
 
