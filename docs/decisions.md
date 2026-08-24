@@ -135,3 +135,16 @@ each gap surfaced as an AccessDenied during plan/refresh.
 **End state**: `deploy.yaml` runs green end-to-end on push to main: quality gate →
 build → OIDC assume → tf init/plan/apply (S3 state + native locking) → DSQL migrations →
 asset sync + CloudFront invalidation.
+
+## Phase 3 — ingestion live (2026-08-24)
+
+- End-to-end verified in production: orchestrator → SQS → worker → DSQL fanout →
+  `/api/v1/entries`. hnrss.org returned no ETag (Last-Modified only) — conditional
+  GET handles both validators.
+- Deploy-role IAM expansions are chicken-and-egg: the pipeline cannot grant itself
+  new permissions, so role changes must be laptop-applied once before the next push
+  (bit us twice with SNS/cloudwatch alarm perms). Now standard practice.
+- Worker swallows per-record fetch errors after recording backoff (SQS redrive is
+  reserved for genuinely broken messages via ReportBatchItemFailures).
+- Feed claiming bumps `next_fetch_after` before enqueue; overlapping orchestrator
+  runs therefore never double-dispatch.
