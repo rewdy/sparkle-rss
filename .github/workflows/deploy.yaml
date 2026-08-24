@@ -34,6 +34,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~> 1.15'
+          terraform_wrapper: false
+
       - name: configure aws credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -63,11 +68,6 @@ jobs:
         env:
           VITE_COGNITO_ISSUER: ${{ steps.buildenv.outputs.cognito_issuer }}
           VITE_COGNITO_CLIENT_ID: ${{ steps.buildenv.outputs.cognito_client_id }}
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '~> 1.15'
-          terraform_wrapper: false
 
 
       - name: terraform plan
