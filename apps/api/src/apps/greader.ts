@@ -325,6 +325,7 @@ export function createGreaderApp(): Hono<Env> {
           categories.push(`${LABEL_PREFIX}${sub.categoryName}`);
         return {
           id: toLongItemId(BigInt(entry.id)),
+          title: entry.title,
           crawlTimeMsec: msToCrawlTimeMsec(entry.crawledAtMs),
           timestampUsec: msToTimestampUsec(entry.publishedAtMs),
           published: Math.floor(entry.publishedAtMs / 1000),
