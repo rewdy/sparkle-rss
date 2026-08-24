@@ -1,4 +1,7 @@
 export { type DiscoveredFeed, discoverFeed, type FetchLike, looksLikeFeed } from './feed/discover';
+export { type FetchFeedResult, fetchFeed } from './feed/fetch-feed';
+export { type ParsedEntry, type ParsedFeed, parseFeed } from './feed/parse';
+export { sanitizeEntryHtml } from './feed/sanitize';
 export * from './greader/auth-header';
 export * from './greader/cursor';
 export * from './greader/id';
@@ -13,6 +16,7 @@ export {
 } from './services/entries';
 export { AppError } from './services/errors';
 export { createFoldersService, type FolderDto } from './services/folders';
+export { backoffMinutes, createIngestService, type FeedRow } from './services/ingest';
 export { createOpmlService } from './services/opml';
 export { createSettingsService, type SettingsData } from './services/settings';
 export {

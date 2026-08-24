@@ -69,8 +69,11 @@ module "web" {
 }
 
 module "ingest" {
-  source         = "../../modules/ingest"
-  lambda_zip_dir = var.lambda_zip_dir
+  source           = "../../modules/ingest"
+  lambda_zip_dir   = var.lambda_zip_dir
+  dsql_cluster_arn = module.db.cluster_arn
+  dsql_endpoint    = module.db.endpoint
+  alarm_email      = null # subscribe an email via console/SNS to receive alerts
 }
 
 module "github_oidc" {

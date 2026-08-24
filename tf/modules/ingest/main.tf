@@ -36,6 +36,37 @@ resource "aws_cloudwatch_log_group" "orchestrator" {
   retention_in_days = 14
 }
 
+data "aws_iam_policy_document" "orchestrator_runtime" {
+  statement {
+    effect    = "Allow"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.refresh.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "orchestrator_runtime" {
+  role   = aws_iam_role.orchestrator.id
+  policy = data.aws_iam_policy_document.orchestrator_runtime.json
+}
+
+data "aws_iam_policy_document" "dsql_connect" {
+  statement {
+    effect    = "Allow"
+    actions   = ["dsql:DbConnect", "dsql:DbConnectAdmin"]
+    resources = [var.dsql_cluster_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "orchestrator_dsql" {
+  role   = aws_iam_role.orchestrator.id
+  policy = data.aws_iam_policy_document.dsql_connect.json
+}
+
+resource "aws_iam_role_policy" "worker_dsql" {
+  role   = aws_iam_role.worker.id
+  policy = data.aws_iam_policy_document.dsql_connect.json
+}
+
 resource "aws_lambda_function" "orchestrator" {
   function_name    = "sparkle-rss-ingest-orchestrator"
   filename         = "${var.lambda_zip_dir}/ingest-orchestrator.zip"
@@ -46,6 +77,15 @@ resource "aws_lambda_function" "orchestrator" {
   memory_size      = 256
   timeout          = 60
   role             = aws_iam_role.orchestrator.arn
+
+  environment {
+    variables = {
+      QUEUE_URL         = aws_sqs_queue.refresh.url
+      DSQL_ENDPOINT     = var.dsql_endpoint
+      MAX_FEEDS_PER_RUN = "100"
+      NODE_ENV          = "production"
+    }
+  }
 
   logging_config {
     log_format = "JSON"
@@ -72,15 +112,23 @@ resource "aws_cloudwatch_log_group" "worker" {
 }
 
 resource "aws_lambda_function" "worker" {
-  function_name    = "sparkle-rss-ingest-worker"
-  filename         = "${var.lambda_zip_dir}/ingest-worker.zip"
-  source_code_hash = filebase64sha256("${var.lambda_zip_dir}/ingest-worker.zip")
-  handler          = "ingest-worker.handler"
-  runtime          = "nodejs22.x"
-  architectures    = ["arm64"]
-  memory_size      = 512
-  timeout          = 60
-  role             = aws_iam_role.worker.arn
+  function_name                  = "sparkle-rss-ingest-worker"
+  filename                       = "${var.lambda_zip_dir}/ingest-worker.zip"
+  source_code_hash               = filebase64sha256("${var.lambda_zip_dir}/ingest-worker.zip")
+  handler                        = "ingest-worker.handler"
+  runtime                        = "nodejs22.x"
+  architectures                  = ["arm64"]
+  memory_size                    = 512
+  timeout                        = 180
+  reserved_concurrent_executions = 10
+  role                           = aws_iam_role.worker.arn
+
+  environment {
+    variables = {
+      DSQL_ENDPOINT = var.dsql_endpoint
+      NODE_ENV      = "production"
+    }
+  }
 
   logging_config {
     log_format = "JSON"
@@ -100,7 +148,7 @@ resource "aws_sqs_queue" "refresh_dlq" {
 
 resource "aws_sqs_queue" "refresh" {
   name                       = "sparkle-rss-feed-refresh"
-  visibility_timeout_seconds = 120
+  visibility_timeout_seconds = 200
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.refresh_dlq.arn
     maxReceiveCount     = 5
@@ -163,4 +211,71 @@ resource "aws_scheduler_schedule" "feed_refresh" {
     arn      = aws_lambda_function.orchestrator.arn
     role_arn = aws_iam_role.scheduler_invoke.arn
   }
+}
+
+
+# --- alerts -----------------------------------------------------------------
+
+resource "aws_sns_topic" "alerts" {
+  name = "sparkle-rss-alerts"
+  tags = var.tags
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  count     = var.alarm_email == null ? 0 : 1
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alarm_email
+}
+
+resource "aws_cloudwatch_metric_alarm" "dlq_not_empty" {
+  alarm_name          = "sparkle-rss-refresh-dlq-not-empty"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 300
+  statistic           = "Maximum"
+  dimensions = {
+    QueueName = aws_sqs_queue.refresh_dlq.name
+  }
+  alarm_actions      = [aws_sns_topic.alerts.arn]
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "worker_errors" {
+  alarm_name          = "sparkle-rss-worker-errors"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  dimensions = {
+    FunctionName = aws_lambda_function.worker.function_name
+  }
+  alarm_actions      = [aws_sns_topic.alerts.arn]
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "orchestrator_errors" {
+  alarm_name          = "sparkle-rss-orchestrator-errors"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  dimensions = {
+    FunctionName = aws_lambda_function.orchestrator.function_name
+  }
+  alarm_actions      = [aws_sns_topic.alerts.arn]
+  treat_missing_data = "notBreaching"
+  tags               = var.tags
+}
+
+output "alerts_topic_arn" {
+  value = aws_sns_topic.alerts.arn
 }

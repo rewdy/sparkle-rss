@@ -2,6 +2,7 @@ import {
   createApiTokensService,
   createEntriesService,
   createFoldersService,
+  createIngestService,
   createOpmlService,
   createSettingsService,
   createSubscriptionsService,
@@ -19,6 +20,7 @@ export interface Services {
   settings: ReturnType<typeof createSettingsService>;
   apiTokens: ReturnType<typeof createApiTokensService>;
   opml: ReturnType<typeof createOpmlService>;
+  ingest: ReturnType<typeof createIngestService>;
 }
 
 interface Handle {
@@ -61,6 +63,7 @@ function createServices(db: NodePgDatabase<typeof schema>): Services {
     settings: createSettingsService(deps),
     apiTokens: createApiTokensService(deps),
     opml: createOpmlService(deps),
+    ingest: createIngestService(deps),
   };
 }
 
