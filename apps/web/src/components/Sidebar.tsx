@@ -4,18 +4,15 @@ import {
   Button,
   Divider,
   Group,
-  Modal,
-  NativeSelect,
   NavLink,
   ScrollArea,
   Stack,
   Text,
-  TextInput,
   UnstyledButton,
 } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import {
   LuCalendarDays,
   LuInbox,
@@ -29,8 +26,12 @@ import { Link, useLocation } from 'wouter';
 import { api } from '../lib/api';
 import { logout } from '../lib/auth';
 import { parseRoute, qk, streamPath } from '../lib/keys';
-import { useSubscribe } from '../lib/mutations';
 import type { Folder, StreamDescriptor, Subscription } from '../lib/types';
+
+// The subscribe dialog drags Modal + form components; load it on first open.
+const SubscribeModal = lazy(() =>
+  import('./SubscribeModal').then((m) => ({ default: m.SubscribeModal })),
+);
 
 function unreadBadge(count: number): ReactElement | null {
   if (count <= 0) return null;
@@ -240,11 +241,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
         </UnstyledButton>
       </Stack>
 
-      <SubscribeModal
-        opened={subscribeOpen}
-        onClose={() => setSubscribeOpen(false)}
-        folders={folders}
-      />
+      {subscribeOpen && (
+        <Suspense fallback={null}>
+          <SubscribeModal
+            opened={subscribeOpen}
+            onClose={() => setSubscribeOpen(false)}
+            folders={folders}
+          />
+        </Suspense>
+      )}
     </Box>
   );
 }
@@ -278,71 +283,5 @@ function FeedRow({
       }
       onClick={() => onNavigate?.()}
     />
-  );
-}
-
-function SubscribeModal({
-  opened,
-  onClose,
-  folders,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  folders: Folder[];
-}): ReactElement {
-  const [url, setUrl] = useState('');
-  const [title, setTitle] = useState('');
-  const [folderId, setFolderId] = useState<string>('');
-  const subscribe = useSubscribe();
-
-  async function submit(): Promise<void> {
-    if (!url.trim()) return;
-    await subscribe.mutateAsync({
-      url: url.trim(),
-      folderId: folderId === '' ? null : Number(folderId),
-    });
-    setUrl('');
-    setTitle('');
-    onClose();
-  }
-
-  return (
-    <Modal opened={opened} onClose={onClose} title="subscribe" size="md">
-      <Stack gap="sm">
-        <TextInput
-          label="feed or site URL"
-          placeholder="https://example.com/blog"
-          value={url}
-          onChange={(e) => setUrl(e.currentTarget.value)}
-          data-autofocus
-          error={
-            !url.startsWith('http') && url.length > 0 ? 'must start with http(s)://' : undefined
-          }
-        />
-        <TextInput
-          label="custom title (optional)"
-          value={title}
-          onChange={(e) => setTitle(e.currentTarget.value)}
-        />
-        <NativeSelect
-          label="folder"
-          description="feeds can be moved between folders later"
-          value={folderId}
-          onChange={(e) => setFolderId(e.currentTarget.value)}
-          data={[
-            { value: '', label: '— none —' },
-            ...folders.map((f) => ({ value: f.id, label: f.name })),
-          ]}
-        />
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            cancel
-          </Button>
-          <Button onClick={() => void submit()} loading={subscribe.isPending}>
-            subscribe
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
   );
 }

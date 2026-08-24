@@ -2,14 +2,19 @@ import { Center, Loader, Stack, Text } from '@mantine/core';
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { accessToken, getUser, login } from '../lib/auth';
+import { accessToken, devAuthBypassed, getUser, login } from '../lib/auth';
 
 /** Guards the app: redirects to Cognito when no session, renders children when authed. */
 export function useAuthGuard(): 'checking' | 'authed' | 'anon' {
-  const [state, setState] = useState<'checking' | 'authed' | 'anon'>('checking');
+  // Dev bypass: auth is structurally disabled, so the shell renders on the
+  // first paint (no loader flash / layout shift).
+  const [state, setState] = useState<'checking' | 'authed' | 'anon'>(
+    devAuthBypassed ? 'authed' : 'checking',
+  );
   const [, navigate] = useLocation();
 
   useEffect(() => {
+    if (devAuthBypassed) return;
     let cancelled = false;
     (async () => {
       const user = await getUser().catch(() => null);

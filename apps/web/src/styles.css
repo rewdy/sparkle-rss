@@ -1,6 +1,36 @@
 .entry-row {
   transition: background-color 80ms ease;
 }
+.skeleton-row {
+  margin: 0 12px;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.skeleton-row::before,
+.skeleton-row::after {
+  content: "";
+  border-radius: 3px;
+  background: light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+  animation: sparkle-skeleton-pulse 1.2s ease-in-out infinite alternate;
+}
+.skeleton-row::before {
+  height: 10px;
+  width: 40%;
+}
+.skeleton-row::after {
+  height: 14px;
+  width: 75%;
+}
+@keyframes sparkle-skeleton-pulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
 .entry-row:hover {
   background-color: light-dark(
     var(--mantine-color-accent-0),

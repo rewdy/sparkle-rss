@@ -2,10 +2,9 @@ import { AppShell, Box, Center, Loader } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useAtomValue, useSetAtom } from 'jotai';
 import type { ReactElement } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { ReaderPane } from '../components/ReaderPane';
-import { ShortcutsModal } from '../components/ShortcutsModal';
 import { Sidebar } from '../components/Sidebar';
 import { StreamInner } from '../components/StreamInner';
 import { Topbar } from '../components/Topbar';
@@ -21,7 +20,14 @@ import {
   shortcutsOpenAtom,
 } from '../lib/ui-state';
 import { FullscreenLoader, useAuthGuard } from './guard';
-import { SettingsPage } from './Settings';
+
+// Settings drags the heaviest non-essential Mantine components (forms, copy
+// button, switches); keep them off the first-paint critical path.
+const SettingsPage = lazy(() => import('./Settings').then((m) => ({ default: m.SettingsPage })));
+// Shortcut sheet + its Modal/Table are only needed when opened with `?`.
+const ShortcutsModal = lazy(() =>
+  import('../components/ShortcutsModal').then((m) => ({ default: m.ShortcutsModal })),
+);
 
 function streamTitle(
   d: StreamDescriptor,
@@ -52,6 +58,7 @@ export function Shell(): ReactElement {
   const filter = useAtomValue(filterAtom);
   const setFilter = useSetAtom(filterAtom);
   const setShortcutsOpen = useSetAtom(shortcutsOpenAtom);
+  const shortcutsOpen = useAtomValue(shortcutsOpenAtom);
   const markReadOnOpen = useAtomValue(markReadOnOpenAtom);
 
   const route = useMemo(() => parseRoute(location), [location]);
@@ -103,14 +110,18 @@ export function Shell(): ReactElement {
     }
   }, [descriptor, routeEntryId, entryQ.error, navigate]);
 
-  function openEntry(entry: Entry): void {
-    if (!descriptor) return;
-    if (markReadOnOpen && !entry.isRead) {
-      entry.isRead = true;
-      void api.entries.setRead([entry.id], true);
-    }
-    navigate(`${streamPath(descriptor)}/e/${entry.id}`);
-  }
+  // Stable callback: rows in the virtualized list are memoized on it.
+  const openEntry = useCallback(
+    (entry: Entry) => {
+      if (!descriptor) return;
+      if (markReadOnOpen && !entry.isRead) {
+        entry.isRead = true;
+        void api.entries.setRead([entry.id], true);
+      }
+      navigate(`${streamPath(descriptor)}/e/${entry.id}`);
+    },
+    [descriptor, markReadOnOpen, navigate],
+  );
 
   function closeReader(): void {
     if (!descriptor) return;
@@ -225,7 +236,15 @@ export function Shell(): ReactElement {
 
       <AppShell.Main style={{ position: 'relative' }} data-density={density}>
         {location === '/settings' ? (
-          <SettingsPage />
+          <Suspense
+            fallback={
+              <Center mih="100%">
+                <Loader size="sm" type="dots" />
+              </Center>
+            }
+          >
+            <SettingsPage />
+          </Suspense>
         ) : descriptor ? (
           <>
             <StreamInner
@@ -260,7 +279,11 @@ export function Shell(): ReactElement {
         )}
       </AppShell.Main>
 
-      <ShortcutsModal />
+      {shortcutsOpen && (
+        <Suspense fallback={null}>
+          <ShortcutsModal />
+        </Suspense>
+      )}
     </AppShell>
   );
 }

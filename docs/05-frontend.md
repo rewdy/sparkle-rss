@@ -68,8 +68,12 @@ shareable via query string).
 - Article opens as a focused single-column reading pane (in-place overlay on desktop,
   full-screen on mobile) at `<stream>/e/:id`. Back/Esc returns to the list preserving
   scroll position.
-- Date-grouped card list (Today/Yesterday/This week/Older). Virtualization when >200
-  rows: not implemented (Phase 6).
+- Date-grouped card list (Today/Yesterday/This week/Older), **virtualized** with
+  `@tanstack/react-virtual` (v3, `directDomUpdates`): day-group headers + entries
+  flatten into one flat virtualized row list; row heights measured dynamically (titles wrap);
+  overscan 15; positions of mounted rows are written to the DOM directly while
+  scrolling, React re-renders only when the visible range changes. j/k steps and
+  deep links scroll the active entry into view (`scrollToIndex`, align auto).
 - Keyboard (implemented): `j/k` open next/previous (each step is a history entry),
   `m` toggle read, `s` star, `Shift+A` mark stream read, `Esc` back to list, `?`
   shortcut sheet. Planned, not yet built: `Enter/o` open original, `/` search focus,
@@ -77,7 +81,11 @@ shareable via query string).
 - Mark-read-on-open (implemented): global toggle in Settings, persisted like the other
   reading prefs. The originally-planned per-stream mark-as-read-on-scroll is deferred.
 - Empty states with subscribe hint and optimistic read/star toggles (implemented).
-  Skeletons on first load: not implemented (currently a "loading…" row).
+  Skeletons on first load (implemented): 12 fixed-height placeholder rows matching the
+  real row footprint replace the old "loading…" row (no list-replacement layout shift).
+- Code-split routes (implemented): `/settings`, the subscribe dialog, and the `?`
+  shortcut sheet are `React.lazy` chunks loaded on first open — the first-paint
+  critical path stays just the reader shell.
 
 ## State management contract
 

@@ -225,3 +225,49 @@ Lesson: watch both workflows — a green deploy is not a green repo.
   immediately, instead of firing the mutation on click. Follows the existing
   subscribe/shortcuts `Modal` convention (component-local state, no new atom —
   server state still flows through react-query).
+
+## Phase 6 — virtualization + Lighthouse pass (2026-08-24)
+
+- **Entry list is virtualized** (`@tanstack/react-virtual` 3.14, `directDomUpdates`):
+  day-group headers + entries flatten into one flat virtualized row list; row heights
+  are measured dynamically (titles wrap to variable height); overscan 15. With
+  `directDomUpdates`, positions of already-mounted rows are written to the DOM
+  directly while scrolling; React only re-renders when the visible range changes.
+  Verified against a 1,065-entry local stream (61.8kpx scroll height): 29–46 rows in
+  the DOM throughout, **0 frames >33ms**, p99 frame 21ms, reached "end of stream".
+- **j/k and deep links now scroll the active entry into view** (`scrollToIndex`,
+  align auto). Previously nothing scrolled the list at all; with virtualization the
+  target row must exist in the DOM, so this became a requirement, not a nicety.
+- **Skeletons replace the "loading…" row** on first load (12 fixed-height rows
+  matching the real row footprint) — also removes the list-replacement layout shift
+  (Lighthouse CLS was 0 with it).
+- **Bug found + fixed**: the infinite-scroll sentinel's `IntersectionObserver` used
+  the viewport as root, but the list is a *nested* scroller — with virtualized (tall)
+  content the sentinel only becomes reachable relative to the container. Now
+  `root: scrollRef.current`. (It happened to work before because 50 non-virtualized
+  rows fit close to the viewport; the virtualized 60kpx box exposed it.)
+- **Auth guard fast-paths in dev**: with `VITE_AUTH_DISABLED=true` the guard starts
+  `authed` instead of flashing "checking session…" first (removes a loader→shell
+  layout shift in local runs; prod Cognito flow untouched).
+- **Code-split the heavy, non-essential UI**: `/settings`, the subscribe dialog
+  (extracted to `components/SubscribeModal.tsx`), and the `?` shortcut sheet are
+  `React.lazy` chunks loaded on first open; `openEntry` is a stable `useCallback` so
+  memoized rows don't re-render on every Shell render. `vite preview` now proxies
+  `/api` like the dev server, so the production build can be exercised locally.
+- **Lighthouse pass (local): 75/100, and the score chase was stopped by user
+  decision.** Measured against the prod build via `vite preview` with dev auth
+  (standard for an auth-walled SPA — prod is behind Cognito), default desktop
+  throttling (Slow-4G + 4x CPU): CLS 0, TBT 20ms, FCP/LCP ≈ 2.2s. The real
+  (unthrottled) FCP is ~190ms; the simulated gap is mostly model floor (562ms
+  simulated TTFB + 150ms RTT) plus ~150kB-gz critical JS (react-dom, Mantine,
+  TanStack Query, floating-ui via tooltips/modals). Code-splitting cut the critical
+  JS 162→150kB gz. User call (2026-08-24): personal-use app — no further bundle/CSS
+  diet. Concretely reverted/abandoned for it: Mantine `Tooltip` in the topbar had
+  been swapped for native `title` attrs (−20kB gz) — **reverted** because the styled
+  tooltips look and function better; the planned theme color-scale CSS trim
+  (~2–3kB gz, real risk of subtle visual regressions) — not done.
+- **Doc/code discrepancy found, not fixed (needs a decision)**: the roadmap's landed
+  item "web sidebar shows feed icons with a domain-favicon fallback" has no backing
+  code — `Subscription.iconUrl` exists end-to-end (API, types) but the sidebar
+  renders no icons at all. Flagged for a future chunk or a decision that the item
+  was never actually shipped.

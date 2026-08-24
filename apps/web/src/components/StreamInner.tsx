@@ -44,6 +44,7 @@ export function StreamInner({
     onEntriesChange(entries);
   }, [entries, onEntriesChange]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinelRef.current;
@@ -54,19 +55,23 @@ export function StreamInner({
           void query.fetchNextPage();
         }
       },
-      { rootMargin: '600px' },
+      // Root is the scroll container (not the viewport): the list is a nested
+      // scroller, and with virtualized content the sentinel sits at the end of
+      // a tall virtual box.
+      { root: scrollRef.current, rootMargin: '600px' },
     );
     io.observe(el);
     return () => io.disconnect();
   }, [query.hasNextPage, query.isFetchingNextPage, query]);
 
   return (
-    <Box h="calc(100vh - 44px)" style={{ overflowY: 'auto' }} data-stream-scroll>
+    <Box ref={scrollRef} h="calc(100vh - 44px)" style={{ overflowY: 'auto' }} data-stream-scroll>
       <EntryList
         entries={entries}
         loading={query.isPending}
         activeId={activeEntryId}
         onSelect={onSelect}
+        scrollRef={scrollRef}
       />
       <div ref={sentinelRef} style={{ height: 1 }} />
       {!query.hasNextPage && entries.length > 0 && (

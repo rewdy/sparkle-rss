@@ -10,7 +10,7 @@ live-verified; conformance suite runs in CI). Everything is done **except**:
 
 1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
    still pending; until it passes, Phase 4 is "done, pending device verification".
-2. **Phase 6** — the active backlog below (4 of 10 chunks landed, all 2026-08-24).
+2. **Phase 6** — the active backlog below (5 of 10 chunks landed, all 2026-08-24).
 3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
    the app is live and fast enough that this never blocked anything).
 
@@ -157,7 +157,7 @@ usage window; design direction: terminal-inspired, colors adjustable.
 This is the working backlog. Items are ordered by value/risk; each is a good
 session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lands.
 
-**Landed 2026-08-24** (this session's batch — see decisions.md):
+**Landed 2026-08-24** (see decisions.md):
 - [x] Feed favicon pipeline: icon extracted at ingest (RSS `<image>`, Atom
       `<logo>`/`<icon>`) into `feeds.icon_url` (GReader `iconUrl` populates
       automatically); web sidebar shows feed icons with a domain-favicon fallback.
@@ -172,12 +172,17 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       X-Frame-Options: DENY, nosniff, referrer-policy); API GW throttling confirmed
       live (rate 25/s, burst 50 — matches tf); token revocation in settings now
       requires a confirmation step.
+- [x] **Lighthouse + virtualization** (carried from Phase 5): entry list virtualized
+      (`@tanstack/react-virtual`, direct DOM updates + dynamic row measurement) —
+      1,065-row stream scrolls with ~30 rows in the DOM and zero dropped frames;
+      skeletons on first load; settings/modals code-split. Local Lighthouse pass on the
+      prod build (Slow-4G + 4x CPU): 75/100, CLS 0, FCP-bound by model floor +
+      ~150kB-gz critical JS. **User decision: score chase stopped** (personal-use app)
+      — the chunk's "perf ≥ 90" exit is closed by decision, not by score; the
+      1k-row-smooth-scroll exit is met. See decisions.md for the pass results and the
+      tooltip-revert call.
 
 **Remaining (in suggested order):**
-- [ ] **Lighthouse + virtualization** (carried from Phase 5) — run a Lighthouse pass on the
-      live SPA and fix the worst offenders; virtualize the entry list (date-grouped rows)
-      so very long lists stay smooth. *Exit: Lighthouse perf ≥ 90 on a mid-size stream;
-      1k-row list scrolls without jank.*
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
       image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse
       PWA criteria met; first-view images lazy-load.*
