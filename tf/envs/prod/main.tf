@@ -76,7 +76,10 @@ module "api" {
 
 locals {
   # Browser talks to Cognito for OIDC discovery/JWKS and (if needed) silent-renew iframes.
-  csp_connect_origins = [module.auth.cognito_endpoint_origin]
+  csp_connect_origins = [
+    module.auth.cognito_endpoint_origin,
+    module.auth.hosted_ui_domain,
+  ]
   csp_frame_origins   = [module.auth.hosted_ui_domain]
 }
 
