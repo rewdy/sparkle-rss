@@ -25,7 +25,7 @@
 | `/folder/:id` | Folder stream |
 | `/feed/:id` | Feed stream |
 | `<stream>/e/:id` | Reading pane for entry `:id` (e.g. `/all/e/123`, `/feed/5/e/123`) |
-| `/settings` | Profile, appearance, API tokens, OPML import/export |
+| `/settings` | Profile, appearance, API tokens (revocation requires a confirmation modal), OPML import/export |
 
 All stream routes share one component parameterized by stream descriptor
 (`{kind: 'all'|'starred'|'today'|'unread'|'folder'|'feed', id?}`), mirroring greader stream

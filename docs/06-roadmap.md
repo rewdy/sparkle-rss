@@ -10,7 +10,7 @@ live-verified; conformance suite runs in CI). Everything is done **except**:
 
 1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
    still pending; until it passes, Phase 4 is "done, pending device verification".
-2. **Phase 6** — the active backlog below (3 of 10 chunks landed, all 2026-08-24).
+2. **Phase 6** — the active backlog below (4 of 10 chunks landed, all 2026-08-24).
 3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
    the app is live and fast enough that this never blocked anything).
 
@@ -167,13 +167,13 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
 - [x] Route-driven views: article view is `<stream>/e/:id` so back/forward work (deep
       links fetch via `GET /api/v1/entries/:id`); `/today` and `/unread` streams added;
       standing requirement that all view changes go through routes (doc 05).
+- [x] Security hardening pass: prod CloudFront response-headers verified by curl on
+      both SPA and `/api/*` behaviors (CSP, HSTS 1y + includeSubDomains,
+      X-Frame-Options: DENY, nosniff, referrer-policy); API GW throttling confirmed
+      live (rate 25/s, burst 50 — matches tf); token revocation in settings now
+      requires a confirmation step.
 
 **Remaining (in suggested order):**
-- [ ] **Security hardening pass** — verify the CloudFront response-headers policy actually
-      emits CSP/HSTS/frame-deny in production (curl the headers), confirm API GW throttling
-      steady/burst values, and add a token-revocation confirmation step in settings.
-      *Exit: `curl -sI https://app.sparklerss.com` shows the headers; throttle values
-      confirmed in console.*
 - [ ] **Lighthouse + virtualization** (carried from Phase 5) — run a Lighthouse pass on the
       live SPA and fix the worst offenders; virtualize the entry list (date-grouped rows)
       so very long lists stay smooth. *Exit: Lighthouse perf ≥ 90 on a mid-size stream;

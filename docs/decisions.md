@@ -201,3 +201,27 @@ Session batch (commits `70b9d30`, `c3308ff`, `6b73d2f`, `985fcf4`). Decisions wo
 with the local-dev-workflow commit. Because `deploy.yaml` doesn't run fmt and was green,
 the red `ci` went unnoticed until the next deploy batch. Fixed in `985fcf4`.
 Lesson: watch both workflows — a green deploy is not a green repo.
+
+## Phase 6 — security hardening pass (2026-08-24)
+
+- **Prod response-headers verified by curl** (both the S3/SPA default behavior and the
+  `/api/*` behavior, which 401s without a token but still carries the headers):
+  `content-security-policy` (default/script 'self', img/media https:, connect-src +
+  frame-src scoped to the Cognito origins, `frame-ancestors 'none'`, base-uri +
+  form-action 'self'), `strict-transport-security: max-age=31536000; includeSubDomains`,
+  `x-frame-options: DENY`, `x-content-type-options: nosniff`,
+  `referrer-policy: strict-origin-when-cross-origin`. All four cache behaviors attach
+  the same policy in `tf/modules/web`; nothing to fix.
+- **API GW throttling confirmed live** via `aws apigatewayv2 get-stage` (us-east-1,
+  `$default` stage of `sparkle-rss-api`): rate 25/s, burst 50 — exactly the
+  `default_route_settings` declared in `tf/modules/api`. Chosen values: a real
+  NetNewsWire sync burst is well under 50 concurrent requests; 25/s sustained is
+  generous for 1–3 users. If syncs ever start seeing 429s, API GW's
+  `ThrottledRequests` metric in CloudWatch will show it (note: doc 04's
+  "5xx/throttle alarms" for the api module does not exist in tf yet — flagged for
+  the docs-refresh chunk to reconcile). No per-route overrides.
+- **Token revocation now confirms first** (settings UI): the revoke button opens a
+  small modal naming the token by label and warning that the client is disconnected
+  immediately, instead of firing the mutation on click. Follows the existing
+  subscribe/shortcuts `Modal` convention (component-local state, no new atom —
+  server state still flows through react-query).

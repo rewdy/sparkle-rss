@@ -7,6 +7,7 @@ import {
   CopyButton,
   Divider,
   Group,
+  Modal,
   NativeSelect,
   Stack,
   Switch,
@@ -133,6 +134,13 @@ function ApiTokensCard(): ReactElement {
 
   const [label, setLabel] = useState('');
   const [freshToken, setFreshToken] = useState<string | null>(null);
+  const [pendingRevoke, setPendingRevoke] = useState<{ id: string; label: string } | null>(null);
+
+  async function confirmRevoke(): Promise<void> {
+    if (!pendingRevoke) return;
+    await revoke.mutateAsync(pendingRevoke.id);
+    setPendingRevoke(null);
+  }
 
   return (
     <Card withBorder padding="lg">
@@ -183,13 +191,40 @@ function ApiTokensCard(): ReactElement {
                 size="compact-xs"
                 variant="subtle"
                 color="red"
-                onClick={() => void revoke.mutateAsync(t.id)}
+                onClick={() => setPendingRevoke({ id: t.id, label: t.label })}
               >
                 revoke
               </Button>
             </Group>
           ))}
         </Stack>
+
+        <Modal
+          opened={pendingRevoke !== null}
+          onClose={() => setPendingRevoke(null)}
+          title="revoke token"
+          size="sm"
+        >
+          {pendingRevoke && (
+            <Stack gap="sm">
+              <Text size="sm">
+                Revoke{' '}
+                <Text component="span" ff="monospace">
+                  {pendingRevoke.label || '(unlabeled)'}
+                </Text>
+                ? Any client using it (e.g. NetNewsWire) is disconnected immediately.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="default" onClick={() => setPendingRevoke(null)}>
+                  cancel
+                </Button>
+                <Button color="red" loading={revoke.isPending} onClick={() => void confirmRevoke()}>
+                  revoke
+                </Button>
+              </Group>
+            </Stack>
+          )}
+        </Modal>
       </Stack>
     </Card>
   );

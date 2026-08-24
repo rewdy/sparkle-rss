@@ -47,9 +47,9 @@ Conventions:
 | Module | Resources |
 | --- | --- |
 | dns | Route53 zone (or data-source an existing one), A/AAAA alias → CloudFront, ACM cert + DNS validation (certs in us-east-1) |
-| web | S3 bucket (private, OAC-only), CloudFront distribution (S3 + API GW origins, `/api/*` no-cache behavior, SPA rewrite function, security headers policy, compression) |
+| web | S3 bucket (private, OAC-only), CloudFront distribution (S3 + API GW origins, `/api/*` no-cache behavior, SPA rewrite function, security headers policy — CSP, HSTS 1y + includeSubDomains, X-Frame-Options DENY, nosniff, referrer-policy; verified live 2026-08-24, compression) |
 | auth | Cognito user pool (sign-up disabled), user pool client (PKCE, no secret, callback = site URL), hosted UI domain prefix, admin-created users are ops, not IaC |
-| api | HTTP API `{proxy+}` routes: `/api/greader.php/*` (no authorizer), `/api/v1/*` (Cognito JWT authorizer scoped by audience); `api` Lambda arm64 Node 22 (512 MB / 10 s), env `QUEUE_URL` + `sqs:SendMessage` on the ingest refresh queue — a successful subscribe (web, OPML import, or GReader client) enqueues the new feed immediately so it refreshes within seconds instead of waiting for the 5-minute schedule; structured access logs; 5xx/throttle alarms |
+| api | HTTP API `{proxy+}` routes: `/api/greader.php/*` (no authorizer), `/api/v1/*` (Cognito JWT authorizer scoped by audience); `api` Lambda arm64 Node 22 (512 MB / 10 s), env `QUEUE_URL` + `sqs:SendMessage` on the ingest refresh queue — a successful subscribe (web, OPML import, or GReader client) enqueues the new feed immediately so it refreshes within seconds instead of waiting for the 5-minute schedule; default-route throttling 25/s rate / burst 50 (confirmed live 2026-08-24); structured access logs; 5xx/throttle alarms |
 | ingest | EventBridge Scheduler `rate(5 minutes)` → orchestrator Lambda (256 MB / 60 s); SQS standard queue (visibility 120 s, redrive maxReceiveCount 5) → worker Lambda (512 MB / 60 s, reserved concurrency 10); exposes refresh queue URL/ARN outputs consumed by the api module; DLQ depth alarm; DLQ redrive console for ops |
 | db | Aurora DSQL cluster; IAM policy granting `dsql:DbConnect` to each Lambda role |
 
