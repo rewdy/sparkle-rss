@@ -8,11 +8,10 @@ function jsonResponse(url: string, body: string, headers: Record<string, string>
 
 describe('fetchFeed', () => {
   it('sends conditional headers and reports not-modified', async () => {
-    let seen: RequestInit | undefined;
-    const fetchImpl = async (url: string): Promise<Response> => {
-      const headers = { ...(init?.headers ?? {}) } as Record<string, string>;
-      seen = { headers };
-      if (headers['If-None-Match'] === '"abc"') {
+    let seenHeaders: Record<string, string> = {};
+    const fetchImpl = async (url: string, init?: RequestInit): Promise<Response> => {
+      seenHeaders = { ...(init?.headers ?? {}) } as Record<string, string>;
+      if (seenHeaders['If-None-Match'] === '"abc"') {
         return new Response(null, { status: 304 });
       }
       return jsonResponse(url, '<rss/>', { ETag: '"abc"' });
@@ -27,7 +26,6 @@ describe('fetchFeed', () => {
       fetchImpl: fetchImpl as never,
     });
     expect(second.status).toBe('not-modified');
-    const seenHeaders = (seen?.headers ?? {}) as Record<string, string>;
     expect(seenHeaders['If-None-Match']).toBe('"abc"');
   });
 
