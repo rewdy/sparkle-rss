@@ -96,6 +96,14 @@ locals {
     "cloudwatch:ListTagsForResource",
     "cloudwatch:TagResource",
     "cloudwatch:UntagResource",
+    "secretsmanager:CreateSecret",
+    "secretsmanager:DeleteSecret",
+    "secretsmanager:DescribeSecret",
+    "secretsmanager:GetSecretValue",
+    "secretsmanager:PutSecretValue",
+    "secretsmanager:ListSecrets",
+    "secretsmanager:TagResource",
+    "secretsmanager:UntagResource",
   ]
 }
 
