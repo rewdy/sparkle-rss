@@ -1,21 +1,22 @@
-import '@mantine/core/styles.css';
 import { MantineProvider } from '@mantine/core';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Provider as JotaiProvider, useAtomValue } from 'jotai';
 import { Route, Switch } from 'wouter';
 import { queryClient } from './lib/query-client';
 import { colorSchemeAtom } from './lib/ui-state';
-import { Home } from './pages/Home';
+import { Callback } from './pages/Callback';
+import { Login } from './pages/Login';
+import { Shell } from './pages/Shell';
+import { theme } from './theme';
 
 function ThemedApp() {
   const scheme = useAtomValue(colorSchemeAtom);
   return (
-    <MantineProvider forceColorScheme={scheme}>
+    <MantineProvider theme={theme} forceColorScheme={scheme}>
       <Switch>
-        <Route path="/" component={Home} />
-        <Route>
-          <Home />
-        </Route>
+        <Route path="/auth/callback" component={Callback} />
+        <Route path="/login" component={Login} />
+        <Route component={Shell} />
       </Switch>
     </MantineProvider>
   );

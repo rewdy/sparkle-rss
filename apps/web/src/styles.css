@@ -1,0 +1,27 @@
+.entry-row {
+  transition: background-color 80ms ease;
+}
+.entry-row:hover {
+  background-color: light-dark(
+    var(--mantine-color-accent-0),
+    var(--mantine-color-dark-6)
+  );
+}
+.entry-row[data-active] {
+  background-color: light-dark(
+    var(--mantine-color-accent-1),
+    var(--mantine-color-accent-9)
+  );
+  box-shadow: inset 3px 0 0 var(--mantine-color-accent-6);
+}
+.reading-content {
+  font-family: var(--mantine-font-family-sans, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif);
+  font-size: 16px;
+  line-height: 1.7;
+}
+.reading-content img { max-width: 100%; height: auto; }
+.reading-content pre {
+  overflow-x: auto;
+  padding: var(--mantine-spacing-xs);
+  background: var(--mantine-color-dark-7);
+}
