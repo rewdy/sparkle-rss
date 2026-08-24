@@ -1,6 +1,7 @@
 import { Box, Group, Text } from '@mantine/core';
 import type { ReactElement } from 'react';
 import type { Entry } from '../lib/types';
+import { fonts } from '../theme';
 
 function dayGroup(ms: number): string {
   const d = new Date(ms);
@@ -111,7 +112,7 @@ function EntryRow({
           {timeLabel(entry.publishedAtMs)}
         </Text>
       </Group>
-      <Text size="sm" fw={entry.isRead ? 400 : 700} lh={1.4}>
+      <Text size="sm" fw={entry.isRead ? 400 : 700} lh={1.4} style={{ fontFamily: fonts.sans }}>
         {entry.title}
       </Text>
     </Box>

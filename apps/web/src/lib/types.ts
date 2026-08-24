@@ -53,12 +53,19 @@ export interface Me {
 export type StreamDescriptor =
   | { kind: 'all' }
   | { kind: 'starred' }
+  | { kind: 'today' }
+  | { kind: 'unread' }
   | { kind: 'folder'; id: string }
   | { kind: 'feed'; id: string };
 
+/** 'today' and 'unread' are the API stream 'all' plus extra query params. */
 export function streamParam(d: StreamDescriptor): string {
   switch (d.kind) {
     case 'all':
+      return 'all';
+    case 'today':
+      return 'all';
+    case 'unread':
       return 'all';
     case 'starred':
       return 'starred';

@@ -4,11 +4,11 @@ import type { ReactElement } from 'react';
 import { shortcutsOpenAtom } from '../lib/ui-state';
 
 const SHORTCUTS: Array<[string, string]> = [
-  ['j / k', 'next / previous item'],
+  ['j / k', 'open next / previous item'],
   ['m', 'toggle read'],
   ['s', 'toggle star'],
   ['Shift + A', 'mark stream read'],
-  ['Esc', 'close article'],
+  ['Esc', 'back to list (close article)'],
   ['?', 'toggle this help'],
 ];
 

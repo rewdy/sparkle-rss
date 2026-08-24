@@ -16,12 +16,21 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { useState } from 'react';
+import {
+  LuCalendarDays,
+  LuInbox,
+  LuLogOut,
+  LuMailOpen,
+  LuPlus,
+  LuSettings,
+  LuStar,
+} from 'react-icons/lu';
 import { Link, useLocation } from 'wouter';
 import { api } from '../lib/api';
 import { logout } from '../lib/auth';
-import { qk, streamPath } from '../lib/keys';
+import { parseRoute, qk, streamPath } from '../lib/keys';
 import { useSubscribe } from '../lib/mutations';
-import type { Folder, Subscription } from '../lib/types';
+import type { Folder, StreamDescriptor, Subscription } from '../lib/types';
 
 function unreadBadge(count: number): ReactElement | null {
   if (count <= 0) return null;
@@ -30,6 +39,10 @@ function unreadBadge(count: number): ReactElement | null {
       {count > 999 ? '999+' : count}
     </Badge>
   );
+}
+
+function isActive(stream: StreamDescriptor | undefined, test: (s: StreamDescriptor) => boolean) {
+  return stream !== undefined && test(stream);
 }
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactElement {
@@ -45,7 +58,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
   const feedUnread = new Map((countsQ.data?.feeds ?? []).map((f) => [f.feedId, f.count]));
 
   const totalUnread = countsQ.data?.total ?? 0;
-  const starredCount = (subsQ.data?.subscriptions ?? []).length; // placeholder; starred stream count comes from entries
+
+  const route = parseRoute(location);
+  const activeStream = route?.stream;
 
   const byFolder = new Map<string, Subscription[]>();
   const loose: Subscription[] = [];
@@ -65,44 +80,80 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
   }
 
   return (
-    <Box p="xs" h="100%">
-      <Group justify="space-between" mb="xs" px={4}>
+    <Box p="xs" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
+      <Group justify="space-between" mb="xs" px={4} flex="none">
         <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
           streams
         </Text>
         <Button
           size="compact-xs"
           variant="subtle"
+          leftSection={<LuPlus size={13} />}
           onClick={() => setSubscribeOpen(true)}
           title="subscribe to a feed"
         >
-          + add
+          add
         </Button>
       </Group>
 
       <NavLink
         component={Link}
-        href="/all"
-        active={location === '/all' || location === '/'}
+        href="/today"
+        active={isActive(activeStream, (s) => s.kind === 'today')}
+        label={
+          <Group gap="xs" wrap="nowrap">
+            <LuCalendarDays size={15} style={{ flexShrink: 0 }} />
+            <Text size="sm">Today</Text>
+          </Group>
+        }
+        onClick={() => nav('/today')}
+      />
+      <NavLink
+        component={Link}
+        href="/unread"
+        active={isActive(activeStream, (s) => s.kind === 'unread')}
         label={
           <Group justify="space-between" w="100%">
-            <Text size="sm">All items</Text>
+            <Group gap="xs" wrap="nowrap">
+              <LuMailOpen size={15} style={{ flexShrink: 0 }} />
+              <Text size="sm">All unread</Text>
+            </Group>
+            {unreadBadge(totalUnread)}
+          </Group>
+        }
+        onClick={() => nav('/unread')}
+      />
+      <NavLink
+        component={Link}
+        href="/starred"
+        active={isActive(activeStream, (s) => s.kind === 'starred')}
+        label={
+          <Group gap="xs" wrap="nowrap">
+            <LuStar size={15} style={{ flexShrink: 0 }} />
+            <Text size="sm">Starred</Text>
+          </Group>
+        }
+        onClick={() => nav('/starred')}
+      />
+      <NavLink
+        component={Link}
+        href="/all"
+        active={isActive(activeStream, (s) => s.kind === 'all')}
+        label={
+          <Group justify="space-between" w="100%">
+            <Group gap="xs" wrap="nowrap">
+              <LuInbox size={15} style={{ flexShrink: 0 }} />
+              <Text size="sm">All items</Text>
+            </Group>
             {unreadBadge(totalUnread)}
           </Group>
         }
         onClick={() => nav('/all')}
       />
-      <NavLink
-        component={Link}
-        href="/starred"
-        active={location === '/starred'}
-        label={<Text size="sm">Starred</Text>}
-        onClick={() => nav('/starred')}
-      />
 
-      <Divider my="xs" label="folders" labelPosition="center" c="dimmed" />
+      <Divider my="xs" label="folders" labelPosition="center" c="dimmed" flex="none" />
 
-      <ScrollArea offsetScrollbars style={{ height: 'calc(100vh - 220px)' }} type="hover">
+      <ScrollArea offsetScrollbars type="hover" style={{ flex: 1, minHeight: 0 }}>
         <Stack gap={2}>
           {folders.map((folder: Folder) => {
             const folderSubs = byFolder.get(folder.id) ?? [];
@@ -111,7 +162,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                 <NavLink
                   component={Link}
                   href={`/folder/${folder.id}`}
-                  active={location === `/folder/${folder.id}`}
+                  active={isActive(activeStream, (s) => s.kind === 'folder' && s.id === folder.id)}
                   label={
                     <Group justify="space-between" w="100%">
                       <Text size="sm">{folder.name}</Text>
@@ -125,6 +176,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                     key={sub.feedId}
                     sub={sub}
                     unread={feedUnread.get(sub.feedId) ?? 0}
+                    active={isActive(activeStream, (s) => s.kind === 'feed' && s.id === sub.feedId)}
                     indent
                     onNavigate={onNavigate}
                   />
@@ -140,6 +192,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                   key={sub.feedId}
                   sub={sub}
                   unread={feedUnread.get(sub.feedId) ?? 0}
+                  active={isActive(activeStream, (s) => s.kind === 'feed' && s.id === sub.feedId)}
                   onNavigate={onNavigate}
                 />
               ))}
@@ -153,8 +206,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
         </Stack>
       </ScrollArea>
 
-      <Divider my="xs" />
-      <Stack gap={2}>
+      <Divider my="xs" flex="none" />
+      <Stack gap={2} flex="none">
         <UnstyledButton
           component={Link}
           href="/settings"
@@ -163,9 +216,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
           py={6}
           display="block"
         >
-          <Text size="sm" c="dimmed">
-            ⚙ settings
-          </Text>
+          <Group gap="xs" wrap="nowrap">
+            <LuSettings size={15} style={{ flexShrink: 0 }} />
+            <Text size="sm" c="dimmed">
+              settings
+            </Text>
+          </Group>
         </UnstyledButton>
         <UnstyledButton
           px="xs"
@@ -175,10 +231,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
             void logout();
           }}
         >
-          <Text size="sm" c="dimmed">
-            ⏻ sign out ({starredCount > 0 ? '' : ''}
-            {''})
-          </Text>
+          <Group gap="xs" wrap="nowrap">
+            <LuLogOut size={15} style={{ flexShrink: 0 }} />
+            <Text size="sm" c="dimmed">
+              sign out
+            </Text>
+          </Group>
         </UnstyledButton>
       </Stack>
 
@@ -194,21 +252,22 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
 function FeedRow({
   sub,
   unread,
+  active,
   indent,
   onNavigate,
 }: {
   sub: Subscription;
   unread: number;
+  active: boolean;
   indent?: boolean;
   onNavigate?: () => void;
 }) {
-  const [location] = useLocation();
   const target = streamPath({ kind: 'feed', id: sub.feedId });
   return (
     <NavLink
       component={Link}
       href={target}
-      active={location === target}
+      active={active}
       label={
         <Group justify="space-between" w="100%" wrap="nowrap" gap={4}>
           <Text size="sm" truncate={true} style={indent ? { paddingLeft: 14 } : undefined}>

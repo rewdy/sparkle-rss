@@ -12,7 +12,6 @@ export function StreamInner({
   filter,
   sort,
   activeEntryId,
-  markReadOnOpen,
   onSelect,
   onEntriesChange,
 }: {
@@ -20,7 +19,6 @@ export function StreamInner({
   filter: 'all' | 'unread';
   sort: 'asc' | 'desc';
   activeEntryId: string | null;
-  markReadOnOpen: boolean;
   onSelect: (entry: Entry) => void;
   onEntriesChange: (entries: Entry[]) => void;
 }): ReactElement {
@@ -62,21 +60,13 @@ export function StreamInner({
     return () => io.disconnect();
   }, [query.hasNextPage, query.isFetchingNextPage, query]);
 
-  function select(entry: Entry): void {
-    if (markReadOnOpen && !entry.isRead) {
-      entry.isRead = true;
-      void api.entries.setRead([entry.id], true);
-    }
-    onSelect(entry);
-  }
-
   return (
     <Box h="calc(100vh - 44px)" style={{ overflowY: 'auto' }} data-stream-scroll>
       <EntryList
         entries={entries}
         loading={query.isPending}
         activeId={activeEntryId}
-        onSelect={select}
+        onSelect={onSelect}
       />
       <div ref={sentinelRef} style={{ height: 1 }} />
       {!query.hasNextPage && entries.length > 0 && (

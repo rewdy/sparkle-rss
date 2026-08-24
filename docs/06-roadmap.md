@@ -131,7 +131,16 @@ usage window; design direction: terminal-inspired, colors adjustable.
 ## Phase 6 — Hardening & polish
 
 - [ ] Security headers/CSP verified, rate limits tuned, token revocation UX.
-- [ ] PWA manifest + offline shell; image lazy-loading pass; feed favicon pipeline.
+- [ ] PWA manifest + offline shell; image lazy-loading pass.
+- [x] Feed favicon pipeline: icon extracted at ingest (RSS `<image>`, Atom `<logo>`/`<icon>`)
+      into `feeds.icon_url` (GReader `iconUrl` populates automatically); web sidebar shows
+      feed icons with a domain-favicon fallback.
+- [x] Immediate first fetch: subscribing (web UI, OPML import, or GReader client) enqueues
+      the new feed on the refresh queue — fetched within seconds instead of the next
+      5-minute orchestrator run.
+- [x] Route-driven views: article view is `<stream>/e/:id` so back/forward work (deep links
+      fetch via `GET /api/v1/entries/:id`); `/today` and `/unread` streams added; standing
+      requirement that all view changes go through routes (doc 05).
 - [ ] Billing alarm + cost review against doc 04 table; log retention policies.
 - [ ] Docs refresh: architecture diagrams vs reality, runbook additions from ops
       experience.

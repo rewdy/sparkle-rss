@@ -1,5 +1,14 @@
 import { accessToken, devAuthBypassed } from './auth';
-import type { EntryPage, Folder, Me, StreamDescriptor, Subscription, UnreadCounts } from './types';
+import { localMidnightIso } from './keys';
+import type {
+  Entry,
+  EntryPage,
+  Folder,
+  Me,
+  StreamDescriptor,
+  Subscription,
+  UnreadCounts,
+} from './types';
 import { streamParam } from './types';
 
 export class ApiError extends Error {
@@ -88,13 +97,16 @@ export const api = {
     ): Promise<EntryPage> => {
       const q = new URLSearchParams({
         stream: streamParam(stream),
-        filter: opts.filter ?? 'all',
+        // 'unread' stream implies the unread filter; 'today' adds the pubFrom bound
+        filter: stream.kind === 'unread' ? 'unread' : (opts.filter ?? 'all'),
         sort: opts.sort ?? 'desc',
         limit: String(opts.limit ?? 50),
       });
+      if (stream.kind === 'today') q.set('pubFrom', localMidnightIso());
       if (opts.cursor) q.set('cursor', opts.cursor);
       return request(`/api/v1/entries?${q.toString()}`);
     },
+    get: (id: string): Promise<{ entry: Entry }> => request(`/api/v1/entries/${id}`),
     setRead: (ids: string[], read: boolean): Promise<{ updated: number }> =>
       request('/api/v1/entries/read', {
         method: 'PATCH',

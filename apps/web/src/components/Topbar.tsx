@@ -1,6 +1,7 @@
-import { ActionIcon, Button, Group, Menu, SegmentedControl, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Button, Divider, Group, SegmentedControl, Text, Tooltip } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
+import { LuMoon, LuRefreshCw, LuSun } from 'react-icons/lu';
 import { useMarkAllRead } from '../lib/mutations';
 import type { StreamDescriptor } from '../lib/types';
 import { useColorSchemeValue } from '../lib/ui-state';
@@ -21,15 +22,19 @@ export function Topbar({
   const [scheme, setScheme] = useColorSchemeValue();
 
   return (
-    <Group justify="space-between" h="100%" px="md" wrap="nowrap">
-      <Group gap="sm" wrap="nowrap">
-        <Text size="sm" fw={700} truncate={true} maw={320}>
+    <Group justify="space-between" h="100%" px="md" wrap="nowrap" miw={0}>
+      <Group gap="sm" wrap="nowrap" miw={0}>
+        <Text size="sm" fw={700} style={{ whiteSpace: 'nowrap' }}>
+          ✦ Sparkle RSS
+        </Text>
+        <Divider orientation="vertical" c="dimmed" style={{ alignSelf: 'center', height: 14 }} />
+        <Text size="sm" truncate={true} maw={320}>
           {title}
         </Text>
       </Group>
 
       <Group gap="xs" wrap="nowrap">
-        {stream.kind !== 'starred' && (
+        {stream.kind !== 'starred' && stream.kind !== 'unread' && (
           <SegmentedControl
             size="compact-xs"
             value={filter}
@@ -40,7 +45,7 @@ export function Topbar({
             ]}
           />
         )}
-        {stream.kind !== 'starred' && (
+        {stream.kind !== 'starred' && stream.kind !== 'today' && (
           <Tooltip label="mark everything read (Shift+A)">
             <Button
               size="compact-xs"
@@ -56,31 +61,24 @@ export function Topbar({
         <Tooltip label="refresh">
           <ActionIcon
             variant="subtle"
+            aria-label="refresh"
             onClick={() => {
               void qc.invalidateQueries();
             }}
-            title="refresh"
           >
-            ⟳
+            <LuRefreshCw size={15} />
           </ActionIcon>
         </Tooltip>
 
-        <Menu shadow="sm" width={160}>
-          <Menu.Target>
-            <ActionIcon variant="subtle" title={`theme: ${scheme}`}>
-              {scheme === 'dark' ? '◐' : '◑'}
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Label>color scheme</Menu.Label>
-            <Menu.Item onClick={() => setScheme('light')}>light</Menu.Item>
-            <Menu.Item onClick={() => setScheme('dark')}>dark</Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-
-        <Text component="span" size="xs" c="var(--mantine-color-accent-6)" ff="monospace">
-          ✦ sparkle
-        </Text>
+        <Tooltip label="toggle theme">
+          <ActionIcon
+            variant="subtle"
+            aria-label="toggle theme"
+            onClick={() => setScheme(scheme === 'dark' ? 'light' : 'dark')}
+          >
+            {scheme === 'dark' ? <LuMoon size={15} /> : <LuSun size={15} />}
+          </ActionIcon>
+        </Tooltip>
       </Group>
     </Group>
   );

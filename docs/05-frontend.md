@@ -20,54 +20,78 @@
 | `/login` | Redirect to Cognito hosted UI (+ callback handler route) |
 | `/all` | Reading list (all subscriptions) |
 | `/starred` | Starred items |
+| `/today` | Items published since local midnight |
+| `/unread` | All unread items (API stream `all`, filter forced to unread) |
 | `/folder/:id` | Folder stream |
 | `/feed/:id` | Feed stream |
+| `<stream>/e/:id` | Reading pane for entry `:id` (e.g. `/all/e/123`, `/feed/5/e/123`) |
 | `/settings` | Profile, appearance, API tokens, OPML import/export |
 
 All stream routes share one component parameterized by stream descriptor
-(`{type: 'all'|'starred'|'folder'|'feed', id?}`), mirroring greader stream semantics.
-Unknown routes → redirect `/all`. Query-string view state (`?filter=unread`,
-`?sort=newest`) kept in the URL so views are shareable/back-button friendly.
+(`{kind: 'all'|'starred'|'today'|'unread'|'folder'|'feed', id?}`), mirroring greader stream
+semantics. `today` and `unread` are the API stream `all` plus extra params
+(`pubFrom` = local midnight / `filter=unread`); they keep distinct query keys.
+Unknown routes → redirect `/all`.
+
+**Routing is the view state (standing requirement).** Every view change in the SPA —
+opening/closing the reading pane, switching streams, stepping between entries — must be
+implemented as a URL route change via wouter `navigate`, so browser back/forward always
+works: selecting an entry pushes `<stream>/e/:id`, `j`/`k` inside the reader push the
+sibling entry's route (back walks them), and closing the reader (back button/Esc) replaces
+back to the bare stream path. Deep links to an entry id render from the loaded list cache or
+fetch it via `GET /api/v1/entries/:id`; a 404 closes back to the stream. Moving the
+`?filter=`/`?sort=` query state into the URL is a recognized follow-up (views are not yet
+shareable via query string).
 
 ## Layout: "minimal reader"
 
 ```
 ┌───────────────────────────────────────────────────────┐
-│ ☰  All items (340)                    ⌕  ⚙  ◐        │ top bar
+│ ✦ Sparkle RSS │ All items (340)          [all|unread] │ top bar
 ├──────┬────────────────────────────────────────────────┤
 │ ▣ All│  ── Today ─────────────────────────────────    │
 │ ★    │  ┃ Feed Name            2h   title line        │
 │      │  ┃ preview text two lines…                     │ card list,
 │ Tech │  ── Yesterday ────────────────────────────     │ date-grouped
 │  …   │                                                │
-│ News │   (select → focused reading pane)              │
+│ News │   (select → focused reading pane, /e/:id)      │
 │      │   Title                                        │
 │ +Add │   Byline · timestamp · open-original ↗         │
 │      │   sanitized article content, ~68ch measure     │
 └──────┴────────────────────────────────────────────────┘
 ```
 
-- Sidebar collapses to icon rail; unread badges per feed/folder.
+- Sidebar: fixed stream rows (Today, All unread, Starred, All items), scrollable
+  folder/feed list, fixed footer (settings, sign out). Collapses to icon rail; unread
+  badges per feed/folder.
 - Article opens as a focused single-column reading pane (in-place overlay on desktop,
-  full-screen on mobile). Back/Esc returns to the list preserving scroll position.
+  full-screen on mobile) at `<stream>/e/:id`. Back/Esc returns to the list preserving
+  scroll position.
 - Date-grouped card list (Today/Yesterday/This week/Older); virtualized when >200 rows.
-- Keyboard: `j/k` next/prev, `Enter/o` open original, `m` toggle read, `s` star,
-  `Shift+A` mark stream read (confirm), `/` search box focus (client-side filter until
-  server search ships), `g a / g s` go all/starred, `?` shortcut sheet.
+- Keyboard: `j/k` open next/previous (each step is a history entry), `Enter/o` open
+  original, `m` toggle read, `s` star, `Shift+A` mark stream read (confirm), `/` search
+  box focus (client-side filter until server search ships), `g a / g s` go all/starred,
+  `?` shortcut sheet.
 - Mark-as-read-on-scroll: off by default, per-stream toggle persisted to settings.
 - Empty states with subscribe CTA; skeletons on first load; optimistic read/star toggles.
 
 ## State management contract
 
 - **TanStack Query owns everything from the server.** Query keys:
-  `['entries', streamDescriptor, {filter, sort}]`, `['unread-counts']`,
+  `['entries', streamKey, {filter, sort}]` — `streamKey` distinguishes `all` / `starred` /
+  `today` / `unread` / `feed:<id>` / `folder:<id>`, and `today` appends the local date
+  (`today:2026-08-24`) so the key rolls over at midnight; `['entry', id]` (single-entry
+  fetch for deep links not in the loaded list); `['unread-counts']`,
   `['subscriptions']`, `['folders']`, `['me']`. Infinite queries use our opaque cursor.
 - Mutations: `markRead`, `toggleStar` (optimistic set, rollback on error),
   `markAllRead(stream, ts)`, subscription CRUD. Any entry mutation invalidates
   `['unread-counts']`.
-- **jotai owns ephemeral UI**: `themeAtom`, `sidebarOpenAtom`, `selectedEntryIdAtom`,
-  `readingPrefsAtom` (density, mark-on-scroll) — reading prefs also mirrored into
-  `user_settings.data` via `/api/v1/me/settings` (server = source of truth across devices).
+- **jotai owns ephemeral UI**: `colorSchemeAtom`, `sidebarOpenAtom`, `densityAtom`,
+  `markReadOnOpenAtom` (reading prefs also mirrored into `user_settings.data` via
+  `/api/v1/me/settings` — server = source of truth across devices; local `sparkle.ui`
+  localStorage is the pre-mount first-paint fallback). The **open entry is not UI
+  state**: it is derived from the URL (`<stream>/e/:id`) by `parseRoute`, so there is no
+  selected-entry atom.
 - No cross-contamination: no server payloads inside atoms, no fetches outside
   react-query.
 

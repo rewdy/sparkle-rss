@@ -1,6 +1,6 @@
-import { AppShell, Box } from '@mantine/core';
+import { AppShell, Box, Center, Loader } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import type { ReactElement } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
@@ -9,14 +9,13 @@ import { ShortcutsModal } from '../components/ShortcutsModal';
 import { Sidebar } from '../components/Sidebar';
 import { StreamInner } from '../components/StreamInner';
 import { Topbar } from '../components/Topbar';
-import { api } from '../lib/api';
-import { parseStreamPath } from '../lib/keys';
-import type { Entry } from '../lib/types';
+import { ApiError, api } from '../lib/api';
+import { parseRoute, qk, streamPath } from '../lib/keys';
+import type { Entry, StreamDescriptor } from '../lib/types';
 import {
-  activeEntryIdAtom,
+  applySettings,
   densityAtom,
   filterAtom,
-  hydrateFromSettings,
   loadLocalUi,
   markReadOnOpenAtom,
   shortcutsOpenAtom,
@@ -25,65 +24,121 @@ import { FullscreenLoader, useAuthGuard } from './guard';
 import { SettingsPage } from './Settings';
 
 function streamTitle(
-  path: string,
+  d: StreamDescriptor,
   subs: Array<{ feedId: string; displayTitle: string }>,
   folders: Array<{ id: string; name: string }>,
 ): string {
-  if (path === '/' || path === '/all') return 'all items';
-  if (path === '/starred') return 'starred';
-  const feed = /^\/feed\/(\d+)$/.exec(path);
-  if (feed) return subs.find((s) => s.feedId === feed[1])?.displayTitle ?? `feed ${feed[1]}`;
-  const folder = /^\/folder\/(\d+)$/.exec(path);
-  if (folder) return folders.find((f) => f.id === folder[1])?.name ?? `folder ${folder[1]}`;
-  return path;
+  switch (d.kind) {
+    case 'all':
+      return 'all items';
+    case 'starred':
+      return 'starred';
+    case 'today':
+      return 'today';
+    case 'unread':
+      return 'all unread';
+    case 'feed':
+      return subs.find((s) => s.feedId === d.id)?.displayTitle ?? `feed ${d.id}`;
+    case 'folder':
+      return folders.find((f) => f.id === d.id)?.name ?? `folder ${d.id}`;
+  }
 }
 
 export function Shell(): ReactElement {
   const authState = useAuthGuard();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
-  const [activeEntryId, setActiveEntryId] = useAtom(activeEntryIdAtom);
   const density = useAtomValue(densityAtom);
   const filter = useAtomValue(filterAtom);
   const setFilter = useSetAtom(filterAtom);
   const setShortcutsOpen = useSetAtom(shortcutsOpenAtom);
   const markReadOnOpen = useAtomValue(markReadOnOpenAtom);
 
-  const subsQ = useQuery({ queryKey: ['subscriptions'], queryFn: api.subscriptions.list });
-  const foldersQ = useQuery({ queryKey: ['folders'], queryFn: api.folders.list });
+  const route = useMemo(() => parseRoute(location), [location]);
+  const descriptor = route?.stream ?? null;
+  const routeEntryId = route?.entryId ?? null;
+
+  const subsQ = useQuery({ queryKey: qk.subscriptions, queryFn: api.subscriptions.list });
+  const foldersQ = useQuery({ queryKey: qk.folders, queryFn: api.folders.list });
 
   useEffect(() => {
     let cancelled = false;
     void api.settings.get().then((res) => {
-      if (!cancelled) hydrateFromSettings({ ...loadLocalUi(), ...res.data });
+      if (!cancelled) applySettings({ ...loadLocalUi(), ...res.data });
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const descriptor = useMemo(() => parseStreamPath(location), [location]);
-
   // flat entry cache for keyboard navigation
   const [entriesCache, setEntriesCache] = useState<Entry[]>([]);
   const onEntriesChange = useCallback((entries: Entry[]) => setEntriesCache(entries), []);
 
+  const cachedEntry = useMemo(
+    () => (routeEntryId ? (entriesCache.find((e) => e.id === routeEntryId) ?? null) : null),
+    [entriesCache, routeEntryId],
+  );
+
+  // Deep link with an entry not in the loaded list: fetch it by id.
+  const entryQ = useQuery({
+    queryKey: routeEntryId ? qk.entry(routeEntryId) : ['entry', null],
+    queryFn: () => api.entries.get(routeEntryId as string),
+    enabled: routeEntryId !== null && !entriesCache.some((e) => e.id === routeEntryId),
+    retry: (_count, error) => !(error instanceof ApiError && error.status === 404),
+  });
+  const activeEntry = cachedEntry ?? entryQ.data?.entry ?? null;
+  const entryLoading =
+    routeEntryId !== null && !cachedEntry && entryQ.isPending && entryQ.isFetching;
+
+  // 404 on a deep-linked entry: close back to the bare stream route.
+  useEffect(() => {
+    if (
+      descriptor &&
+      routeEntryId !== null &&
+      entryQ.error instanceof ApiError &&
+      entryQ.error.status === 404
+    ) {
+      navigate(streamPath(descriptor), { replace: true });
+    }
+  }, [descriptor, routeEntryId, entryQ.error, navigate]);
+
+  function openEntry(entry: Entry): void {
+    if (!descriptor) return;
+    if (markReadOnOpen && !entry.isRead) {
+      entry.isRead = true;
+      void api.entries.setRead([entry.id], true);
+    }
+    navigate(`${streamPath(descriptor)}/e/${entry.id}`);
+  }
+
+  function closeReader(): void {
+    if (!descriptor) return;
+    navigate(streamPath(descriptor), { replace: true });
+  }
+
   function move(delta: 1 | -1): void {
-    if (entriesCache.length === 0) return;
-    const idx = entriesCache.findIndex((e) => e.id === activeEntryId);
+    if (!descriptor || entriesCache.length === 0) return;
+    const idx = routeEntryId ? entriesCache.findIndex((e) => e.id === routeEntryId) : -1;
     const next =
       idx === -1
         ? delta === 1
           ? 0
           : entriesCache.length - 1
         : Math.min(Math.max(idx + delta, 0), entriesCache.length - 1);
-    setActiveEntryId(entriesCache[next]?.id ?? null);
+    const target = entriesCache[next];
+    if (!target) return;
+    if (markReadOnOpen && !target.isRead) {
+      target.isRead = true;
+      void api.entries.setRead([target.id], true);
+    }
+    navigate(`${streamPath(descriptor)}/e/${target.id}`);
   }
 
-  const activeEntry = useMemo(
-    () => entriesCache.find((e) => e.id === activeEntryId),
-    [entriesCache, activeEntryId],
-  );
+  function onFilterChange(next: 'all' | 'unread'): void {
+    setFilter(next);
+    if (routeEntryId !== null && descriptor) navigate(streamPath(descriptor), { replace: true });
+  }
 
   // global hotkeys
   const onKey = useCallback(
@@ -93,7 +148,13 @@ export function Shell(): ReactElement {
 
       if (e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
-        void api.entries.markAllRead(descriptor ?? { kind: 'all' });
+        // 'today' would mark ALL of today's API stream read — skip it
+        if (descriptor?.kind === 'today') return;
+        const apiStream: StreamDescriptor =
+          descriptor && descriptor.kind === 'unread'
+            ? { kind: 'all' }
+            : (descriptor ?? { kind: 'all' });
+        void api.entries.markAllRead(apiStream);
         return;
       }
       switch (e.key) {
@@ -101,7 +162,7 @@ export function Shell(): ReactElement {
           setShortcutsOpen((open) => !open);
           break;
         case 'Escape':
-          setActiveEntryId(null);
+          if (routeEntryId !== null) closeReader();
           break;
         case 'j':
           e.preventDefault();
@@ -111,21 +172,17 @@ export function Shell(): ReactElement {
           e.preventDefault();
           move(-1);
           break;
-        case 'm': {
-          const current = entriesCache.find((en) => en.id === activeEntryId);
-          if (current) void api.entries.setRead([current.id], !current.isRead);
+        case 'm':
+          if (activeEntry) void api.entries.setRead([activeEntry.id], !activeEntry.isRead);
           break;
-        }
-        case 's': {
-          const current = entriesCache.find((en) => en.id === activeEntryId);
-          if (current) void api.entries.setStarred([current.id], !current.isStarred);
+        case 's':
+          if (activeEntry) void api.entries.setStarred([activeEntry.id], !activeEntry.isStarred);
           break;
-        }
         default:
           break;
       }
     },
-    [descriptor, entriesCache, activeEntryId, move, setActiveEntryId, setShortcutsOpen],
+    [descriptor, routeEntryId, activeEntry, move, closeReader, setShortcutsOpen],
   );
 
   useEffect(() => {
@@ -149,14 +206,20 @@ export function Shell(): ReactElement {
           title={
             location === '/settings'
               ? 'settings'
-              : streamTitle(location, subsQ.data?.subscriptions ?? [], foldersQ.data?.folders ?? [])
+              : descriptor
+                ? streamTitle(
+                    descriptor,
+                    subsQ.data?.subscriptions ?? [],
+                    foldersQ.data?.folders ?? [],
+                  )
+                : ''
           }
           filter={filter}
-          onFilterChange={setFilter}
+          onFilterChange={onFilterChange}
         />
       </AppShell.Header>
 
-      <AppShell.Navbar p={0} style={{ overflowY: 'auto' }}>
+      <AppShell.Navbar p={0} style={{ overflow: 'hidden' }}>
         <Sidebar />
       </AppShell.Navbar>
 
@@ -164,34 +227,36 @@ export function Shell(): ReactElement {
         {location === '/settings' ? (
           <SettingsPage />
         ) : descriptor ? (
-          <StreamInner
-            stream={descriptor}
-            filter={filter}
-            sort="desc"
-            activeEntryId={activeEntryId}
-            markReadOnOpen={markReadOnOpen}
-            onSelect={(entry) => {
-              if (markReadOnOpen && !entry.isRead) {
-                entry.isRead = true;
-                void api.entries.setRead([entry.id], true);
-              }
-              setActiveEntryId(entry.id);
-            }}
-            onEntriesChange={onEntriesChange}
-          />
+          <>
+            <StreamInner
+              stream={descriptor}
+              filter={filter}
+              sort="desc"
+              activeEntryId={routeEntryId}
+              onSelect={openEntry}
+              onEntriesChange={onEntriesChange}
+            />
+            {routeEntryId !== null && (
+              <Box pos="absolute" inset={0} style={{ zIndex: 5 }}>
+                {entryLoading ? (
+                  <Center w="100%" h="100%">
+                    <Loader size="sm" type="dots" />
+                  </Center>
+                ) : (
+                  activeEntry && (
+                    <ReaderPane
+                      entry={activeEntry}
+                      onClose={closeReader}
+                      onNext={() => move(1)}
+                      onPrev={() => move(-1)}
+                    />
+                  )
+                )}
+              </Box>
+            )}
+          </>
         ) : (
           <div />
-        )}
-
-        {activeEntry && (
-          <Box pos="absolute" inset={0} style={{ zIndex: 5 }}>
-            <ReaderPane
-              entry={activeEntry}
-              onClose={() => setActiveEntryId(null)}
-              onNext={() => move(1)}
-              onPrev={() => move(-1)}
-            />
-          </Box>
         )}
       </AppShell.Main>
 

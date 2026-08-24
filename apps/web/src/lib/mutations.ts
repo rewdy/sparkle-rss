@@ -21,6 +21,12 @@ export function useMarkRead() {
             })),
           },
       );
+      // and in any single-entry cache (deep links)
+      for (const id of ids) {
+        qc.setQueryData<{ entry: { id: string; isRead: boolean } }>(['entry', id], (data) =>
+          data ? { ...data, entry: { ...data.entry, isRead: read } } : data,
+        );
+      }
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: qk.unreadCounts });
@@ -46,6 +52,11 @@ export function useToggleStar() {
             })),
           },
       );
+      for (const id of ids) {
+        qc.setQueryData<{ entry: { id: string; isStarred: boolean } }>(['entry', id], (data) =>
+          data ? { ...data, entry: { ...data.entry, isStarred: starred } } : data,
+        );
+      }
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: qk.entries({ kind: 'starred' }, 'all', 'desc') });

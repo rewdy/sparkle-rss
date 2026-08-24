@@ -11,6 +11,7 @@ import {
 } from '@mantine/core';
 import type { ReactElement } from 'react';
 import { useEffect, useRef } from 'react';
+import { LuArrowLeft, LuExternalLink, LuStar } from 'react-icons/lu';
 import { useMarkRead, useToggleStar } from '../lib/mutations';
 import type { Entry } from '../lib/types';
 
@@ -47,8 +48,13 @@ export function ReaderPane({
         py={6}
         style={{ borderBottom: '1px solid var(--mantine-color-dark-4)' }}
       >
-        <Button variant="subtle" size="compact-sm" onClick={onClose}>
-          ← back
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          leftSection={<LuArrowLeft size={14} />}
+          onClick={onClose}
+        >
+          back
         </Button>
         <Group gap="xs">
           <ActionIcon
@@ -59,7 +65,7 @@ export function ReaderPane({
               void toggleStar.mutateAsync({ ids: [entry.id], starred: !entry.isStarred })
             }
           >
-            {entry.isStarred ? '★' : '☆'}
+            <LuStar size={16} style={entry.isStarred ? { fill: 'currentColor' } : undefined} />
           </ActionIcon>
           <ActionIcon
             variant="subtle"
@@ -76,8 +82,9 @@ export function ReaderPane({
               rel="noopener noreferrer"
               variant="default"
               size="compact-sm"
+              rightSection={<LuExternalLink size={14} />}
             >
-              open original ↗
+              open original
             </Button>
           )}
         </Group>
