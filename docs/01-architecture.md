@@ -84,9 +84,10 @@ Amazon Aurora DSQL cluster (single region), Postgres wire-compatible, accessed w
 
 ### Observability
 
-- Structured JSON logs (`pino`) → CloudWatch Logs, one log group per function.
+- Structured JSON logs (console JSON, one log group per function).
 - Alarms: DLQ depth > 0, worker/orchestrator error rate, API 5xx rate, API GW throttles.
-- AWS Billing budget alert (~$20/mo threshold) as the cost tripwire.
+- AWS Billing budget alert (~$20/mo threshold) as the cost tripwire — planned (Phase 6),
+  not yet in Terraform.
 - X-Ray deferred; add if latency debugging demands it.
 
 ## Request flows
@@ -125,6 +126,12 @@ SQS ─batch≤5─▶ worker Lambda ×(concurrency ≤10)
 poison messages ─maxReceive→ DLQ (alarm fires)
 ```
 
+Immediate first fetch: subscribing to a new feed (web UI, OPML import, or GReader
+client) makes the api Lambda enqueue the same `{ feedId }` message on the refresh queue
+(`QUEUE_URL` env, `sqs:SendMessage`). Best-effort — an enqueue failure never fails the
+subscribe; the 5-minute scheduler picks the feed up regardless. Local dev (no SQS) runs
+the fetch in-process.
+
 Backoff policy: success → `next_fetch_after = now() + ttl_minutes`; fetch error → double
 the delay up to 24 h and record `last_error`; HTTP 301/308 → persist permanent redirect.
 
@@ -136,7 +143,7 @@ the delay up to 24 h and record `last_error`; HTTP 301/308 → persist permanent
 | Client (NetNewsWire) auth | Per-user random API token (32 bytes, base64url). Stored **SHA-256 hashed**. `ClientLogin` verifies token, returns stateless HMAC credential derived from `(server HMAC key, user id, token hash)` so request validation is one DB read (or cacheable). Revocation = delete token row. |
 | Write-token replay | Google Reader's `T` token is implemented as a deterministic per-user value (FreshRSS parity) — it exists because clients require fetching one; it is not a CSRF defense in our threat model. Mutations still require the valid `GoogleLogin auth` header. |
 | DB auth | DSQL IAM tokens, auto-rotated per connection. Zero stored DB credentials. |
-| Least privilege | One execution role per function. `api` role: DSQL connect + read/write + its secret. Worker roles: DSQL connect + write only. Orchestrator: DSQL read + SQS send. |
+| Least privilege | One execution role per function. `api` role: DSQL connect + read/write + its secret + SQS send on the refresh queue (immediate first fetch). Worker roles: DSQL connect + write only. Orchestrator: DSQL read + SQS send. |
 | Transport/content | TLS everywhere (ACM), CSP + HSTS + frame-deny at CloudFront response policy, sanitized HTML stored server-side (script-free allowlist), `<img>` hotlinking allowed (RSS norm). |
 | Abuse surface | API Gateway throttling (steady/burst tuned low), per-route quotas later; WAF deferred until public exposure matters. |
 | Data at rest | All services encrypt by default (S3-SSE, EBS-backed Lambda /tmp ephemeral, DSQL encrypted). |

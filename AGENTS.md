@@ -112,3 +112,8 @@ docs/            Source of truth for design
 - Docs live in `docs/` and are updated in the same PR as the change they describe.
   If you change architecture, data model, or any API surface, the matching doc edit is part
   of "done".
+- Work happens in session-sized chunks: `docs/06-roadmap.md` ("Current state" + the
+  Phase-6 backlog) is the handoff — start every session there. When a chunk lands, check
+  off the roadmap item, append decisions to `docs/decisions.md`, and refresh the
+  Current-state date **in the same commit as the code**, so a failed session never loses
+  meaningful context.

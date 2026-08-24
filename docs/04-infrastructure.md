@@ -59,24 +59,30 @@ OIDC role per repo (`gh-oidc/sparkle-rss-deploy`) with permissions limited to th
 resources Terraform manages; no static AWS keys anywhere.
 
 ```
-ci.yaml (PRs)
+ci.yaml (pull_request + push to main — no deploy)
   pnpm install --frozen-lockfile
-  biome check .            # lint + format
-  pnpm typecheck           # tsc -b across workspace
-  pnpm test                # vitest units + integration (docker Postgres)
-  pnpm build               # web + lambda bundles
-  tf: terraform fmt -check && terraform init && terraform validate && terraform plan
-  → plan output posted to PR
+  pnpm lint && pnpm typecheck
+  pnpm test                # vitest units + integration (service Postgres)
+  pnpm build               # web + lambda bundles (uploaded as artifact)
+  tf: terraform fmt -check -recursive && init -backend=false && validate
+  (no `terraform plan` output — solo-maintainer repo; the deploy job's plan is the
+   reviewed artifact)
 
-deploy.yaml (push to main, environment: prod, requires OIDC role)
-  same build steps
-  pnpm build:lambdas && pnpm build:web
-  terraform apply -auto-approve=false (manual review via GH environments if desired)
-  aws s3 sync apps/web/dist s3://$WEB_BUCKET --delete (+ CloudFront invalidation)
-  db migrations step: run drizzle-kit migrate from a short-lived job w/ IAM token
+deploy.yaml (push to main; `paths-ignore: docs/**, *.md` — docs-only pushes skip it)
+  pnpm install --frozen-lockfile
+  OIDC assume deploy role
+  terraform init (S3 backend) → collect build-time outputs (Cognito config)
+  quality gate: pnpm lint && pnpm typecheck && pnpm test
+  pnpm build (web bundle gets VITE_COGNITO_ISSUER/CLIENT_ID from tf outputs; lambda zips)
+  terraform plan -out=tfplan → terraform apply -auto-approve tfplan
+  db migrations: pnpm --filter @sparkle/db exec tsx src/migrate.ts (DSQL IAM token)
+  aws s3 sync apps/web/dist s3://$ASSETS_BUCKET --delete (+ CloudFront invalidation)
 ```
 
-Deploy order matters: DB migration → Lambda update → web assets. The pipeline encodes it.
+Deploy order in the pipeline: `terraform apply` (Lambdas + everything else) → DB
+migrations → web assets. Lambda-first is safe because migrations are forward-only and
+additive; a schema change that the *old* Lambda must survive is not a thing here (one
+deploy ships code + schema together).
 
 ## Operational runbook essentials
 

@@ -62,18 +62,22 @@ shareable via query string).
 ```
 
 - Sidebar: fixed stream rows (Today, All unread, Starred, All items), scrollable
-  folder/feed list, fixed footer (settings, sign out). Collapses to icon rail; unread
-  badges per feed/folder.
+  folder/feed list, fixed footer (settings, sign out); unread badges per feed/folder.
+  Collapsing to a desktop icon rail is deferred (mobile breakpoint collapse is
+  implemented; `sidebarOpenAtom` is reserved for the rail).
 - Article opens as a focused single-column reading pane (in-place overlay on desktop,
   full-screen on mobile) at `<stream>/e/:id`. Back/Esc returns to the list preserving
   scroll position.
-- Date-grouped card list (Today/Yesterday/This week/Older); virtualized when >200 rows.
-- Keyboard: `j/k` open next/previous (each step is a history entry), `Enter/o` open
-  original, `m` toggle read, `s` star, `Shift+A` mark stream read (confirm), `/` search
-  box focus (client-side filter until server search ships), `g a / g s` go all/starred,
-  `?` shortcut sheet.
-- Mark-as-read-on-scroll: off by default, per-stream toggle persisted to settings.
-- Empty states with subscribe CTA; skeletons on first load; optimistic read/star toggles.
+- Date-grouped card list (Today/Yesterday/This week/Older). Virtualization when >200
+  rows: not implemented (Phase 6).
+- Keyboard (implemented): `j/k` open next/previous (each step is a history entry),
+  `m` toggle read, `s` star, `Shift+A` mark stream read, `Esc` back to list, `?`
+  shortcut sheet. Planned, not yet built: `Enter/o` open original, `/` search focus,
+  `g a / g s` go all/starred.
+- Mark-read-on-open (implemented): global toggle in Settings, persisted like the other
+  reading prefs. The originally-planned per-stream mark-as-read-on-scroll is deferred.
+- Empty states with subscribe hint and optimistic read/star toggles (implemented).
+  Skeletons on first load: not implemented (currently a "loading…" row).
 
 ## State management contract
 

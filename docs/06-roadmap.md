@@ -3,6 +3,29 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
+## Current state (updated 2026-08-24)
+
+Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
+live-verified; conformance suite runs in CI). Everything is done **except**:
+
+1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
+   still pending; until it passes, Phase 4 is "done, pending device verification".
+2. **Phase 6** — the active backlog below (3 of 10 chunks landed, all 2026-08-24).
+3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
+   the app is live and fast enough that this never blocked anything).
+
+## How state is tracked (session workflow)
+
+Work happens in session-sized chunks (one Phase-6 item, or one clear slice, per
+session). For each session:
+
+- **Start**: read this Current-state block + the chunk's exit criteria below; that plus
+  AGENTS.md is the complete handoff.
+- **As you go, and before ending** — a failed session must not lose context: check off
+  the roadmap item, append decisions/course-corrections to `docs/decisions.md`, and
+  refresh the Current-state date, **in the same commit as the code** (docs-only
+  commits are safe — the deploy pipeline ignores `*.md` pushes).
+
 ## Phase 0 — Foundations & risk spikes
 
 **Goal:** prove the two riskiest assumptions before any real code: Aurora DSQL
@@ -122,30 +145,54 @@ gate before calling the milestone fully done.
       unread badge correctness via single counts query invalidation.
 - [x] Keyboard-first: j/k navigate, m read, s star, Esc close, Shift+A mark stream
       read, ? shortcut sheet.
-- [ ] Lighthouse pass + virtualization for very long lists → Phase 6 polish.
+- [ ] Lighthouse pass + virtualization for very long lists — **carried into Phase 6**
+      (tracked there, not here).
 
 **Exit:** ✅ deployed and live at app.sparklerss.com (bundle carries Cognito config
 injected from tf outputs). Daily-driveable loop verified by author during Phase 6
 usage window; design direction: terminal-inspired, colors adjustable.
 
-## Phase 6 — Hardening & polish
+## Phase 6 — Hardening & polish (ACTIVE)
 
-- [ ] Security headers/CSP verified, rate limits tuned, token revocation UX.
-- [ ] PWA manifest + offline shell; image lazy-loading pass.
-- [x] Feed favicon pipeline: icon extracted at ingest (RSS `<image>`, Atom `<logo>`/`<icon>`)
-      into `feeds.icon_url` (GReader `iconUrl` populates automatically); web sidebar shows
-      feed icons with a domain-favicon fallback.
-- [x] Immediate first fetch: subscribing (web UI, OPML import, or GReader client) enqueues
-      the new feed on the refresh queue — fetched within seconds instead of the next
-      5-minute orchestrator run.
-- [x] Route-driven views: article view is `<stream>/e/:id` so back/forward work (deep links
-      fetch via `GET /api/v1/entries/:id`); `/today` and `/unread` streams added; standing
-      requirement that all view changes go through routes (doc 05).
-- [ ] Billing alarm + cost review against doc 04 table; log retention policies.
-- [ ] Docs refresh: architecture diagrams vs reality, runbook additions from ops
-      experience.
-- [ ] Deferred-feature decision point: search, labels, WebSub — re-prioritize using
-      real usage.
+This is the working backlog. Items are ordered by value/risk; each is a good
+session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lands.
+
+**Landed 2026-08-24** (this session's batch — see decisions.md):
+- [x] Feed favicon pipeline: icon extracted at ingest (RSS `<image>`, Atom
+      `<logo>`/`<icon>`) into `feeds.icon_url` (GReader `iconUrl` populates
+      automatically); web sidebar shows feed icons with a domain-favicon fallback.
+- [x] Immediate first fetch: subscribing (web UI, OPML import, or GReader client)
+      enqueues the new feed on the refresh queue — fetched within seconds instead of
+      the next 5-minute orchestrator run.
+- [x] Route-driven views: article view is `<stream>/e/:id` so back/forward work (deep
+      links fetch via `GET /api/v1/entries/:id`); `/today` and `/unread` streams added;
+      standing requirement that all view changes go through routes (doc 05).
+
+**Remaining (in suggested order):**
+- [ ] **Security hardening pass** — verify the CloudFront response-headers policy actually
+      emits CSP/HSTS/frame-deny in production (curl the headers), confirm API GW throttling
+      steady/burst values, and add a token-revocation confirmation step in settings.
+      *Exit: `curl -sI https://app.sparklerss.com` shows the headers; throttle values
+      confirmed in console.*
+- [ ] **Lighthouse + virtualization** (carried from Phase 5) — run a Lighthouse pass on the
+      live SPA and fix the worst offenders; virtualize the entry list (date-grouped rows)
+      so very long lists stay smooth. *Exit: Lighthouse perf ≥ 90 on a mid-size stream;
+      1k-row list scrolls without jank.*
+- [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
+      image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse
+      PWA criteria met; first-view images lazy-load.*
+- [ ] **Cost & billing** — add the ~$20/mo AWS billing budget alarm (the doc 01 tripwire),
+      then a cost review against the doc 04 table using real CloudWatch/DSQL numbers; set
+      log retention policies. *Exit: alarm armed; actual monthly cost recorded in doc 04
+      table and within estimate.*
+- [ ] **NetNewsWire device E2E** (closes the Phase 4 gate) — run the full doc 02 checklist
+      on a real NNW device against production. *Exit: every checklist box ticked.*
+- [ ] **Docs refresh** — architecture diagrams vs reality, runbook additions from ops
+      experience. *Exit: diagram in doc 01 matches `tf` + code; runbook table covers every
+      task you've actually had to do by hand.*
+- [ ] **Deferred-feature decision point** — search, labels, WebSub: re-prioritize using
+      real usage; update doc 00 non-goals table accordingly. *Exit: each deferred feature
+      is explicitly re-deferred or scheduled, with rationale in decisions.md.*
 
 **Exit:** two weeks of daily use by the author across NetNewsWire + web with zero
 manual interventions; cost within estimate.
