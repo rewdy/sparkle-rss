@@ -104,6 +104,13 @@ locals {
     "secretsmanager:ListSecrets",
     "secretsmanager:TagResource",
     "secretsmanager:UntagResource",
+    "secretsmanager:GetResourcePolicy",
+    "secretsmanager:PutResourcePolicy",
+    "secretsmanager:DeleteResourcePolicy",
+    "secretsmanager:ValidateResourcePolicy",
+    "secretsmanager:RestoreSecret",
+    "secretsmanager:RotateSecret",
+    "secretsmanager:CancelRotateSecret",
   ]
 }
 
