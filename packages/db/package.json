@@ -11,6 +11,7 @@
     "test": "vitest run",
     "generate": "drizzle-kit generate && node scripts/inline-fks.mjs",
     "migrate": "tsx src/migrate.ts",
+    "migrate:local": "tsx src/migrate-local.ts",
     "push:local": "drizzle-kit push"
   },
   "dependencies": {

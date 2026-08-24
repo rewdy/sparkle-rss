@@ -1,4 +1,4 @@
-import { accessToken } from './auth';
+import { accessToken, devAuthBypassed } from './auth';
 import type { EntryPage, Folder, Me, StreamDescriptor, Subscription, UnreadCounts } from './types';
 import { streamParam } from './types';
 
@@ -18,6 +18,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${token}`,
+      ...(devAuthBypassed ? { 'X-Dev-User': 'dev-user' } : {}),
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
@@ -32,7 +33,11 @@ function raw(path: string, init?: RequestInit): Promise<Response> {
   return accessToken().then((token) =>
     fetch(path, {
       ...init,
-      headers: { Authorization: `Bearer ${token}`, ...init?.headers },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(devAuthBypassed ? { 'X-Dev-User': 'dev-user' } : {}),
+        ...init?.headers,
+      },
     }),
   );
 }

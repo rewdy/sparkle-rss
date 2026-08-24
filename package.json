@@ -18,7 +18,8 @@
     "test:watch": "vitest",
     "db:up": "docker compose up -d db",
     "db:generate": "pnpm --filter @sparkle/db generate",
-    "db:migrate": "pnpm --filter @sparkle/db migrate"
+    "db:migrate": "pnpm --filter @sparkle/db migrate",
+    "db:migrate:local": "pnpm --filter @sparkle/db migrate:local"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",

@@ -3,7 +3,10 @@ import { type User, UserManager, WebStorageStateStore } from 'oidc-client-ts';
 const ISSUER = import.meta.env.VITE_COGNITO_ISSUER as string | undefined;
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID as string | undefined;
 
-export const authConfigured = Boolean(ISSUER && CLIENT_ID);
+/** Local-development escape hatch: no Cognito, requests use X-Dev-User. */
+export const devAuthBypassed = import.meta.env.VITE_AUTH_DISABLED === 'true';
+
+export const authConfigured = devAuthBypassed || Boolean(ISSUER && CLIENT_ID);
 
 let userManager: UserManager | null = null;
 
@@ -24,7 +27,17 @@ function um(): UserManager {
   return userManager;
 }
 
+const DEV_USER: User = {
+  profile: { sub: 'dev-user' },
+  access_token: 'dev-token',
+  expired: false,
+} as unknown as User;
+
 export async function login(): Promise<void> {
+  if (devAuthBypassed) {
+    window.history.replaceState({}, '', '/');
+    return;
+  }
   await um().signinRedirect();
 }
 
@@ -33,14 +46,20 @@ export async function handleCallback(): Promise<User> {
 }
 
 export async function logout(): Promise<void> {
+  if (devAuthBypassed) {
+    window.location.href = '/';
+    return;
+  }
   await um().signoutRedirect();
 }
 
-export function getUser(): Promise<User | null> {
+export async function getUser(): Promise<User | null> {
+  if (devAuthBypassed) return DEV_USER;
   return um().getUser();
 }
 
 export async function accessToken(): Promise<string> {
+  if (devAuthBypassed) return 'dev-token';
   const user = await um().getUser();
   if (!user || user.expired) {
     const renewed = await um()

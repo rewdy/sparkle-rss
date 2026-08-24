@@ -18,6 +18,7 @@ breaking it silently is the worst class of bug in this repo.
 5. `docs/04-infrastructure.md` — Terraform & CI/CD
 6. `docs/05-frontend.md` — web app architecture
 7. `docs/06-roadmap.md` — phases & exit criteria
+8. `docs/07-local-development.md` — local dev workflow (Docker Postgres, dev auth, ingest)
 
 ## Repo layout
 
@@ -39,8 +40,9 @@ docs/            Source of truth for design
   (`pnpm test`, `pnpm test:watch`), `pnpm typecheck` runs `tsc -b` across the workspace.
 - Build: `pnpm build:web` → static bundle; `pnpm build:lambdas` → esbuild zips in `dist/`.
 - Local dev: `pnpm dev` runs web + API via node adapters against Dockerized Postgres
-  (`docker compose up db`). DSQL has no emulator — production parity comes from keeping all
-  SQL extension-free.
+  (`docker compose up -d db`, then `pnpm db:migrate:local`); full workflow in
+  `docs/07-local-development.md`. DSQL has no emulator — production parity comes from
+  keeping all SQL extension-free.
 - Terraform state lives in S3 (`drewmey--devops-tf-state`, key
   `sparkle-rss/prod/terraform.tfstate`). Laptop runs need
   `cp tf/envs/prod/backend.conf.example tf/envs/prod/backend.conf` first (gitignored).

@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "node scripts/build-lambdas.mjs",
-    "build:lambdas": "node scripts/build-lambdas.mjs"
+    "build:lambdas": "node scripts/build-lambdas.mjs",
+    "ingest": "tsx scripts/ingest-local.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.1116.0",

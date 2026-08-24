@@ -18,11 +18,15 @@ A serverless, FreshRSS-compatible RSS reader on AWS. Full documentation lives in
 
 ## Quick start (local)
 
+Full workflow in [docs/07-local-development.md](./docs/07-local-development.md).
+
 ```sh
 corepack enable
 pnpm install
 cp .env.example .env
-docker compose up -d db   # local Postgres (DSQL has no emulator)
-pnpm test                 # unit tests
-pnpm dev                  # api on :8787, web on :5173
+docker compose up -d db     # local Postgres (DSQL has no emulator)
+pnpm db:migrate:local
+pnpm test                   # unit + integration tests
+pnpm dev                    # api on :8787, web on :5173
+pnpm --filter @sparkle/api ingest   # fetch due feeds (no SQS locally)
 ```

@@ -1,4 +1,7 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+
+config(); // apps/api/.env
+config({ path: '../../.env' }); // repo root .env (shared local config)
 
 function optional(name: string): string | undefined {
   const value = process.env[name];
