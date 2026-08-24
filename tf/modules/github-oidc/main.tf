@@ -90,6 +90,12 @@ locals {
     "sns:Unsubscribe",
     "sns:ListSubscriptionsByTopic",
     "sns:Publish",
+    "sns:ListTagsForResource",
+    "sns:TagResource",
+    "sns:UntagResource",
+    "cloudwatch:ListTagsForResource",
+    "cloudwatch:TagResource",
+    "cloudwatch:UntagResource",
   ]
 }
 
