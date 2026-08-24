@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fetchFeed } from '../src/feed/fetch-feed';
 import { backoffMinutes } from '../src/services/ingest';
 
-function jsonResponse(url: string, body: string, headers: Record<string, string> = {}): Response {
+function jsonResponse(_url: string, body: string, headers: Record<string, string> = {}): Response {
   return new Response(body, { status: 200, headers });
 }
 
