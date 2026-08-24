@@ -82,7 +82,7 @@ locals {
     module.auth.cognito_endpoint_origin,
     module.auth.hosted_ui_domain,
   ]
-  csp_frame_origins   = [module.auth.hosted_ui_domain]
+  csp_frame_origins = [module.auth.hosted_ui_domain]
 }
 
 module "web" {
