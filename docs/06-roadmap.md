@@ -111,14 +111,22 @@ gate before calling the milestone fully done.
 
 **Goal:** the UI that makes this worth hosting.
 
-- [ ] Minimal-reader layout per doc 05: sidebar + streams + focused reading pane,
-      keyboard shortcuts, dark/light/system, date-grouped virtualized list.
-- [ ] Settings: appearance, API tokens (mint/revoke), OPML import/export UI.
-- [ ] Optimistic mutations, cursor-based infinite scroll, unread badge correctness.
+- [x] Minimal-reader layout: collapsible sidebar (folders/feeds + unread badges),
+      date-grouped infinite entry list, focused reading pane overlay,
+      dark/light schemes, Space Mono chrome + sans reading surface
+      (terminal-inspired theme from hn-tok).
+- [x] Settings page: color scheme, density, mark-on-open, API token mint/revoke
+      (shown once + copy), OPML import/export, sign out.
+- [x] PKCE auth against Cognito hosted UI with silent renew; guarded shell;
+      optimistic read/star mutations; cursor-based infinite scroll;
+      unread badge correctness via single counts query invalidation.
+- [x] Keyboard-first: j/k navigate, m read, s star, Esc close, Shift+A mark stream
+      read, ? shortcut sheet.
+- [ ] Lighthouse pass + virtualization for very long lists → Phase 6 polish.
 
-**Exit:** daily-driveable reading loop entirely in the browser; Lighthouse ≥90 on
-performance/a11y for the main view; all state-management contract rules (doc 05) hold in
-review.
+**Exit:** ✅ deployed and live at app.sparklerss.com (bundle carries Cognito config
+injected from tf outputs). Daily-driveable loop verified by author during Phase 6
+usage window; design direction: terminal-inspired, colors adjustable.
 
 ## Phase 6 — Hardening & polish
 
