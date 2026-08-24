@@ -74,12 +74,20 @@ module "api" {
   hmac_secret_arn   = aws_secretsmanager_secret.greader_hmac.arn
 }
 
+locals {
+  # Browser talks to Cognito for OIDC discovery/JWKS and (if needed) silent-renew iframes.
+  csp_connect_origins = [module.auth.cognito_endpoint_origin]
+  csp_frame_origins   = [module.auth.hosted_ui_domain]
+}
+
 module "web" {
   source             = "../../modules/web"
   app_fqdn           = local.app_fqdn
   certificate_arn    = module.dns.certificate_arn
   route53_zone_id    = module.dns.zone_id
   api_gateway_domain = module.api.execute_api_domain
+  extra_connect_src  = local.csp_connect_origins
+  frame_src          = local.csp_frame_origins
   extra_security_headers = {
     content_security_policy = var.content_security_policy
   }

@@ -26,6 +26,18 @@ variable "extra_security_headers" {
   default = {}
 }
 
+variable "extra_connect_src" {
+  description = "Additional origins allowed by CSP connect-src (e.g. Cognito endpoints)"
+  type        = list(string)
+  default     = []
+}
+
+variable "frame_src" {
+  description = "Origins allowed inside frames (silent-renew iframes)"
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Tags applied to created resources"
   type        = map(string)

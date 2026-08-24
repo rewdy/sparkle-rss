@@ -43,6 +43,9 @@ resource "aws_s3_bucket_policy" "assets" {
 }
 
 locals {
+  connect_src = join(" ", concat(["'self'"], var.extra_connect_src))
+  frame_src   = join(" ", var.frame_src)
+
   spa_rewrite_source = <<-JS
     function handler(event) {
       var request = event.request;
@@ -60,9 +63,22 @@ locals {
     }
   JS
 
+
   csp = coalesce(
     try(var.extra_security_headers.content_security_policy, null),
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    join("; ", compact([
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "media-src 'self' https:",
+      "font-src 'self' data:",
+      length(var.extra_connect_src) > 0 ? "connect-src ${local.connect_src}" : null,
+      length(var.frame_src) > 0 ? "frame-src ${local.frame_src}" : null,
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ])),
   )
 }
 
