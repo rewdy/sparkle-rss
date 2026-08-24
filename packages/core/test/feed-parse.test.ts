@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseFeed } from '../src/feed/parse';
+import { extractFeedIconUrl, parseFeed } from '../src/feed/parse';
 import { sanitizeEntryHtml } from '../src/feed/sanitize';
 
 const RSS = `<?xml version="1.0"?>
@@ -37,6 +37,45 @@ const ATOM = `<?xml version="1.0"?>
   </entry>
 </feed>`;
 
+const RSS_WITH_ICON = `<?xml version="1.0"?>
+<rss version="2.0">
+  <channel>
+    <title>Icon Feed</title>
+    <link>https://icon.example/</link>
+    <image>
+      <url>https://icon.example/favicon.png</url>
+      <title>Icon Feed</title>
+      <link>https://icon.example/</link>
+    </image>
+    <item>
+      <title>Post</title>
+      <link>https://icon.example/1</link>
+    </item>
+  </channel>
+</rss>`;
+
+const ATOM_WITH_LOGO = `<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Logo Feed</title>
+  <link href="https://logo.example/"/>
+  <logo>https://logo.example/logo.svg</logo>
+</feed>`;
+
+const ATOM_WITH_ICON_ONLY = `<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Icon Only Feed</title>
+  <link href="https://icononly.example/"/>
+  <icon>https://icononly.example/icon-48.png</icon>
+</feed>`;
+
+const ATOM_WITH_LOGO_AND_ICON = `<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Both Feed</title>
+  <link href="https://both.example/"/>
+  <logo>https://both.example/logo.svg</logo>
+  <icon>https://both.example/icon-48.png</icon>
+</feed>`;
+
 describe('parseFeed', () => {
   it('normalizes RSS items with content, author, enclosures', async () => {
     const feed = await parseFeed(RSS);
@@ -71,6 +110,39 @@ describe('parseFeed', () => {
     expect(entry.guid).toMatch(/e1$/u);
     expect(entry.author).toBe('Grace');
     expect(entry.contentHtml).toContain('<p>Atom body</p>');
+  });
+
+  it('extracts the RSS 2.0 <image><url> as iconUrl', async () => {
+    const feed = await parseFeed(RSS_WITH_ICON);
+    expect(feed.title).toBe('Icon Feed');
+    expect(feed.iconUrl).toBe('https://icon.example/favicon.png');
+  });
+
+  it('extracts Atom <logo> as iconUrl', async () => {
+    const feed = await parseFeed(ATOM_WITH_LOGO);
+    expect(feed.iconUrl).toBe('https://logo.example/logo.svg');
+  });
+
+  it('falls back to Atom <icon> when <logo> is absent', async () => {
+    const feed = await parseFeed(ATOM_WITH_ICON_ONLY);
+    expect(feed.iconUrl).toBe('https://icononly.example/icon-48.png');
+  });
+
+  it('prefers Atom <logo> over <icon> when both are present', async () => {
+    const feed = await parseFeed(ATOM_WITH_LOGO_AND_ICON);
+    expect(feed.iconUrl).toBe('https://both.example/logo.svg');
+  });
+
+  it('returns an empty iconUrl when no icon is declared', async () => {
+    expect((await parseFeed(RSS)).iconUrl).toBe('');
+    expect((await parseFeed(ATOM)).iconUrl).toBe('');
+  });
+
+  it('extractFeedIconUrl is best-effort: unparseable XML yields empty string', async () => {
+    await expect(extractFeedIconUrl('this is not xml')).resolves.toBe('');
+    await expect(extractFeedIconUrl(RSS_WITH_ICON)).resolves.toBe(
+      'https://icon.example/favicon.png',
+    );
   });
 
   it('rejects garbage XML with a 422-shaped error', async () => {

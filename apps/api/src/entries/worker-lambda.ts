@@ -42,6 +42,7 @@ export async function processFeed(feedId: number): Promise<{
       ttlMinutes: feed.ttlMinutes,
       parsedTitle: parsed.title || undefined,
       parsedSiteUrl: parsed.siteUrl || undefined,
+      parsedIconUrl: parsed.iconUrl || undefined,
       permanentRedirectTo: response.permanentRedirectTo,
     });
     log({ feedId, outcome: 'ok', inserted, entries: parsed.entries.length });

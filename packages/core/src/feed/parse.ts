@@ -15,11 +15,13 @@ export interface ParsedEntry {
 export interface ParsedFeed {
   title: string;
   siteUrl: string;
+  iconUrl: string;
   entries: ParsedEntry[];
 }
 
 const parser = new Parser({
   customFields: {
+    feed: ['logo', 'icon'],
     item: ['content:encoded', ['enclosure', { keepArray: false }]] as never,
   },
 });
@@ -45,8 +47,40 @@ interface RawItem {
   enclosure?: { url?: string; type?: string; length?: string | number };
 }
 
+interface RawFeed {
+  title?: string;
+  link?: string;
+  /** RSS 2.0 <channel><image> — rss-parser exposes it as an object. */
+  image?: { url?: string } | string;
+  /** Atom feed-level <logo>/<icon> via customFields. */
+  logo?: string;
+  icon?: string;
+  items?: RawItem[];
+}
+
+/**
+ * Resolves the feed's declared icon: RSS 2.0 <image><url>, else Atom <logo>,
+ * else Atom <icon>, else ''.
+ */
+function feedIconUrl(parsed: RawFeed): string {
+  const rssImage = typeof parsed.image === 'string' ? parsed.image : (parsed.image?.url ?? '');
+  return rssImage.trim() || (parsed.logo ?? '').trim() || (parsed.icon ?? '').trim();
+}
+
+/**
+ * Best-effort icon extraction for callers where a parse failure is not fatal
+ * (e.g. subscribe-time discovery): returns '' instead of throwing.
+ */
+export async function extractFeedIconUrl(xml: string): Promise<string> {
+  try {
+    return feedIconUrl(await parser.parseString(xml));
+  } catch {
+    return '';
+  }
+}
+
 export async function parseFeed(xml: string, fallbackSiteUrl = ''): Promise<ParsedFeed> {
-  let parsed: { title?: string; link?: string; items?: RawItem[] };
+  let parsed: RawFeed;
   try {
     parsed = await parser.parseString(xml);
   } catch (error) {
@@ -87,5 +121,5 @@ export async function parseFeed(xml: string, fallbackSiteUrl = ''): Promise<Pars
     };
   });
 
-  return { title: feedTitle, siteUrl, entries };
+  return { title: feedTitle, siteUrl, iconUrl: feedIconUrl(parsed), entries };
 }

@@ -1,4 +1,5 @@
 import { AppError } from '../services/errors';
+import { extractFeedIconUrl } from './parse';
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -9,6 +10,7 @@ export interface DiscoveredFeed {
   feedUrl: string;
   siteUrl: string;
   title: string | null;
+  iconUrl: string;
 }
 
 function extractTitle(xml: string): string | null {
@@ -67,7 +69,12 @@ export async function discoverFeed(
   const finalUrl = first.url || parsed.toString();
 
   if (looksLikeFeed(body)) {
-    return { feedUrl: finalUrl, siteUrl: finalUrl, title: extractTitle(body) };
+    return {
+      feedUrl: finalUrl,
+      siteUrl: finalUrl,
+      title: extractTitle(body),
+      iconUrl: await extractFeedIconUrl(body),
+    };
   }
 
   for (const href of extractAlternateLinks(body).slice(0, 3)) {
@@ -85,6 +92,7 @@ export async function discoverFeed(
         feedUrl: feedResponse.url || candidate.toString(),
         siteUrl: finalUrl,
         title: extractTitle(feedBody),
+        iconUrl: await extractFeedIconUrl(feedBody),
       };
     }
   }

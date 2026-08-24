@@ -102,6 +102,7 @@ export function createIngestService({ db }: ServicesDeps) {
         ttlMinutes: number;
         parsedTitle?: string;
         parsedSiteUrl?: string;
+        parsedIconUrl?: string;
         permanentRedirectTo?: string;
       },
     ): Promise<void> {
@@ -115,6 +116,7 @@ export function createIngestService({ db }: ServicesDeps) {
       };
       if (result.parsedTitle) patch.title = result.parsedTitle;
       if (result.parsedSiteUrl) patch.siteUrl = result.parsedSiteUrl;
+      if (result.parsedIconUrl) patch.iconUrl = result.parsedIconUrl;
       if (result.permanentRedirectTo) {
         // Only adopt the redirect target when no other feed already claims it.
         const clash = await db
