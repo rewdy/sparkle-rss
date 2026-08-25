@@ -22,7 +22,15 @@
 - Change feed "rename" to "edit", show read-only feed url with copy.
 - Still not showing favicons. Are they actually available? Should show small before each feed.
 
+## 4
+
+- Style folders differently somehow
+- Smaller space between feed count and ellipsis menu
+- Header title to match sidebar link "Today" != "today"
+- "System" color scheme
+- 
+
 Bigger stuff
 - Theme picker
-- three column.. so list while reading, optionally
-- 
+- Three column.. so list while reading, optionally
+- Set page titles throughout

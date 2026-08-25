@@ -121,7 +121,7 @@ export function ReaderPane({
             <Divider orientation="vertical" c="dimmed" />
             <ActionIcon
               variant={entry.isStarred ? 'light' : 'subtle'}
-              color="accent"
+              color="yellow"
               size="lg"
               title="star (s)"
               aria-label={entry.isStarred ? 'unstar' : 'star'}

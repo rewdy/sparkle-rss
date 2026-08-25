@@ -19,6 +19,7 @@ import {
   LuLogOut,
   LuMailOpen,
   LuPlus,
+  LuRss,
   LuSettings,
   LuStar,
 } from 'react-icons/lu';
@@ -265,6 +266,26 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
   );
 }
 
+function FeedIcon({ sub }: { sub: Subscription }): ReactElement {
+  const src = sub.iconUrl;
+  if (!src) {
+    return <LuRss size={14} style={{ flexShrink: 0, opacity: 0.6 }} />;
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      width={14}
+      height={14}
+      loading="lazy"
+      style={{ flexShrink: 0, borderRadius: 2, objectFit: 'contain' }}
+      onError={(e) => {
+        e.currentTarget.style.display = 'none';
+      }}
+    />
+  );
+}
+
 function FeedRow({
   sub,
   unread,
@@ -288,9 +309,12 @@ function FeedRow({
       active={active}
       label={
         <Group justify="space-between" w="100%" wrap="nowrap" gap={4}>
-          <Text size="sm" truncate={true} style={indent ? { paddingLeft: 14 } : undefined}>
-            {sub.displayTitle}
-          </Text>
+          <Group gap="xs" wrap="nowrap" miw={0} style={indent ? { paddingLeft: 14 } : undefined}>
+            <FeedIcon sub={sub} />
+            <Text size="sm" truncate={true}>
+              {sub.displayTitle}
+            </Text>
+          </Group>
           <Group gap="xxs" wrap="nowrap">
             {unreadBadge(unread)}
             <FeedMenu sub={sub} folders={folders} />

@@ -44,15 +44,15 @@ export function AddFolderButton(): ReactElement {
 
   return (
     <>
-      <ActionIcon
-        variant="subtle"
+      <Button
         size="compact-xs"
-        aria-label="add folder"
-        title="add folder"
+        variant="subtle"
+        leftSection={<LuFolderPlus size={13} />}
         onClick={open}
+        title="add folder"
       >
-        <LuFolderPlus size={13} />
-      </ActionIcon>
+        folder
+      </Button>
       <Modal opened={opened} onClose={close} title="new folder" size="xs" centered>
         <Stack gap="sm">
           <TextInput
@@ -213,7 +213,7 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
               openRename();
             }}
           >
-            rename
+            edit
           </Menu.Item>
           <Menu.Item
             leftSection={<LuFolderPlus size={14} />}
@@ -240,7 +240,7 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
         </Menu.Dropdown>
       </Menu>
 
-      <Modal opened={renameOpened} onClose={closeRename} title="rename feed" size="xs" centered>
+      <Modal opened={renameOpened} onClose={closeRename} title="edit feed" size="xs" centered>
         <Stack gap="sm">
           <TextInput
             label="title"
@@ -249,6 +249,7 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
             onChange={(e) => setTitle(e.currentTarget.value)}
             onKeyDown={(e) => e.key === 'Enter' && submitRename()}
           />
+          <TextInput label="feed url" value={sub.url} readOnly={true} disabled={true} />
           <Button onClick={submitRename} loading={edit.isPending} disabled={!title.trim()}>
             save
           </Button>
