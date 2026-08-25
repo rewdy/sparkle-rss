@@ -2,6 +2,7 @@ import { Box, Group, Text } from '@mantine/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ReactElement, RefObject } from 'react';
 import { memo, useCallback, useEffect, useMemo } from 'react';
+import { useFeedTitles } from '../lib/feed-titles';
 import type { Entry } from '../lib/types';
 import { fonts } from '../theme';
 
@@ -178,6 +179,7 @@ const EntryRow = memo(function EntryRow({
   active: boolean;
   onSelect: (entry: Entry) => void;
 }): ReactElement {
+  const feedTitles = useFeedTitles();
   return (
     <Box
       className="entry-row"
@@ -190,7 +192,7 @@ const EntryRow = memo(function EntryRow({
     >
       <Group justify="space-between" wrap="nowrap" gap="xs" mb="xxs">
         <Text size="xs" c="dimmed" truncate={true}>
-          {entry.author || '\u00a0'}
+          {[entry.author, feedTitles.get(entry.feedId)].filter(Boolean).join(' • ') || '\u00a0'}
         </Text>
         <Text size="xs" c="dimmed" ff="monospace">
           {timeLabel(entry.publishedAtMs)}

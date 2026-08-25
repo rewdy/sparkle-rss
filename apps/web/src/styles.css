@@ -2,8 +2,7 @@
   transition: background-color 80ms ease;
 }
 .skeleton-row {
-  margin: 0 var(--mantine-spacing-sm);
-  padding: var(--mantine-spacing-xs) 0;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
   display: flex;
   flex-direction: column;
   gap: var(--mantine-spacing-xxs);

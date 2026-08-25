@@ -176,8 +176,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                   active={isActive(activeStream, (s) => s.kind === 'folder' && s.id === folder.id)}
                   label={
                     <Group justify="space-between" w="100%">
-                      <Text size="sm">{folder.name}</Text>
-                      <Group gap="xxs" wrap="nowrap">
+                      <Text size="sm" fw={700}>
+                        {folder.name}
+                      </Text>
+                      <Group gap={2} wrap="nowrap">
                         {unreadBadge(folder.unreadCount)}
                         <FolderMenu folder={folder} />
                       </Group>
@@ -315,7 +317,7 @@ function FeedRow({
               {sub.displayTitle}
             </Text>
           </Group>
-          <Group gap="xxs" wrap="nowrap">
+          <Group gap={2} wrap="nowrap">
             {unreadBadge(unread)}
             <FeedMenu sub={sub} folders={folders} />
           </Group>

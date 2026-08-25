@@ -13,6 +13,7 @@ import {
 import type { ReactElement } from 'react';
 import { useEffect, useRef } from 'react';
 import { LuArrowLeft, LuExternalLink, LuStar } from 'react-icons/lu';
+import { useFeedTitles } from '../lib/feed-titles';
 import { useMarkRead, useToggleStar } from '../lib/mutations';
 import type { Entry } from '../lib/types';
 
@@ -29,6 +30,7 @@ export function ReaderPane({
 }): ReactElement {
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
+  const feedTitles = useFeedTitles();
   const viewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,8 +50,13 @@ export function ReaderPane({
             back
           </Button>
           <Text size="xs" c="dimmed" ff="monospace" truncate={true}>
-            {new Date(entry.publishedAtMs).toLocaleString()}
-            {entry.author ? ` · ${entry.author}` : ''}
+            {[
+              new Date(entry.publishedAtMs).toLocaleString(),
+              entry.author,
+              feedTitles.get(entry.feedId),
+            ]
+              .filter(Boolean)
+              .join(' • ')}
           </Text>
         </Group>
         <Group gap="xs">

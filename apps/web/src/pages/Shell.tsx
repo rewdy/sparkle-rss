@@ -36,13 +36,13 @@ function streamTitle(
 ): string {
   switch (d.kind) {
     case 'all':
-      return 'all items';
+      return 'All items';
     case 'starred':
-      return 'starred';
+      return 'Starred';
     case 'today':
-      return 'today';
+      return 'Today';
     case 'unread':
-      return 'all unread';
+      return 'All unread';
     case 'feed':
       return subs.find((s) => s.feedId === d.id)?.displayTitle ?? `feed ${d.id}`;
     case 'folder':
