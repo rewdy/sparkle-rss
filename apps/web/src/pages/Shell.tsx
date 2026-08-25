@@ -1,4 +1,4 @@
-import { AppShell, Box, Center, Loader } from '@mantine/core';
+import { AppShell, Center, Loader } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useAtomValue, useSetAtom } from 'jotai';
 import type { ReactElement } from 'react';
@@ -246,7 +246,20 @@ export function Shell(): ReactElement {
             <SettingsPage />
           </Suspense>
         ) : descriptor ? (
-          <>
+          routeEntryId !== null ? (
+            entryLoading ? (
+              <Center h="calc(100dvh - var(--app-shell-header-offset, 0rem))">
+                <Loader size="sm" type="dots" />
+              </Center>
+            ) : activeEntry ? (
+              <ReaderPane
+                entry={activeEntry}
+                onClose={closeReader}
+                onNext={() => move(1)}
+                onPrev={() => move(-1)}
+              />
+            ) : null
+          ) : (
             <StreamInner
               stream={descriptor}
               filter={filter}
@@ -255,25 +268,7 @@ export function Shell(): ReactElement {
               onSelect={openEntry}
               onEntriesChange={onEntriesChange}
             />
-            {routeEntryId !== null && (
-              <Box pos="absolute" inset={0} style={{ zIndex: 5 }}>
-                {entryLoading ? (
-                  <Center w="100%" h="100%">
-                    <Loader size="sm" type="dots" />
-                  </Center>
-                ) : (
-                  activeEntry && (
-                    <ReaderPane
-                      entry={activeEntry}
-                      onClose={closeReader}
-                      onNext={() => move(1)}
-                      onPrev={() => move(-1)}
-                    />
-                  )
-                )}
-              </Box>
-            )}
-          </>
+          )
         ) : (
           <div />
         )}

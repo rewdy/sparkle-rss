@@ -27,6 +27,7 @@ import { api } from '../lib/api';
 import { logout } from '../lib/auth';
 import { parseRoute, qk, streamPath } from '../lib/keys';
 import type { Folder, StreamDescriptor, Subscription } from '../lib/types';
+import { AddFolderButton, FeedMenu, FolderMenu } from './ManageMenus';
 
 // The subscribe dialog drags Modal + form components; load it on first open.
 const SubscribeModal = lazy(() =>
@@ -152,9 +153,17 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
         onClick={() => nav('/all')}
       />
 
-      <Divider my="xs" label="folders" labelPosition="center" c="dimmed" flex="none" />
+      <Box my="xs" flex="none">
+        <Group gap="xs" wrap="nowrap">
+          <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
+            folders
+          </Text>
+          <Divider c="dimmed" style={{ flex: 1 }} />
+          <AddFolderButton />
+        </Group>
+      </Box>
 
-      <ScrollArea offsetScrollbars type="hover" style={{ flex: 1, minHeight: 0 }}>
+      <ScrollArea type="hover" style={{ flex: 1, minHeight: 0 }}>
         <Stack gap={2}>
           {folders.map((folder: Folder) => {
             const folderSubs = byFolder.get(folder.id) ?? [];
@@ -167,7 +176,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                   label={
                     <Group justify="space-between" w="100%">
                       <Text size="sm">{folder.name}</Text>
-                      {unreadBadge(folder.unreadCount)}
+                      <Group gap="xxs" wrap="nowrap">
+                        {unreadBadge(folder.unreadCount)}
+                        <FolderMenu folder={folder} />
+                      </Group>
                     </Group>
                   }
                   onClick={() => nav(`/folder/${folder.id}`)}
@@ -178,27 +190,26 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                     sub={sub}
                     unread={feedUnread.get(sub.feedId) ?? 0}
                     active={isActive(activeStream, (s) => s.kind === 'feed' && s.id === sub.feedId)}
-                    indent
                     onNavigate={onNavigate}
+                    folders={folders}
+                    indent
                   />
                 ))}
               </div>
             );
           })}
-          {loose.length > 0 && (
-            <>
-              <Divider my="xs" labelPosition="center" c="dimmed" />
-              {loose.map((sub) => (
-                <FeedRow
-                  key={sub.feedId}
-                  sub={sub}
-                  unread={feedUnread.get(sub.feedId) ?? 0}
-                  active={isActive(activeStream, (s) => s.kind === 'feed' && s.id === sub.feedId)}
-                  onNavigate={onNavigate}
-                />
-              ))}
-            </>
-          )}
+          {folders.length > 0 && loose.length > 0 && <Divider my="xs" c="dimmed" />}
+          {loose.length > 0 &&
+            loose.map((sub) => (
+              <FeedRow
+                key={sub.feedId}
+                sub={sub}
+                unread={feedUnread.get(sub.feedId) ?? 0}
+                active={isActive(activeStream, (s) => s.kind === 'feed' && s.id === sub.feedId)}
+                onNavigate={onNavigate}
+                folders={folders}
+              />
+            ))}
           {subs.length === 0 && (
             <Text size="xs" c="dimmed" ta="center" py="md">
               no subscriptions yet — add one above or import OPML in settings.
@@ -214,7 +225,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
           href="/settings"
           onClick={() => nav('/settings')}
           px="xs"
-          py={6}
+          py="xs"
           display="block"
         >
           <Group gap="xs" wrap="nowrap">
@@ -226,7 +237,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
         </UnstyledButton>
         <UnstyledButton
           px="xs"
-          py={6}
+          py="xs"
           display="block"
           onClick={() => {
             void logout();
@@ -260,12 +271,14 @@ function FeedRow({
   active,
   indent,
   onNavigate,
+  folders,
 }: {
   sub: Subscription;
   unread: number;
   active: boolean;
   indent?: boolean;
   onNavigate?: () => void;
+  folders: Folder[];
 }) {
   const target = streamPath({ kind: 'feed', id: sub.feedId });
   return (
@@ -278,7 +291,10 @@ function FeedRow({
           <Text size="sm" truncate={true} style={indent ? { paddingLeft: 14 } : undefined}>
             {sub.displayTitle}
           </Text>
-          {unreadBadge(unread)}
+          <Group gap="xxs" wrap="nowrap">
+            {unreadBadge(unread)}
+            <FeedMenu sub={sub} folders={folders} />
+          </Group>
         </Group>
       }
       onClick={() => onNavigate?.()}

@@ -8,6 +8,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import type { ReactElement } from 'react';
 import { useEffect, useRef } from 'react';
@@ -28,75 +29,66 @@ export function ReaderPane({
 }): ReactElement {
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
-  const topRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    topRef.current?.scrollIntoView();
+    viewportRef.current?.scrollTo({ top: 0 });
   }, [entry.id]);
 
   return (
-    <Box
-      pos="absolute"
-      inset={0}
-      bg="var(--mantine-color-body)"
-      style={{ zIndex: 5 }}
-      data-reading-pane="true"
-    >
-      <Group
-        justify="space-between"
-        px="sm"
-        py={6}
-        style={{ borderBottom: '1px solid var(--mantine-color-dark-4)' }}
-      >
-        <Button
-          variant="subtle"
-          size="compact-sm"
-          leftSection={<LuArrowLeft size={14} />}
-          onClick={onClose}
-        >
-          back
-        </Button>
-        <Group gap="xs">
-          <ActionIcon
-            variant={entry.isStarred ? 'light' : 'subtle'}
-            color="accent"
-            title="star (s)"
-            onClick={() =>
-              void toggleStar.mutateAsync({ ids: [entry.id], starred: !entry.isStarred })
-            }
+    <Box data-reading-pane="true">
+      <Group justify="space-between" px="sm" pt="xs" pb="xxs" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap" miw={0}>
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            leftSection={<LuArrowLeft size={14} />}
+            onClick={onClose}
           >
-            <LuStar size={16} style={entry.isStarred ? { fill: 'currentColor' } : undefined} />
-          </ActionIcon>
+            back
+          </Button>
+          <Text size="xs" c="dimmed" ff="monospace" truncate={true}>
+            {new Date(entry.publishedAtMs).toLocaleString()}
+            {entry.author ? ` · ${entry.author}` : ''}
+          </Text>
+        </Group>
+        <Group gap="xs">
           <ActionIcon
             variant="subtle"
             title="toggle read (m)"
+            aria-label="toggle read"
             onClick={() => void markRead.mutateAsync({ ids: [entry.id], read: !entry.isRead })}
           >
             {entry.isRead ? '●' : '○'}
           </ActionIcon>
           {entry.url && (
-            <Button
-              component="a"
-              href={entry.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              variant="default"
-              size="compact-sm"
-              rightSection={<LuExternalLink size={14} />}
-            >
-              open original
-            </Button>
+            <Tooltip label="open original">
+              <ActionIcon
+                component="a"
+                href={entry.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="default"
+                aria-label="open original"
+              >
+                <LuExternalLink size={14} />
+              </ActionIcon>
+            </Tooltip>
           )}
         </Group>
       </Group>
 
-      <ScrollArea h="calc(100% - 41px)" offsetScrollbars>
-        <Stack gap="md" maw={720} mx="auto" p="lg" ref={topRef}>
-          <Text size="xs" c="dimmed" ff="monospace">
-            {new Date(entry.publishedAtMs).toLocaleString()}
-            {entry.author ? ` · ${entry.author}` : ''}
-          </Text>
-          <Title order={1} lh={1.25}>
+      <ScrollArea offsetScrollbars viewportRef={viewportRef}>
+        <Stack
+          gap="md"
+          maw={720}
+          mx="auto"
+          style={{
+            padding:
+              'var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-lg)',
+          }}
+        >
+          <Title order={1} lh={1.25} mt="xl">
             {entry.title}
           </Title>
 
@@ -119,13 +111,26 @@ export function ReaderPane({
             dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
           />
 
-          <Group justify="space-between" py="md">
+          <Group justify="flex-start" py="md" gap="sm">
             <Button variant="default" size="compact-sm" onClick={onPrev}>
               ↑ previous (k)
             </Button>
             <Button variant="default" size="compact-sm" onClick={onNext}>
               ↓ next (j)
             </Button>
+            <Divider orientation="vertical" c="dimmed" />
+            <ActionIcon
+              variant={entry.isStarred ? 'light' : 'subtle'}
+              color="accent"
+              size="lg"
+              title="star (s)"
+              aria-label={entry.isStarred ? 'unstar' : 'star'}
+              onClick={() =>
+                void toggleStar.mutateAsync({ ids: [entry.id], starred: !entry.isStarred })
+              }
+            >
+              <LuStar size={18} style={entry.isStarred ? { fill: 'currentColor' } : undefined} />
+            </ActionIcon>
           </Group>
         </Stack>
       </ScrollArea>

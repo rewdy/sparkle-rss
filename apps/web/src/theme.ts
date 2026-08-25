@@ -2,7 +2,7 @@ import { createTheme, DEFAULT_THEME, mergeMantineTheme } from '@mantine/core';
 
 export const fonts = {
   mono: '"Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
-  sans: '-apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif',
+  sans: '"DM Sans", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif',
 };
 
 const neutrals = [

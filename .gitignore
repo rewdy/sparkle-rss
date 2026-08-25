@@ -15,3 +15,6 @@ tsconfig.tsbuildinfo
 # local backend config (copy of example, per-developer)
 tf/envs/prod/backend.conf
 tfplan
+
+# playwright MCP session artifacts (screenshots, snapshots, console logs)
+.playwright-mcp/

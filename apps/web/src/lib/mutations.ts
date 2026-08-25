@@ -75,6 +75,57 @@ export function useMarkAllRead(stream: StreamDescriptor) {
   });
 }
 
+export function useSubscriptionEdit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      feedId,
+      changes,
+    }: {
+      feedId: string;
+      changes: { title?: string | null; folderId?: number | null };
+    }) => api.subscriptions.edit(feedId, changes),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: qk.subscriptions });
+      void qc.invalidateQueries({ queryKey: qk.folders });
+      void qc.invalidateQueries({ queryKey: qk.unreadCounts });
+    },
+  });
+}
+
+export function useFolderCreate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.folders.create(name),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: qk.folders });
+    },
+  });
+}
+
+export function useFolderRename() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => api.folders.rename(id, name),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: qk.folders });
+      void qc.invalidateQueries({ queryKey: qk.subscriptions });
+    },
+  });
+}
+
+export function useFolderRemove() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.folders.remove(id),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: qk.folders });
+      void qc.invalidateQueries({ queryKey: qk.subscriptions });
+      void qc.invalidateQueries({ queryKey: qk.unreadCounts });
+    },
+  });
+}
+
 export function useSubscribe() {
   const qc = useQueryClient();
   return useMutation({

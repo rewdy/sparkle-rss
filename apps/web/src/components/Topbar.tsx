@@ -1,4 +1,4 @@
-import { ActionIcon, Button, Divider, Group, SegmentedControl, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Button, Divider, Group, Text, Tooltip } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { LuMoon, LuRefreshCw, LuSun } from 'react-icons/lu';
@@ -35,15 +35,24 @@ export function Topbar({
 
       <Group gap="xs" wrap="nowrap">
         {stream.kind !== 'starred' && stream.kind !== 'unread' && (
-          <SegmentedControl
-            size="compact-xs"
-            value={filter}
-            onChange={(v) => onFilterChange(v as 'all' | 'unread')}
-            data={[
-              { value: 'all', label: 'all' },
-              { value: 'unread', label: 'unread' },
-            ]}
-          />
+          <Button.Group>
+            <Button
+              size="compact-xs"
+              variant={filter === 'all' ? 'default' : 'subtle'}
+              color="dimmed"
+              onClick={() => onFilterChange('all')}
+            >
+              all
+            </Button>
+            <Button
+              size="compact-xs"
+              variant={filter === 'unread' ? 'default' : 'subtle'}
+              color="dimmed"
+              onClick={() => onFilterChange('unread')}
+            >
+              unread
+            </Button>
+          </Button.Group>
         )}
         {stream.kind !== 'starred' && stream.kind !== 'today' && (
           <Tooltip label="mark everything read (Shift+A)">

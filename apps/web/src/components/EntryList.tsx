@@ -136,7 +136,7 @@ export function EntryList({
               }}
             >
               {row.kind === 'header' ? (
-                <Group gap={8} px="sm" py={6}>
+                <Group gap="xs" px="sm" pt={vi.index === 0 ? 'sm' : 'xs'} pb="xxs">
                   <Text size="xs" tt="uppercase" c="dimmed" style={{ letterSpacing: 1.5 }}>
                     {row.label}
                   </Text>
@@ -185,10 +185,10 @@ const EntryRow = memo(function EntryRow({
       data-entry-id={entry.id}
       onClick={() => onSelect(entry)}
       px="md"
-      py={10}
+      py="sm"
       style={{ cursor: 'pointer' }}
     >
-      <Group justify="space-between" wrap="nowrap" gap="xs" mb={2}>
+      <Group justify="space-between" wrap="nowrap" gap="xs" mb="xxs">
         <Text size="xs" c="dimmed" truncate={true}>
           {entry.author || '\u00a0'}
         </Text>
@@ -196,7 +196,7 @@ const EntryRow = memo(function EntryRow({
           {timeLabel(entry.publishedAtMs)}
         </Text>
       </Group>
-      <Text size="sm" fw={entry.isRead ? 400 : 700} lh={1.4} style={{ fontFamily: fonts.sans }}>
+      <Text size="md" fw={entry.isRead ? 400 : 700} lh={1.4} style={{ fontFamily: fonts.sans }}>
         {entry.title}
       </Text>
     </Box>
