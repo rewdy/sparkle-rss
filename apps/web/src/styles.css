@@ -1,3 +1,10 @@
+.site-title {
+  color: inherit;
+  text-decoration: none;
+}
+.site-title:hover {
+  color: light-dark(var(--mantine-color-accent-7), var(--mantine-color-accent-3));
+}
 .entry-row {
   transition: background-color 80ms ease;
 }

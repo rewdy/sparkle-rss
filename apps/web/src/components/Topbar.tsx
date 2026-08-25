@@ -1,7 +1,7 @@
 import { ActionIcon, Button, Divider, Group, Text, Tooltip } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
-import { LuMoon, LuRefreshCw, LuSun } from 'react-icons/lu';
+import { LuMoon, LuRefreshCw, LuSparkles, LuSun } from 'react-icons/lu';
 import { Link } from 'wouter';
 import { useMarkAllRead } from '../lib/mutations';
 import type { StreamDescriptor } from '../lib/types';
@@ -25,8 +25,16 @@ export function Topbar({
   return (
     <Group justify="space-between" h="100%" px="md" wrap="nowrap" miw={0}>
       <Group gap="sm" wrap="nowrap" miw={0}>
-        <Text size="sm" fw={700} component={Link} href="/today" style={{ whiteSpace: 'nowrap' }}>
-          ✦ Sparkle RSS
+        <Text
+          size="sm"
+          fw={700}
+          component={Link}
+          href="/today"
+          style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+          className="site-title"
+        >
+          <LuSparkles size={15} />
+          Sparkle RSS
         </Text>
         <Divider orientation="vertical" c="dimmed" style={{ alignSelf: 'center', height: 14 }} />
         <Text size="sm" truncate={true} maw={320}>
