@@ -97,6 +97,7 @@ export function FolderMenu({ folder }: { folder: Folder }): ReactElement {
             aria-label={`manage folder ${folder.name}`}
             onClick={stop}
             onMouseDown={stop}
+            style={{ width: 24, flexShrink: 0 }}
           >
             <LuEllipsisVertical size={14} />
           </ActionIcon>
@@ -201,6 +202,7 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
             aria-label={`manage feed ${sub.displayTitle}`}
             onClick={stop}
             onMouseDown={stop}
+            style={{ width: 24, flexShrink: 0 }}
           >
             <LuEllipsisVertical size={14} />
           </ActionIcon>

@@ -179,7 +179,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                       <Text size="sm" fw={700}>
                         {folder.name}
                       </Text>
-                      <Group gap={2} wrap="nowrap">
+                      <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
                         {unreadBadge(folder.unreadCount)}
                         <FolderMenu folder={folder} />
                       </Group>
@@ -317,7 +317,7 @@ function FeedRow({
               {sub.displayTitle}
             </Text>
           </Group>
-          <Group gap={2} wrap="nowrap">
+          <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
             {unreadBadge(unread)}
             <FeedMenu sub={sub} folders={folders} />
           </Group>
