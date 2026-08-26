@@ -68,8 +68,13 @@ ci.yaml (pull_request + push to main — no deploy)
   pnpm test                # vitest units + integration (service Postgres)
   pnpm build               # web + lambda bundles + static marketing site (uploaded as artifact)
   tf: terraform fmt -check -recursive && init -backend=false && validate
-  (no `terraform plan` output — solo-maintainer repo; the deploy job's plan is the
-   reviewed artifact)
+  plan job (pull_request only): OIDC-assumes the read-only `sparkle-rss-github-plan`
+    role, runs `terraform plan` against live state, and publishes the diff to the
+    job summary so every PR shows exactly what a merge will change. The plan role
+    trusts `pull_request` refs and is strictly read-only; the deploy role stays
+    pinned to `refs/heads/main`. (Bootstrap: the role is created by this same
+    `github-oidc` module on the next normal deploy; until the repo variable
+    `TF_PLAN_ROLE_ARN` is set the plan job logs and skips.)
 
 deploy.yaml (push to main; `paths-ignore: docs/**, *.md` — docs-only pushes skip it)
   pnpm install --frozen-lockfile

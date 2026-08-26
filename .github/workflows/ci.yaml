@@ -65,3 +65,71 @@ jobs:
           name: lambda-zips
           path: dist/*.zip
           retention-days: 7
+
+  # Renders a real `terraform plan` on every PR so the change set is visible
+  # before merge. Uses a read-only OIDC role (trusts pull_request refs) so it
+  # can refresh against live state but change nothing. Tolerant during the
+  # bootstrap PR: before the plan role has been applied once, it logs and skips
+  # instead of failing.
+  plan:
+    needs: verify
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: plan-${{ github.head_ref }}
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TF_DIR: tf
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~> 1.15'
+          terraform_wrapper: false
+
+      - name: configure aws credentials (OIDC, read-only)
+        id: creds
+        # Bootstrap: before this PR's plan role is provisioned, TF_PLAN_ROLE_ARN is
+        # unset and the step is skipped. Once set, assume must succeed or we fail loudly.
+        if: ${{ vars.TF_PLAN_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.TF_PLAN_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: terraform init (remote state)
+        env:
+          TF_PLAN_ROLE_ARN: ${{ vars.TF_PLAN_ROLE_ARN }}
+        run: |
+          if [ -z "$TF_PLAN_ROLE_ARN" ]; then
+            echo "::notice::TF_PLAN_ROLE_ARN not set yet (this PR bootstraps the plan role). Skipping plan."
+            exit 0
+          fi
+          terraform -chdir=$TF_DIR init \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="key=sparkle-rss/prod/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="use_lockfile=true"
+
+      - name: terraform plan
+        env:
+          TF_PLAN_ROLE_ARN: ${{ vars.TF_PLAN_ROLE_ARN }}
+        run: |
+          if [ -z "$TF_PLAN_ROLE_ARN" ]; then
+            echo "::notice::Plan skipped: TF_PLAN_ROLE_ARN not provisioned yet."
+            exit 0
+          fi
+          terraform -chdir=$TF_DIR plan -input=false -out=tfplan 2>&1 | tee tfplan.log
+          # Publish the human-readable diff to the job summary for easy review.
+          {
+            echo "## Terraform plan"
+            echo '```diff'
+            cat tfplan.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
