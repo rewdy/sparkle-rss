@@ -10,7 +10,7 @@ terraform {
 }
 
 variable "github_repo" {
-  description = "GitHub repository allowed to assume the deploy role (owner/name)"
+  description = "GitHub repository allowed to assume the deploy and plan roles (owner/name)"
   type        = string
 }
 

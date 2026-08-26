@@ -14,6 +14,12 @@ variable "logout_urls" {
   default     = []
 }
 
+variable "allow_signups" {
+  description = "Allow self-service sign-up. When false (default) the pool is invite-only (admin creates users)."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags applied to all resources"
   type        = map(string)

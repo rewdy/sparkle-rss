@@ -167,3 +167,110 @@ resource "aws_iam_role_policy" "deploy" {
   role   = aws_iam_role.deploy.name
   policy = data.aws_iam_policy_document.deploy.json
 }
+
+# --- Read-only plan role ------------------------------------------------------
+#
+# PRs can't assume the deploy role (it is scoped to refs/heads/main for good
+# reason — it can write). To show a real `terraform plan` on every pull request
+# we add a second role that is only readable: it can refresh/plan against the
+# state and read the managed services, but can change nothing. Same OIDC
+# provider, one extra trust scope for pull_request refs.
+data "aws_iam_policy_document" "github_plan_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:repository"
+      values   = [var.github_repo]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:${var.github_repo}:ref:refs/heads/main",
+        "repo:${var.github_repo}:pull",
+        "repo:*@*/${local.repo_name}@*:ref:refs/heads/main",
+        "repo:*@*/${local.repo_name}@*:pull",
+      ]
+    }
+  }
+}
+
+locals {
+  plan_read_actions = [
+    "dsql:GetCluster",
+    "dsql:ListClusters",
+    "lambda:GetFunction",
+    "lambda:ListFunctions",
+    "lambda:GetFunctionConfiguration",
+    "apigateway:GET",
+    "cognito-idp:*",
+    "sqs:GetQueueAttributes",
+    "sqs:ListQueues",
+    "scheduler:GetSchedule",
+    "scheduler:ListSchedules",
+    "logs:DescribeLogGroups",
+    "logs:DescribeLogStreams",
+    "logs:ListTagsLogGroup",
+    "cloudfront:GetDistribution",
+    "cloudfront:ListDistributions",
+    "cloudfront:GetCloudFrontOriginAccessIdentity",
+    "cloudfront:ListCloudFrontOriginAccessIdentities",
+    "acm:DescribeCertificate",
+    "acm:ListCertificates",
+    "cloudwatch:DescribeAlarms",
+    "sns:GetTopicAttributes",
+    "sns:ListTopics",
+    "secretsmanager:GetSecretValue",
+    "secretsmanager:DescribeSecret",
+    "secretsmanager:ListSecrets",
+    "iam:GetRole",
+    "iam:ListRoles",
+    "iam:GetPolicy",
+    "iam:GetPolicyVersion",
+    "iam:ListAttachedRolePolicies",
+    "iam:ListRolePolicies",
+    "route53:ListHostedZones",
+    "route53:GetHostedZone",
+    "route53:ListResourceRecordSets",
+    "route53:GetChange",
+    "sts:GetCallerIdentity",
+  ]
+}
+
+data "aws_iam_policy_document" "plan" {
+  statement {
+    sid       = "ReadServices"
+    effect    = "Allow"
+    actions   = local.plan_read_actions
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "StateRead"
+    effect    = "Allow"
+    actions   = ["s3:GetObject", "s3:ListBucket"]
+    resources = concat(var.state_bucket_arns, [for arn in var.state_bucket_arns : "${arn}/*"])
+  }
+}
+
+resource "aws_iam_role" "plan" {
+  name               = "sparkle-rss-github-plan"
+  assume_role_policy = data.aws_iam_policy_document.github_plan_trust.json
+  tags               = var.tags
+}
+
+resource "aws_iam_role_policy" "plan" {
+  role   = aws_iam_role.plan.name
+  policy = data.aws_iam_policy_document.plan.json
+}

@@ -75,7 +75,7 @@ sparkle-rss/
 │  └─ tooling/            # shared tsconfig / biome presets
 ├─ tf/
 │  ├─ modules/            # web, api, ingest, db, auth, dns terraform modules
-│  └─ envs/prod/          # environment compositions
+│  └─ (root)             # variables.tf = single fork config, main.tf composition
 └─ .github/workflows/     # ci.yaml, deploy.yaml
 ```
 

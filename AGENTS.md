@@ -28,7 +28,7 @@ apps/web/        Vite React SPA (Mantine, wouter, react-query, jotai)
 packages/core/   Domain services shared by all entry points; greader codecs; time utils
 packages/db/     Drizzle schema, migrations, DSQL/local client factory
 packages/tooling/ Shared tsconfig / biome presets
-tf/              Terraform modules/* and envs/prod
+tf/              Terraform root (tf/variables.tf = THE infra config, tf/main.tf) + modules/*
 docs/            Source of truth for design
 ```
 
@@ -43,10 +43,11 @@ docs/            Source of truth for design
   (`docker compose up -d db`, then `pnpm db:migrate:local`); full workflow in
   `docs/07-local-development.md`. DSQL has no emulator — production parity comes from
   keeping all SQL extension-free.
-- Terraform state lives in S3 (`drewmey--devops-tf-state`, key
-  `sparkle-rss/prod/terraform.tfstate`). Laptop runs need
-  `cp tf/envs/prod/backend.conf.example tf/envs/prod/backend.conf` first (gitignored).
-  Deploys happen by pushing to main; hand-applies are for breakage only.
+- Terraform root is `tf/`; `tf/variables.tf` is the single fork-facing config
+  (app_domain, deploy_site, site_domain, allow_signups, prefixes/repo). The S3 state
+  backend is configured inline in `tf/main.tf` (no flags/env vars), so a local
+  `terraform -chdir=tf plan` just works. Deploys happen by pushing to main;
+  hand-applies are for breakage only.
 
 ## Architecture invariants (do not break without a decision-log entry)
 
@@ -81,8 +82,8 @@ docs/            Source of truth for design
 
 - Never `terraform apply` by hand against prod unless CI is broken; prefer the pipeline.
 - Plan output appears on PRs; review it like code.
-- Adding an environment = new dir under `tf/envs/`; never copy-paste modules.
-- Edge certs (CloudFront/Cognito custom domains) must be in us-east-1 regardless of app region.
+- Forks edit `tf/terraform.tfvars`; don't fork-paste modules or env dirs — one root
+  (`tf/`) composes the shared `tf/modules/*`. Edge certs (CloudFront/Cognito custom domains) must be in us-east-1 regardless of app region.
 
 ## Gotchas learned so far
 

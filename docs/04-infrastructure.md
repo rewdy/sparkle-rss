@@ -17,22 +17,22 @@ tf/
 │  │                # orchestrator & worker Lambdas, roles
 │  ├─ db/           # Aurora DSQL cluster + IAM policy wiring
 │  └─ github-oidc/  # OIDC provider lookup/creation + deploy role for CI
-└─ envs/
-   ├─ dev/            # ephemeral spike env (apply locally, destroy after)
-   └─ prod/
-      ├─ main.tf            # module composition (backend block lives here)
-      ├─ variables.tf       # fork-configurable: domains, prefixes, repo
-      ├─ terraform.tfvars   # committed defaults (no secrets)
-      └─ backend.conf.example  # copy to backend.conf for laptop runs (gitignored)
+├─ variables.tf        # THE single fork config: app_domain, deploy_site,
+│                      # site_domain, allow_signups, prefixes, repo
+├─ main.tf             # module composition + inline S3 backend block
+├─ terraform.tfvars    # committed defaults (no secrets)
 ```
 
 Conventions:
 
-- **State**: single state per environment in S3 (`drewmey--devops-tf-state` bucket,
-  key `sparkle-rss/prod/terraform.tfstate`, `use_lockfile = true` — no DynamoDB lock
-  table). Bucket name is passed via `-backend-config` flags (CI reads the
-  `TF_STATE_BUCKET` repo variable) or a local `backend.conf`; forks change one or both.
-  One environment (`prod`) is live; `envs/dev` exists for ephemeral spikes. Gotcha from
+- **State**: single state at the `sparkle-rss/prod/terraform.tfstate` key in the
+  `drewmey--devops-tf-state` bucket, `use_lockfile = true` — no DynamoDB lock table.
+  The S3 backend is configured inline in `tf/main.tf`, so `terraform plan`/`apply` just
+  work with no flags, env vars, or backend files. Forks edit those backend fields to use
+  their own bucket.
+  One root module (`tf/`) is live; there is no separate dev environment — the ephemeral
+  `tf/envs/dev` spike env from bring-up has been removed (its resources were destroyed).
+  Gotcha from
   bring-up: keep the `terraform { backend "s3" {} }` block intact — losing it silently
   pins runs to local state (see decisions.md).
 - **Provider pinning**: `aws ~> 6.x`, pinned per-module via `.terraform.lock.hcl`.
@@ -68,8 +68,13 @@ ci.yaml (pull_request + push to main — no deploy)
   pnpm test                # vitest units + integration (service Postgres)
   pnpm build               # web + lambda bundles + static marketing site (uploaded as artifact)
   tf: terraform fmt -check -recursive && init -backend=false && validate
-  (no `terraform plan` output — solo-maintainer repo; the deploy job's plan is the
-   reviewed artifact)
+  plan job (pull_request only): OIDC-assumes the read-only `sparkle-rss-github-plan`
+    role, runs `terraform plan` against live state, and publishes the diff to the
+    job summary so every PR shows exactly what a merge will change. The plan role
+    trusts `pull_request` refs and is strictly read-only; the deploy role stays
+    pinned to `refs/heads/main`. (Bootstrap: the role is created by this same
+    `github-oidc` module on the next normal deploy; until the repo variable
+    `TF_PLAN_ROLE_ARN` is set the plan job logs and skips.)
 
 deploy.yaml (push to main; `paths-ignore: docs/**, *.md` — docs-only pushes skip it)
   pnpm install --frozen-lockfile
