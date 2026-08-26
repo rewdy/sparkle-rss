@@ -11,7 +11,7 @@ provider "aws" {
 
 resource "aws_acm_certificate" "app" {
   provider          = aws.us_east_1
-  domain_name       = "${var.app_hostname}.${var.root_domain}"
+  domain_name       = var.app_fqdn
   validation_method = "DNS"
 
   tags = var.tags
@@ -44,13 +44,13 @@ resource "aws_acm_certificate_validation" "app" {
   validation_record_fqdns = [for record in aws_route53_record.app_validation : record.fqdn]
 }
 
-# Apex + www certificate for the public marketing site. Validation reuses the
-# same DNS pattern. Built only when create_site_cert is enabled.
+# Site certificate for the public marketing site. Validation reuses the same
+# DNS pattern. Built only when create_site_cert is enabled.
 resource "aws_acm_certificate" "site" {
   count                     = var.create_site_cert ? 1 : 0
   provider                  = aws.us_east_1
-  domain_name               = var.root_domain
-  subject_alternative_names = ["www.${var.root_domain}"]
+  domain_name               = var.site_fqdn
+  subject_alternative_names = ["www.${var.site_fqdn}"]
   validation_method         = "DNS"
 
   tags = var.tags

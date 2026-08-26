@@ -300,3 +300,24 @@ Added `apps/site` (Astro, static) served at `sparklerss.com`; `www.sparklerss.co
   `WebAssetsBucket` statement was scoped to `sparkle-rss-web-*` only; the new site bucket
   (`sparkle-rss-site-*`) would have failed both `terraform apply` and the site publish step.
   Added the site bucket ARNs to the same statement.
+
+## Terraform → single "THE infra config" root (2026-08-25)
+
+Collapsed the two env dirs into one root module to make fork-and-deploy a one-file edit.
+
+- **`tf/envs/*` removed.** `prod` moved up to become `tf/` (root), so `tf/` is now the
+  composition root and `tf/variables.tf` is the single fork-facing config. The ephemeral
+  `dev` env (db + auth, localhost callbacks, local state, no CI) existed only for bring-up
+  spikes (see Spike A/B) and was already fully destroyed; it is not part of the fork story.
+- **New domain inputs are full FQDNs.** `app_domain` (e.g. `app.example.com`) replaces the
+  old `root_domain` + `app_hostname` split; the hosted zone is derived as the parent of
+  `app_domain`. `site_domain` is its own input, used only when `deploy_site = true`.
+- **New site toggle.** `deploy_site` (default `false` — most forks run app-only) gates the
+  site module and its apex+www edge cert. Our install sets it true at `sparklerss.com`.
+- **New auth toggle.** `allow_signups` (default `false`, invite-only) drives Cognito's
+  `admin_create_user_config.allow_admin_create_user_only` in the `auth` module.
+- **Suggestion surfaced as var.** `alarm_email` was already wired null in the ingest module;
+  it's now a root variable so forks enable infra alerts without touching the module.
+- CI (`TF_DIR=tf`), `.gitignore` (`tf/backend.conf`), and all docs updated in this commit.
+  State key is unchanged (`sparkle-rss/prod/terraform.tfstate`) so the existing state is
+  preserved — no re-import needed.

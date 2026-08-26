@@ -19,7 +19,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      TF_DIR: tf/envs/prod
+      TF_DIR: tf
       STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:

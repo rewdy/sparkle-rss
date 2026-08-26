@@ -19,7 +19,7 @@ resource "random_id" "domain_suffix" {
   byte_length = 4
 }
 
-# Invite-only pool: sign-up is disabled; users are created by admins.
+# Invite-only by default: sign-up disabled, users are created by admins.
 # Sign-in uses the Cognito username (greader ClientLogin parity).
 resource "aws_cognito_user_pool" "this" {
   name = "${var.name_prefix}-pool"
@@ -27,7 +27,7 @@ resource "aws_cognito_user_pool" "this" {
   mfa_configuration = "OFF"
 
   admin_create_user_config {
-    allow_admin_create_user_only = true
+    allow_admin_create_user_only = !var.allow_signups
   }
 
   password_policy {

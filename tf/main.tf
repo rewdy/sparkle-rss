@@ -1,12 +1,16 @@
 terraform {
   required_version = ">= 1.10"
 
-  # Real values come from -backend-config flags (CI) or a local backend.conf.
+  # Real backend values come from -backend-config flags (CI) or a local
+  # tf/backend.conf (copy from tf/backend.conf.example).
   backend "s3" {}
 }
 
 locals {
-  app_fqdn    = "${var.app_hostname}.${var.root_domain}"
+  # The hosted zone is the parent of the app domain (app.example.com -> example.com).
+  root_domain = join(".", slice(split(".", var.app_domain), 1, length(split(".", var.app_domain))))
+  app_fqdn    = var.app_domain
+  site_fqdn   = var.site_domain
   web_origins = concat(["https://${local.app_fqdn}"], var.enable_local_dev_callbacks ? ["http://localhost:5173"] : [])
   callback_urls = concat(
     ["https://${local.app_fqdn}/auth/callback"],
@@ -16,6 +20,16 @@ locals {
     ["https://${local.app_fqdn}/"],
     var.enable_local_dev_callbacks ? ["http://localhost:5173/"] : [],
   )
+}
+
+# Clear error if a fork requests the site but misconfigures its domain.
+resource "terraform_data" "site_domain_check" {
+  lifecycle {
+    precondition {
+      condition     = !var.deploy_site || (var.site_domain != null && (var.site_domain == local.root_domain || endswith(var.site_domain, ".${local.root_domain}")))
+      error_message = "When deploy_site is true, site_domain must be set and live within the app_domain's hosted zone (${local.root_domain})."
+    }
+  }
 }
 
 provider "aws" {
@@ -29,23 +43,25 @@ provider "aws" {
 }
 
 module "dns" {
-  source           = "../../modules/dns"
-  root_domain      = var.root_domain
-  app_hostname     = var.app_hostname
-  create_site_cert = var.create_site
+  source           = "./modules/dns"
+  root_domain      = local.root_domain
+  app_fqdn         = local.app_fqdn
+  create_site_cert = var.deploy_site
+  site_fqdn        = local.site_fqdn
 }
 
 module "db" {
-  source                 = "../../modules/db"
+  source                 = "./modules/db"
   allowed_principal_arns = [for role_arn in concat([module.github_oidc.deploy_role_arn]) : role_arn]
   tags                   = { component = "db" }
 }
 
 module "auth" {
-  source        = "../../modules/auth"
+  source        = "./modules/auth"
   name_prefix   = "${var.name_prefix}-prod"
   callback_urls = local.callback_urls
   logout_urls   = local.logout_urls
+  allow_signups = var.allow_signups
 }
 
 resource "random_password" "greader_hmac" {
@@ -65,7 +81,7 @@ resource "aws_secretsmanager_secret_version" "greader_hmac" {
 }
 
 module "api" {
-  source            = "../../modules/api"
+  source            = "./modules/api"
   lambda_zip_path   = "${var.lambda_zip_dir}/api.zip"
   cognito_issuer    = module.auth.issuer
   cognito_client_id = module.auth.client_id
@@ -87,7 +103,7 @@ locals {
 }
 
 module "web" {
-  source             = "../../modules/web"
+  source             = "./modules/web"
   app_fqdn           = local.app_fqdn
   certificate_arn    = module.dns.certificate_arn
   route53_zone_id    = module.dns.zone_id
@@ -100,25 +116,25 @@ module "web" {
 }
 
 module "site" {
-  count           = var.create_site ? 1 : 0
-  source          = "../../modules/site"
-  site_fqdn       = var.root_domain
-  www_fqdn        = "www.${var.root_domain}"
+  count           = var.deploy_site ? 1 : 0
+  source          = "./modules/site"
+  site_fqdn       = local.site_fqdn
+  www_fqdn        = "www.${local.site_fqdn}"
   certificate_arn = module.dns.site_certificate_arn
   route53_zone_id = module.dns.zone_id
   tags            = { component = "site" }
 }
 
 module "ingest" {
-  source           = "../../modules/ingest"
+  source           = "./modules/ingest"
   lambda_zip_dir   = var.lambda_zip_dir
   dsql_cluster_arn = module.db.cluster_arn
   dsql_endpoint    = module.db.endpoint
-  alarm_email      = null # subscribe an email via console/SNS to receive alerts
+  alarm_email      = var.alarm_email
 }
 
 module "github_oidc" {
-  source               = "../../modules/github-oidc"
+  source               = "./modules/github-oidc"
   github_repo          = var.github_repo
   create_oidc_provider = var.create_oidc_provider
   state_bucket_arns    = var.state_bucket_arns
@@ -155,13 +171,13 @@ output "distribution_id" {
 }
 
 output "site_url" {
-  value = var.create_site ? module.site[0].site_url : ""
+  value = var.deploy_site ? module.site[0].site_url : ""
 }
 
 output "site_bucket_name" {
-  value = var.create_site ? module.site[0].assets_bucket_name : ""
+  value = var.deploy_site ? module.site[0].assets_bucket_name : ""
 }
 
 output "site_distribution_id" {
-  value = var.create_site ? module.site[0].distribution_id : ""
+  value = var.deploy_site ? module.site[0].distribution_id : ""
 }

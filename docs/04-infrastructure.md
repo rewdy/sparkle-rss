@@ -17,13 +17,11 @@ tf/
 │  │                # orchestrator & worker Lambdas, roles
 │  ├─ db/           # Aurora DSQL cluster + IAM policy wiring
 │  └─ github-oidc/  # OIDC provider lookup/creation + deploy role for CI
-└─ envs/
-   ├─ dev/            # ephemeral spike env (apply locally, destroy after)
-   └─ prod/
-      ├─ main.tf            # module composition (backend block lives here)
-      ├─ variables.tf       # fork-configurable: domains, prefixes, repo
-      ├─ terraform.tfvars   # committed defaults (no secrets)
-      └─ backend.conf.example  # copy to backend.conf for laptop runs (gitignored)
+├─ variables.tf        # THE single fork config: app_domain, deploy_site,
+│                      # site_domain, allow_signups, prefixes, repo
+├─ main.tf             # module composition (backend block lives here)
+├─ terraform.tfvars    # committed defaults (no secrets)
+└─ backend.conf.example  # copy to backend.conf for laptop runs (gitignored)
 ```
 
 Conventions:
@@ -32,7 +30,9 @@ Conventions:
   key `sparkle-rss/prod/terraform.tfstate`, `use_lockfile = true` — no DynamoDB lock
   table). Bucket name is passed via `-backend-config` flags (CI reads the
   `TF_STATE_BUCKET` repo variable) or a local `backend.conf`; forks change one or both.
-  One environment (`prod`) is live; `envs/dev` exists for ephemeral spikes. Gotcha from
+  One root module (`tf/`) is live; there is no separate dev environment — the ephemeral
+  `tf/envs/dev` spike env from bring-up has been removed (its resources were destroyed).
+  Gotcha from
   bring-up: keep the `terraform { backend "s3" {} }` block intact — losing it silently
   pins runs to local state (see decisions.md).
 - **Provider pinning**: `aws ~> 6.x`, pinned per-module via `.terraform.lock.hcl`.

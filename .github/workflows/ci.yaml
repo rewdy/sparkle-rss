@@ -57,8 +57,8 @@ jobs:
       - name: terraform fmt + validate
         run: |
           terraform fmt -check -recursive tf
-          terraform -chdir=tf/envs/prod init -backend=false
-          terraform -chdir=tf/envs/prod validate
+          terraform -chdir=tf init -backend=false
+          terraform -chdir=tf validate
 
       - uses: actions/upload-artifact@v4
         with:
