@@ -4,6 +4,7 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import type { ReactElement } from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
+import { PageTitle } from '../components/PageTitle';
 import { ReaderPane } from '../components/ReaderPane';
 import { Sidebar } from '../components/Sidebar';
 import { StreamInner } from '../components/StreamInner';
@@ -204,12 +205,24 @@ export function Shell(): ReactElement {
     return <FullscreenLoader label="checking session…" />;
   }
 
+  const APP_NAME = 'Sparkle RSS';
+  const pageTitle = location.startsWith('/settings')
+    ? `Settings · ${APP_NAME}`
+    : descriptor
+      ? `${streamTitle(
+          descriptor,
+          subsQ.data?.subscriptions ?? [],
+          foldersQ.data?.folders ?? [],
+        )} · ${APP_NAME}`
+      : APP_NAME;
+
   return (
     <AppShell
       header={{ height: 44 }}
       navbar={{ width: 260, breakpoint: 'sm', collapsed: { mobile: true } }}
       padding={0}
     >
+      <PageTitle title={pageTitle} />
       <AppShell.Header>
         <Topbar
           stream={descriptor ?? { kind: 'all' }}
