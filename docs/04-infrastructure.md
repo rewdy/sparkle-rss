@@ -48,10 +48,10 @@ Conventions:
 
 | Module | Resources |
 | --- | --- |
-| dns | Route53 zone (or data-source an existing one), ACM certs + DNS validation for the app hostname AND apex+www (certs in us-east-1) |
+| dns | Route53 zone (or data-source an existing one), ACM certs + DNS validation for the app hostname, apex+www, and `auth.<root>` (all certs in us-east-1) |
 | web | S3 bucket (private, OAC-only), CloudFront distribution (S3 + API GW origins, `/api/*` no-cache behavior, SPA rewrite function, security headers policy — CSP, HSTS 1y + includeSubDomains, X-Frame-Options DENY, nosniff, referrer-policy; verified live 2026-08-24, compression) |
 | site | S3 bucket (private, OAC-only), CloudFront distribution (S3 origin only), security headers policy (CSP incl. Google Fonts, HSTS), CloudFront Function: www→apex 301 redirect + pretty-URL→index.html rewrite; A/AAAA alias at apex and www |
-| auth | Cognito user pool (sign-up disabled), user pool client (PKCE, no secret, callback = site URL), hosted UI domain prefix, admin-created users are ops, not IaC |
+| auth | Cognito user pool (sign-up disabled), user pool client (PKCE, no secret, callback = site URL), hosted UI on custom domain `auth.<root_domain>` (us-east-1 ACM cert + Route53 alias to the Cognito-managed CloudFront distribution), managed-login branding for the SPA client styled to match the web theme (colors/radii in `tf/main.tf`; assets like logo/favicon are added via the console and don't conflict with IaC settings), admin-created users are ops, not IaC |
 | api | HTTP API `{proxy+}` routes: `/api/greader.php/*` (no authorizer), `/api/v1/*` (Cognito JWT authorizer scoped by audience); `api` Lambda arm64 Node 22 (512 MB / 10 s), env `QUEUE_URL` + `sqs:SendMessage` on the ingest refresh queue — a successful subscribe (web, OPML import, or GReader client) enqueues the new feed immediately so it refreshes within seconds instead of waiting for the 5-minute schedule; default-route throttling 25/s rate / burst 50 (confirmed live 2026-08-24); structured access logs; 5xx/throttle alarms |
 | ingest | EventBridge Scheduler `rate(5 minutes)` → orchestrator Lambda (256 MB / 60 s); SQS standard queue (visibility 120 s, redrive maxReceiveCount 5) → worker Lambda (512 MB / 60 s, reserved concurrency 10); exposes refresh queue URL/ARN outputs consumed by the api module; DLQ depth alarm; DLQ redrive console for ops |
 | db | Aurora DSQL cluster; IAM policy granting `dsql:DbConnect` to each Lambda role |

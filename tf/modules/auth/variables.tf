@@ -20,6 +20,30 @@ variable "allow_signups" {
   default     = false
 }
 
+variable "custom_domain_fqdn" {
+  description = "Custom hostname for the hosted UI (e.g. auth.example.com). null keeps the amazoncognito.com prefix domain."
+  type        = string
+  default     = null
+}
+
+variable "custom_domain_certificate_arn" {
+  description = "Validated us-east-1 ACM certificate ARN for custom_domain_fqdn (required when custom_domain_fqdn is set)"
+  type        = string
+  default     = null
+}
+
+variable "route53_zone_id" {
+  description = "Hosted zone id for the Route53 alias record of the custom domain (required when custom_domain_fqdn is set)"
+  type        = string
+  default     = null
+}
+
+variable "branding_settings" {
+  description = "Managed login branding settings JSON (colors, spacing, component styles). null uses Cognito defaults."
+  type        = string
+  default     = null
+}
+
 variable "tags" {
   description = "Tags applied to all resources"
   type        = map(string)

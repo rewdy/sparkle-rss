@@ -44,6 +44,45 @@ resource "aws_acm_certificate_validation" "app" {
   validation_record_fqdns = [for record in aws_route53_record.app_validation : record.fqdn]
 }
 
+# Auth (Cognito hosted UI) edge certificate. Cognito requires its custom
+# domain certificate to live in us-east-1, same as CloudFront.
+resource "aws_acm_certificate" "auth" {
+  count             = var.auth_fqdn == null ? 0 : 1
+  provider          = aws.us_east_1
+  domain_name       = var.auth_fqdn
+  validation_method = "DNS"
+
+  tags = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "auth_validation" {
+  provider = aws.us_east_1
+  for_each = var.auth_fqdn == null ? {} : {
+    for dvo in aws_acm_certificate.auth[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  }
+
+  zone_id = data.aws_route53_zone.root.zone_id
+  name    = each.value.name
+  type    = each.value.type
+  ttl     = 60
+  records = [each.value.record]
+}
+
+resource "aws_acm_certificate_validation" "auth" {
+  count                   = var.auth_fqdn == null ? 0 : 1
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.auth[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.auth_validation : record.fqdn]
+}
+
 # Site certificate for the public marketing site. Validation reuses the same
 # DNS pattern. Built only when create_site_cert is enabled.
 resource "aws_acm_certificate" "site" {

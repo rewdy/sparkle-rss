@@ -12,7 +12,8 @@ output "issuer" {
 }
 
 output "hosted_ui_domain" {
-  value = "https://${aws_cognito_user_pool_domain.this.domain}.auth.${data.aws_region.current.region}.amazoncognito.com"
+  description = "Base URL of the hosted UI (custom domain when configured, otherwise the amazoncognito.com prefix domain)"
+  value       = var.custom_domain_fqdn == null ? "https://${aws_cognito_user_pool_domain.this.domain}.auth.${data.aws_region.current.region}.amazoncognito.com" : "https://${var.custom_domain_fqdn}"
 }
 
 output "cognito_endpoint_origin" {

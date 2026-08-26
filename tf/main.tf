@@ -16,6 +16,8 @@ locals {
   root_domain = join(".", slice(split(".", var.app_domain), 1, length(split(".", var.app_domain))))
   app_fqdn    = var.app_domain
   site_fqdn   = var.site_domain
+  # Hosted UI lives on its own subdomain of the same zone.
+  auth_fqdn   = "auth.${local.root_domain}"
   web_origins = concat(["https://${local.app_fqdn}"], var.enable_local_dev_callbacks ? ["http://localhost:5173"] : [])
   callback_urls = concat(
     ["https://${local.app_fqdn}/auth/callback"],
@@ -53,6 +55,7 @@ module "dns" {
   app_fqdn         = local.app_fqdn
   create_site_cert = var.deploy_site
   site_fqdn        = local.site_fqdn
+  auth_fqdn        = local.auth_fqdn
 }
 
 module "db" {
@@ -62,11 +65,58 @@ module "db" {
 }
 
 module "auth" {
-  source        = "./modules/auth"
-  name_prefix   = "${var.name_prefix}-prod"
-  callback_urls = local.callback_urls
-  logout_urls   = local.logout_urls
-  allow_signups = var.allow_signups
+  source                        = "./modules/auth"
+  name_prefix                   = "${var.name_prefix}-prod"
+  callback_urls                 = local.callback_urls
+  logout_urls                   = local.logout_urls
+  allow_signups                 = var.allow_signups
+  custom_domain_fqdn            = local.auth_fqdn
+  custom_domain_certificate_arn = module.dns.auth_certificate_arn
+  route53_zone_id               = module.dns.zone_id
+  branding_settings             = local.managed_login_settings
+}
+
+# Managed login styling for the Cognito hosted UI, matched to the web app
+# theme (apps/web/src/theme.ts): DM Sans/Space Mono palette, accent indigo,
+# small radii, light + dark variants.
+locals {
+  managed_login_settings = jsonencode({
+    colorScheme = {
+      light = {
+        primary        = "#314394"
+        background     = "#fafafa"
+        headerFooter   = "#f1f1f2"
+        text           = "#222228"
+        textSecondary  = "#55555c"
+        error          = "#b3261e"
+        success        = "#2e6b34"
+        formBackground = "#ffffff"
+        border         = "#c4c4c9"
+        inputBorder    = "#9a9aa2"
+        inputText      = "#17171b"
+        link           = "#314394"
+      }
+      dark = {
+        primary        = "#8d9dd9"
+        background     = "#111114"
+        headerFooter   = "#17171b"
+        text           = "#f1f1f2"
+        textSecondary  = "#9a9aa2"
+        error          = "#f2b8b5"
+        success        = "#a5d6a7"
+        formBackground = "#17171b"
+        border         = "#33333a"
+        inputBorder    = "#55555c"
+        inputText      = "#fafafa"
+        link           = "#8d9dd9"
+      }
+    }
+    componentClasses = {
+      buttons    = { borderRadius = 3 }
+      inputs     = { borderRadius = 2 }
+      containers = { borderRadius = 4 }
+    }
+  })
 }
 
 resource "random_password" "greader_hmac" {
