@@ -10,6 +10,7 @@ import { StreamInner } from '../components/StreamInner';
 import { Topbar } from '../components/Topbar';
 import { ApiError, api } from '../lib/api';
 import { parseRoute, qk, streamPath } from '../lib/keys';
+import { useMarkRead, useToggleStar } from '../lib/mutations';
 import type { Entry, StreamDescriptor } from '../lib/types';
 import {
   applySettings,
@@ -60,6 +61,8 @@ export function Shell(): ReactElement {
   const setShortcutsOpen = useSetAtom(shortcutsOpenAtom);
   const shortcutsOpen = useAtomValue(shortcutsOpenAtom);
   const markReadOnOpen = useAtomValue(markReadOnOpenAtom);
+  const markRead = useMarkRead();
+  const toggleStar = useToggleStar();
 
   const route = useMemo(() => parseRoute(location), [location]);
   const descriptor = route?.stream ?? null;
@@ -82,19 +85,20 @@ export function Shell(): ReactElement {
   const [entriesCache, setEntriesCache] = useState<Entry[]>([]);
   const onEntriesChange = useCallback((entries: Entry[]) => setEntriesCache(entries), []);
 
+  // Source of truth for the open entry is the react-query cache (mutations
+  // patch it optimistically); seed it from the stream cache to avoid a flash.
   const cachedEntry = useMemo(
     () => (routeEntryId ? (entriesCache.find((e) => e.id === routeEntryId) ?? null) : null),
     [entriesCache, routeEntryId],
   );
-
-  // Deep link with an entry not in the loaded list: fetch it by id.
   const entryQ = useQuery({
     queryKey: routeEntryId ? qk.entry(routeEntryId) : ['entry', null],
     queryFn: () => api.entries.get(routeEntryId as string),
-    enabled: routeEntryId !== null && !entriesCache.some((e) => e.id === routeEntryId),
+    enabled: routeEntryId !== null,
+    initialData: cachedEntry ? { entry: cachedEntry } : undefined,
     retry: (_count, error) => !(error instanceof ApiError && error.status === 404),
   });
-  const activeEntry = cachedEntry ?? entryQ.data?.entry ?? null;
+  const activeEntry = entryQ.data?.entry ?? null;
   const entryLoading =
     routeEntryId !== null && !cachedEntry && entryQ.isPending && entryQ.isFetching;
 
@@ -114,13 +118,10 @@ export function Shell(): ReactElement {
   const openEntry = useCallback(
     (entry: Entry) => {
       if (!descriptor) return;
-      if (markReadOnOpen && !entry.isRead) {
-        entry.isRead = true;
-        void api.entries.setRead([entry.id], true);
-      }
+      if (markReadOnOpen) markRead.mutate({ ids: [entry.id], read: true });
       navigate(`${streamPath(descriptor)}/e/${entry.id}`);
     },
-    [descriptor, markReadOnOpen, navigate],
+    [descriptor, markRead, markReadOnOpen, navigate],
   );
 
   function closeReader(): void {
@@ -139,10 +140,7 @@ export function Shell(): ReactElement {
         : Math.min(Math.max(idx + delta, 0), entriesCache.length - 1);
     const target = entriesCache[next];
     if (!target) return;
-    if (markReadOnOpen && !target.isRead) {
-      target.isRead = true;
-      void api.entries.setRead([target.id], true);
-    }
+    if (markReadOnOpen) markRead.mutate({ ids: [target.id], read: true });
     navigate(`${streamPath(descriptor)}/e/${target.id}`);
   }
 
@@ -184,10 +182,11 @@ export function Shell(): ReactElement {
           move(-1);
           break;
         case 'm':
-          if (activeEntry) void api.entries.setRead([activeEntry.id], !activeEntry.isRead);
+          if (activeEntry) markRead.mutate({ ids: [activeEntry.id], read: !activeEntry.isRead });
           break;
         case 's':
-          if (activeEntry) void api.entries.setStarred([activeEntry.id], !activeEntry.isStarred);
+          if (activeEntry)
+            toggleStar.mutate({ ids: [activeEntry.id], starred: !activeEntry.isStarred });
           break;
         default:
           break;

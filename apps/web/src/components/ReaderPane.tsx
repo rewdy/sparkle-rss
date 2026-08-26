@@ -38,7 +38,11 @@ export function ReaderPane({
   }, [entry.id]);
 
   return (
-    <Box data-reading-pane="true">
+    <Box
+      data-reading-pane="true"
+      h="calc(100dvh - var(--app-shell-header-offset, 0rem))"
+      style={{ display: 'flex', flexDirection: 'column' }}
+    >
       <Group justify="space-between" px="sm" pt="xs" pb="xxs" wrap="nowrap">
         <Group gap="sm" wrap="nowrap" miw={0}>
           <Button
@@ -85,7 +89,7 @@ export function ReaderPane({
         </Group>
       </Group>
 
-      <ScrollArea offsetScrollbars viewportRef={viewportRef}>
+      <ScrollArea offsetScrollbars viewportRef={viewportRef} style={{ flex: 1 }}>
         <Stack
           gap="md"
           maw={720}
