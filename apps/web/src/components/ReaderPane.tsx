@@ -53,7 +53,7 @@ export function ReaderPane({
           >
             back
           </Button>
-          <Text size="xs" c="dimmed" ff="monospace" truncate={true}>
+          <Text size="xs" c="dimmed" ff="monospace" truncate={true} hiddenFrom="md">
             {[
               new Date(entry.publishedAtMs).toLocaleString(),
               entry.author,
@@ -91,12 +91,14 @@ export function ReaderPane({
 
       <ScrollArea offsetScrollbars viewportRef={viewportRef} style={{ flex: 1 }}>
         <Stack
+          className="reading-pane-stack"
           gap="md"
           maw={720}
           mx="auto"
           style={{
             padding:
               'var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-lg)',
+            paddingBottom: 'calc(var(--mantine-spacing-lg) + env(safe-area-inset-bottom))',
           }}
         >
           <Title order={1} lh={1.25} mt="xl">

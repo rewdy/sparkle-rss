@@ -1,4 +1,5 @@
 import { AppShell, Center, Loader } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { useQuery } from '@tanstack/react-query';
 import { useAtomValue, useSetAtom } from 'jotai';
 import type { ReactElement } from 'react';
@@ -55,6 +56,9 @@ function streamTitle(
 export function Shell(): ReactElement {
   const authState = useAuthGuard();
   const [location, navigate] = useLocation();
+  // Mobile navbar drawer: collapsed.mobile is ignored at/above `sm`, so this
+  // state only affects phones where the sidebar is hidden until the Burger opens it.
+  const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
   const density = useAtomValue(densityAtom);
   const filter = useAtomValue(filterAtom);
@@ -219,11 +223,11 @@ export function Shell(): ReactElement {
   return (
     <AppShell
       header={{ height: 44 }}
-      navbar={{ width: 260, breakpoint: 'sm', collapsed: { mobile: true } }}
+      navbar={{ width: 260, breakpoint: 'sm', collapsed: { mobile: !navOpened } }}
       padding={0}
     >
       <PageTitle title={pageTitle} />
-      <AppShell.Header>
+      <AppShell.Header data-app-header="true">
         <Topbar
           stream={descriptor ?? { kind: 'all' }}
           title={
@@ -239,12 +243,17 @@ export function Shell(): ReactElement {
           }
           filter={filter}
           onFilterChange={onFilterChange}
+          navOpened={navOpened}
+          onToggleNav={toggleNav}
         />
       </AppShell.Header>
 
       <AppShell.Navbar p={0} style={{ overflow: 'hidden' }}>
-        <Sidebar />
+        <Sidebar onNavigate={closeNav} />
       </AppShell.Navbar>
+
+      {/* Tap-away backdrop for the mobile drawer; hidden at/above `sm`. */}
+      {navOpened && <div className="mobile-nav-backdrop" onClick={closeNav} aria-hidden="true" />}
 
       <AppShell.Main style={{ position: 'relative' }} data-density={density}>
         {location === '/settings' ? (

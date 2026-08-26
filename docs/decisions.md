@@ -356,3 +356,19 @@ Two changes, all in Terraform:
 
 Rejection considered: classic hosted-UI CSS customization — unreliable on prefix domains,
 no dark mode, deprecated direction vs managed login; skipped.
+
+## Mobile styling pass (2026-08-26)
+
+The reader had a "mobile collapse" that was unusable: the sidebar hid below `sm` but
+nothing could re-open it. First small-screen pass:
+
+- **Top-bar Burger toggles the sidebar as a tap-away drawer** below `sm`, auto-closing
+  on navigation (Mantine AppShell `collapsed: { mobile }` + a manual backdrop since
+  v9 ships no built-in one).
+- **Top bar de-crams on phones** via `hiddenFrom="sm"`: stream title, the all/unread
+  filter group, and "mark all read" become desktop-only (stream switching incl.
+  All-unread vs All-items already lives in the sidebar drawer).
+- **Reading pane goes full-bleed**: `100dvh` heights, `env(safe-area-inset-bottom)`
+  insets on the reader and stream scroller (`viewport-fit=cover`), `≥40px` touch
+  targets in header/reader, byline row hidden below `md`, iOS input auto-zoom
+  suppressed with a `16px` floor, and `theme-color` meta follows light/dark.

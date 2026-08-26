@@ -63,11 +63,11 @@ shareable via query string).
 
 - Sidebar: fixed stream rows (Today, All unread, Starred, All items), scrollable
   folder/feed list, fixed footer (settings, sign out); unread badges per feed/folder.
-  Collapsing to a desktop icon rail is deferred (mobile breakpoint collapse is
-  implemented; `sidebarOpenAtom` is reserved for the rail).
+  At `< sm` the sidebar becomes a tap-away drawer toggled by a Burger in the top bar,
+  auto-closing on navigation. A desktop icon rail is deferred (`sidebarOpenAtom` reserved).
 - Article opens as a focused single-column reading pane (in-place overlay on desktop,
-  full-screen on mobile) at `<stream>/e/:id`. Back/Esc returns to the list preserving
-  scroll position.
+  full-screen full-bleed on mobile) at `<stream>/e/:id`. Back/Esc returns to the list
+  preserving scroll position.
 - Date-grouped card list (Today/Yesterday/This week/Older), **virtualized** with
   `@tanstack/react-virtual` (v3, `directDomUpdates`): day-group headers + entries
   flatten into one flat virtualized row list; row heights measured dynamically (titles wrap);

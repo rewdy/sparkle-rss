@@ -65,7 +65,12 @@ export function StreamInner({
   }, [query.hasNextPage, query.isFetchingNextPage, query]);
 
   return (
-    <Box ref={scrollRef} h="calc(100vh - 44px)" style={{ overflowY: 'auto' }} data-stream-scroll>
+    <Box
+      ref={scrollRef}
+      h="calc(100dvh - var(--app-shell-header-offset, 0rem))"
+      style={{ overflowY: 'auto', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      data-stream-scroll
+    >
       <EntryList
         entries={entries}
         loading={query.isPending}
