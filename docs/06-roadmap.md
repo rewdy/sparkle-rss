@@ -3,7 +3,7 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-08-24)
+## Current state (updated 2026-08-25)
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
@@ -157,8 +157,7 @@ usage window; design direction: terminal-inspired, colors adjustable.
 This is the working backlog. Items are ordered by value/risk; each is a good
 session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lands.
 
-**Landed 2026-08-24** (see decisions.md):
-- [x] Feed favicon pipeline: icon extracted at ingest (RSS `<image>`, Atom
+**Landed 2026-08-24** (see decisions.md):- [x] Feed favicon pipeline: icon extracted at ingest (RSS `<image>`, Atom
       `<logo>`/`<icon>`) into `feeds.icon_url` (GReader `iconUrl` populates
       automatically); web sidebar shows feed icons with a domain-favicon fallback.
 - [x] Immediate first fetch: subscribing (web UI, OPML import, or GReader client)
@@ -181,6 +180,15 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       — the chunk's "perf ≥ 90" exit is closed by decision, not by score; the
       1k-row-smooth-scroll exit is met. See decisions.md for the pass results and the
       tooltip-revert call.
+
+**Landed 2026-08-25** (see decisions.md):
+- [x] **Public marketing site** — new `apps/site` (Astro, static) served at the apex
+      `sparklerss.com` (www 301-redirects to apex). Landing page + setup guide, styled to
+      match the reader's design language (Space Mono + DM Sans, terminal-inspired
+      dark/light). New `tf/modules/site` (S3 + CloudFront + apex/www DNS) and a second
+      apex+www ACM cert in the dns module; deploy pipeline publishes `apps/site/dist` and
+      invalidates CloudFront. *Exit: apex serves the site, www redirects, deploy pipeline
+      publishes it.*
 
 **Remaining (in suggested order):**
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);

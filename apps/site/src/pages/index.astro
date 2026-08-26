@@ -1,0 +1,247 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Self-hostable, serverless RSS for the web and native clients">
+  <section class="hero">
+    <div class="container">
+      <p class="eyebrow">✦ serverless · self-hostable · open</p>
+      <h1>Your feeds, yours.<br /><span class="accent">No server to babysit.</span></h1>
+      <p class="lede">
+        Sparkle RSS is a self-hostable RSS / Atom reader rebuilt from scratch as a fully
+        serverless AWS application. It drops straight into NetNewsWire, Reeder, Capy,
+        Vienna, and every other Google Reader–compatible client — and ships with a calm,
+        keyboard-first web reader of its own.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-lg" href="/setup">self-host it</a>
+        <a class="btn btn-ghost" href="https://app.sparklerss.com">open the live app</a>
+      </div>
+      <ul class="hero-stats">
+        <li><span class="stat-num">$0</span> idle monthly server cost</li>
+        <li><span class="stat-num">≈$12</span> worst-case monthly, total</li>
+        <li><span class="stat-num">TypeScript</span> end to end</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="features" class="features">
+    <div class="container">
+      <p class="eyebrow">features</p>
+      <h2>Everything you expect from a reader.<br />None of the upkeep.</h2>
+      <div class="grid">
+        <article class="card">
+          <span class="chip">sync</span>
+          <h3>Drop-in for native clients</h3>
+          <p>
+            Full wire-level compatibility with the Google Reader API that NetNewsWire and
+            friends speak natively. Point any compatible app at your server and it just works.
+          </p>
+        </article>
+        <article class="card">
+          <span class="chip">web</span>
+          <h3>A reader that respects your attention</h3>
+          <p>
+            Terminal-inspired, typography-first, keyboard-driven. Collapsible sidebar,
+            infinite scroll, virtualized lists, dark and light schemes.
+          </p>
+        </article>
+        <article class="card">
+          <span class="chip">serverless</span>
+          <h3>AWS, no servers to patch</h3>
+          <p>
+            Aurora DSQL, Lambda, CloudFront, Cognito. Near-zero cost when idle, auto-scales
+            when you catch up after a week away. Nothing to SSH into.
+          </p>
+        </article>
+        <article class="card">
+          <span class="chip">open</span>
+          <h3>Yours, reproducibly</h3>
+          <p>
+            Everything is defined in Terraform. Deploy the exact same stack from a clean
+            checkout — no undocumented manual steps, no long-lived cloud keys.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture" class="architecture">
+    <div class="container">
+      <p class="eyebrow">architecture</p>
+      <h2>A fully serverless pipeline</h2>
+      <ol class="arch-list">
+        <li>
+          <span class="arch-idx">01</span>
+          <div>
+            <h3>Ingestion</h3>
+            <p>
+              An EventBridge scheduler wakes every five minutes, fans subscriptions out to
+              Lambda workers, and refreshes feeds with conditional GETs and per-feed error
+              backoff.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="arch-idx">02</span>
+          <div>
+            <h3>Data</h3>
+            <p>
+              Aurora DSQL — a truly serverless Postgres with zero idle compute. Schema stays
+              vanilla so the same migrations run locally in Docker and in production.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="arch-idx">03</span>
+          <div>
+            <h3>API + reader</h3>
+            <p>
+              A Hono API on Lambda exposes the Google Reader–compatible surface and a
+              first-party JSON API. A React reader lives on CloudFront. Your browser talks to
+              Cognito; native clients use per-user API tokens.
+            </p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <h2>Run your own reading flow.</h2>
+      <p>The setup is a documented walkthrough — a few cloud resources and one pipeline.</p>
+      <a class="btn btn-lg" href="/setup">read the setup guide</a>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    padding: clamp(4rem, 10vw, 8rem) 0 clamp(3rem, 6vw, 5rem);
+  }
+  .hero h1 {
+    max-width: 900px;
+  }
+  .hero .accent {
+    color: var(--accent);
+  }
+  .lede {
+    max-width: 640px;
+    color: var(--text-dim);
+    font-size: 1.15rem;
+    margin-top: 1.5rem;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+  }
+  .btn-lg {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--accent);
+    border-color: var(--a-6);
+  }
+  .btn-ghost:hover {
+    background: var(--a-6);
+    color: #fff;
+  }
+  .hero-stats {
+    list-style: none;
+    display: flex;
+    gap: clamp(1.5rem, 5vw, 3.5rem);
+    flex-wrap: wrap;
+    padding: 0;
+    margin: 3rem 0 0;
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+  }
+  .hero-stats li {
+    display: flex;
+    flex-direction: column;
+  }
+  .stat-num {
+    color: var(--text);
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+
+  .features {
+    background: var(--bg-elev);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .features h2 {
+    margin-bottom: 2.5rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+  }
+  .card {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    border-radius: 4px;
+    padding: 1.5rem;
+  }
+  .card .chip {
+    margin-bottom: 1rem;
+  }
+  .card h3 {
+    margin: 0 0 0.5rem;
+  }
+  .card p {
+    color: var(--text-dim);
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .arch-list {
+    list-style: none;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  .arch-list li {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  .arch-idx {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 0.9rem;
+    min-width: 2.5rem;
+    padding-top: 0.25rem;
+  }
+  .arch-list h3 {
+    margin-bottom: 0.25rem;
+  }
+  .arch-list p {
+    color: var(--text-dim);
+    max-width: 640px;
+    margin: 0;
+  }
+
+  .cta {
+    text-align: center;
+    border-top: 1px solid var(--border);
+    background: var(--accent-chip);
+  }
+  .cta p {
+    color: var(--text-dim);
+    margin: 1rem 0 2rem;
+  }
+</style>

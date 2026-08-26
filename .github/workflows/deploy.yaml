@@ -85,6 +85,8 @@ jobs:
           echo "db_endpoint=$(terraform output -raw db_endpoint)" >> "$GITHUB_OUTPUT"
           echo "assets_bucket=$(terraform output -raw assets_bucket_name)" >> "$GITHUB_OUTPUT"
           echo "distribution_id=$(terraform output -raw distribution_id)" >> "$GITHUB_OUTPUT"
+          echo "site_bucket=$(terraform output -raw site_bucket_name)" >> "$GITHUB_OUTPUT"
+          echo "site_distribution_id=$(terraform output -raw site_distribution_id)" >> "$GITHUB_OUTPUT"
 
       - name: db migrations
         working-directory: ${{ github.workspace }}
@@ -98,3 +100,11 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id "${{ steps.tfout.outputs.distribution_id }}" \
             --paths "/index.html" "/assets/*"
+
+      - name: publish site assets
+        if: steps.tfout.outputs.site_bucket != ''
+        run: |
+          aws s3 sync apps/site/dist "s3://${{ steps.tfout.outputs.site_bucket }}" --delete
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.tfout.outputs.site_distribution_id }}" \
+            --paths "/*"

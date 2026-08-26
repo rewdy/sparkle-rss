@@ -67,7 +67,8 @@ sparkle-rss/
 ├─ docs/                  # this documentation set (source of truth)
 ├─ apps/
 │  ├─ api/                # Hono apps + Lambda entry points (api, ingest orchestrator, worker)
-│  └─ web/                # Vite + React SPA
+│  ├─ web/                # Vite + React SPA (the reader)
+│  └─ site/               # Astro static marketing site + setup guide (served at the apex)
 ├─ packages/
 │  ├─ core/               # domain services shared by all entry points (feed parsing, greader codecs)
 │  ├─ db/                 # Drizzle schema, migrations, DSQL/local client factories

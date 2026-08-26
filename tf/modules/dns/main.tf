@@ -43,3 +43,43 @@ resource "aws_acm_certificate_validation" "app" {
   certificate_arn         = aws_acm_certificate.app.arn
   validation_record_fqdns = [for record in aws_route53_record.app_validation : record.fqdn]
 }
+
+# Apex + www certificate for the public marketing site. Validation reuses the
+# same DNS pattern. Built only when create_site_cert is enabled.
+resource "aws_acm_certificate" "site" {
+  count                     = var.create_site_cert ? 1 : 0
+  provider                  = aws.us_east_1
+  domain_name               = var.root_domain
+  subject_alternative_names = ["www.${var.root_domain}"]
+  validation_method         = "DNS"
+
+  tags = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_route53_record" "site_validation" {
+  provider = aws.us_east_1
+  for_each = var.create_site_cert ? {
+    for dvo in aws_acm_certificate.site[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  } : {}
+
+  zone_id = data.aws_route53_zone.root.zone_id
+  name    = each.value.name
+  type    = each.value.type
+  ttl     = 60
+  records = [each.value.record]
+}
+
+resource "aws_acm_certificate_validation" "site" {
+  count                   = var.create_site_cert ? 1 : 0
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.site[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.site_validation : record.fqdn]
+}

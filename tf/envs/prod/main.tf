@@ -29,9 +29,10 @@ provider "aws" {
 }
 
 module "dns" {
-  source       = "../../modules/dns"
-  root_domain  = var.root_domain
-  app_hostname = var.app_hostname
+  source           = "../../modules/dns"
+  root_domain      = var.root_domain
+  app_hostname     = var.app_hostname
+  create_site_cert = var.create_site
 }
 
 module "db" {
@@ -98,6 +99,16 @@ module "web" {
   }
 }
 
+module "site" {
+  count           = var.create_site ? 1 : 0
+  source          = "../../modules/site"
+  site_fqdn       = var.root_domain
+  www_fqdn        = "www.${var.root_domain}"
+  certificate_arn = module.dns.site_certificate_arn
+  route53_zone_id = module.dns.zone_id
+  tags            = { component = "site" }
+}
+
 module "ingest" {
   source           = "../../modules/ingest"
   lambda_zip_dir   = var.lambda_zip_dir
@@ -141,4 +152,16 @@ output "assets_bucket_name" {
 
 output "distribution_id" {
   value = module.web.distribution_id
+}
+
+output "site_url" {
+  value = var.create_site ? module.site[0].site_url : ""
+}
+
+output "site_bucket_name" {
+  value = var.create_site ? module.site[0].assets_bucket_name : ""
+}
+
+output "site_distribution_id" {
+  value = var.create_site ? module.site[0].distribution_id : ""
 }

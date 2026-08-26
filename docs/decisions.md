@@ -271,3 +271,32 @@ Lesson: watch both workflows — a green deploy is not a green repo.
   code — `Subscription.iconUrl` exists end-to-end (API, types) but the sidebar
   renders no icons at all. Flagged for a future chunk or a decision that the item
   was never actually shipped.
+
+## Public marketing site at the apex (2026-08-25)
+
+Added `apps/site` (Astro, static) served at `sparklerss.com`; `www.sparklerss.com`
+301-redirects to the apex. Decisions:
+
+- **Astro over the existing Vite/React stack.** The site is static marketing content, not
+  an app; Astro ships zero-JS pages and a content-friendly authoring model. It joins the
+  workspace via `pnpm -r --if-present build/typecheck`, so CI/CD picks it up with no
+  workflow changes beyond the publish step.
+- **New `tf/modules/site`, not a reuse of `web`.** The web module is tightly coupled to the
+  SPA (SPA rewrite, `/api/*` origins, SPA-specialized CSP). The site is S3-only with its
+  own CloudFront distribution, security-headers policy (CSP allows Google Fonts), and a
+  single CloudFront Function that both redirects `www`→apex and maps pretty URLs
+  (`/setup/`) to the `index.html` files Astro emitted — S3 REST origins don't auto-serve
+  index.html for directory paths.
+- **Second ACM cert in the dns module** for apex + `www` SAN (us-east-1, DNS validation),
+  gated by `create_site_cert`; the site module is `count`-gated by `create_site` so a fork
+  can disable it cleanly.
+- **Design language matches the reader** (Space Mono + DM Sans, terminal-inspired
+  dark/light, same neutral/accent palette) so the marketing site and app feel like one
+  product. Landing page is intentionally "spiced up" relative to the app's calm reader.
+- **Setup guide is a single hand-authored `/setup` page** for v1; may move to a content
+  collection if it grows.
+
+- **Deploy-role S3 scope widened for the site bucket.** The OIDC deploy role's
+  `WebAssetsBucket` statement was scoped to `sparkle-rss-web-*` only; the new site bucket
+  (`sparkle-rss-site-*`) would have failed both `terraform apply` and the site publish step.
+  Added the site bucket ARNs to the same statement.

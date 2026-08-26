@@ -13,3 +13,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "create_site_cert" {
+  description = "Also provision a validated us-east-1 cert covering the apex and www for the marketing site"
+  type        = bool
+  default     = false
+}

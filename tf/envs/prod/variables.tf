@@ -55,3 +55,9 @@ variable "content_security_policy" {
   type        = string
   default     = null
 }
+
+variable "create_site" {
+  description = "Publish the public marketing site at the apex (and www redirect)"
+  type        = bool
+  default     = true
+}

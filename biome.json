@@ -11,7 +11,8 @@
       "!**/dist",
       "!**/coverage",
       "!**/drizzle",
-      "!**/.terraform"
+      "!**/.terraform",
+      "!**/.astro"
     ]
   },
   "formatter": {

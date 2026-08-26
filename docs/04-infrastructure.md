@@ -5,9 +5,11 @@
 ```
 tf/
 ├─ modules/
-│  ├─ dns/          # Route53 zone lookup/records, ACM cert (us-east-1 for edge)
+│  ├─ dns/          # Route53 zone lookup, ACM certs (us-east-1 for edge): app hostname
+│  │                # AND apex+www for the marketing site, DNS validation
 │  ├─ web/          # S3 bucket + OAC, CloudFront distribution,
 │  │                # CloudFront Function (SPA fallback), response-headers policy
+│  ├─ site/         # Static S3 + CloudFront for apps/site at the apex (www redirect)
 │  ├─ auth/         # Cognito user pool, app client, hosted-UI domain, groups
 │  ├─ api/          # HTTP API v2 (routes, JWT authorizer), Lambda(s),
 │  │                # execution roles, log groups, alarms
@@ -46,8 +48,9 @@ Conventions:
 
 | Module | Resources |
 | --- | --- |
-| dns | Route53 zone (or data-source an existing one), A/AAAA alias → CloudFront, ACM cert + DNS validation (certs in us-east-1) |
+| dns | Route53 zone (or data-source an existing one), ACM certs + DNS validation for the app hostname AND apex+www (certs in us-east-1) |
 | web | S3 bucket (private, OAC-only), CloudFront distribution (S3 + API GW origins, `/api/*` no-cache behavior, SPA rewrite function, security headers policy — CSP, HSTS 1y + includeSubDomains, X-Frame-Options DENY, nosniff, referrer-policy; verified live 2026-08-24, compression) |
+| site | S3 bucket (private, OAC-only), CloudFront distribution (S3 origin only), security headers policy (CSP incl. Google Fonts, HSTS), CloudFront Function: www→apex 301 redirect + pretty-URL→index.html rewrite; A/AAAA alias at apex and www |
 | auth | Cognito user pool (sign-up disabled), user pool client (PKCE, no secret, callback = site URL), hosted UI domain prefix, admin-created users are ops, not IaC |
 | api | HTTP API `{proxy+}` routes: `/api/greader.php/*` (no authorizer), `/api/v1/*` (Cognito JWT authorizer scoped by audience); `api` Lambda arm64 Node 22 (512 MB / 10 s), env `QUEUE_URL` + `sqs:SendMessage` on the ingest refresh queue — a successful subscribe (web, OPML import, or GReader client) enqueues the new feed immediately so it refreshes within seconds instead of waiting for the 5-minute schedule; default-route throttling 25/s rate / burst 50 (confirmed live 2026-08-24); structured access logs; 5xx/throttle alarms |
 | ingest | EventBridge Scheduler `rate(5 minutes)` → orchestrator Lambda (256 MB / 60 s); SQS standard queue (visibility 120 s, redrive maxReceiveCount 5) → worker Lambda (512 MB / 60 s, reserved concurrency 10); exposes refresh queue URL/ARN outputs consumed by the api module; DLQ depth alarm; DLQ redrive console for ops |
@@ -63,7 +66,7 @@ ci.yaml (pull_request + push to main — no deploy)
   pnpm install --frozen-lockfile
   pnpm lint && pnpm typecheck
   pnpm test                # vitest units + integration (service Postgres)
-  pnpm build               # web + lambda bundles (uploaded as artifact)
+  pnpm build               # web + lambda bundles + static marketing site (uploaded as artifact)
   tf: terraform fmt -check -recursive && init -backend=false && validate
   (no `terraform plan` output — solo-maintainer repo; the deploy job's plan is the
    reviewed artifact)
@@ -73,16 +76,18 @@ deploy.yaml (push to main; `paths-ignore: docs/**, *.md` — docs-only pushes sk
   OIDC assume deploy role
   terraform init (S3 backend) → collect build-time outputs (Cognito config)
   quality gate: pnpm lint && pnpm typecheck && pnpm test
-  pnpm build (web bundle gets VITE_COGNITO_ISSUER/CLIENT_ID from tf outputs; lambda zips)
+  pnpm build (web bundle gets VITE_COGNITO_ISSUER/CLIENT_ID from tf outputs; lambda zips; site)
   terraform plan -out=tfplan → terraform apply -auto-approve tfplan
   db migrations: pnpm --filter @sparkle/db exec tsx src/migrate.ts (DSQL IAM token)
   aws s3 sync apps/web/dist s3://$ASSETS_BUCKET --delete (+ CloudFront invalidation)
+  aws s3 sync apps/site/dist s3://$SITE_BUCKET --delete (+ CloudFront invalidation), gated
+     on the site module being enabled
 ```
 
 Deploy order in the pipeline: `terraform apply` (Lambdas + everything else) → DB
-migrations → web assets. Lambda-first is safe because migrations are forward-only and
-additive; a schema change that the *old* Lambda must survive is not a thing here (one
-deploy ships code + schema together).
+migrations → web assets → site assets. Lambda-first is safe because migrations are
+forward-only and additive; a schema change that the *old* Lambda must survive is not a
+thing here (one deploy ships code + schema together).
 
 ## Operational runbook essentials
 

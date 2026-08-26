@@ -123,10 +123,15 @@ data "aws_iam_policy_document" "deploy" {
   }
 
   statement {
-    sid       = "WebAssetsBucket"
-    effect    = "Allow"
-    actions   = ["s3:*"]
-    resources = ["arn:aws:s3:::sparkle-rss-web-*", "arn:aws:s3:::sparkle-rss-web-*/*"]
+    sid     = "WebAssetsBucket"
+    effect  = "Allow"
+    actions = ["s3:*"]
+    resources = [
+      "arn:aws:s3:::sparkle-rss-web-*",
+      "arn:aws:s3:::sparkle-rss-web-*/*",
+      "arn:aws:s3:::sparkle-rss-site-*",
+      "arn:aws:s3:::sparkle-rss-site-*/*",
+    ]
   }
 
   statement {
