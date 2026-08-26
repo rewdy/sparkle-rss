@@ -18,3 +18,6 @@ tfplan
 
 # astro generated types
 apps/site/.astro/
+
+# In repo to do list
+working-to-do-list.md
