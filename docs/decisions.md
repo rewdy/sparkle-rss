@@ -335,3 +335,24 @@ the already-working deploy role), then surfaced via the `plan_role_arn` output. 
 the repo variable `TF_PLAN_ROLE_ARN` is set (one-time, after the role exists), the plan
 job logs a notice and skips rather than failing — expected for the very PR that
 introduces the role.
+
+## Cognito hosted UI: custom domain + managed-login branding (2026-08-26)
+
+The login screen was the default Cognito look on an `amazoncognito.com` prefix domain.
+Two changes, all in Terraform:
+
+1. **Custom domain** `auth.sparklerss.com` — us-east-1 ACM cert + validation records in
+   the `dns` module, `aws_cognito_user_pool_domain` switched from prefix to FQDN, and a
+   Route53 A-alias to the Cognito-managed CloudFront distribution. This replaces the
+   prefix domain (one-time replacement; the old prefix name is freed). CSP
+   connect-src/frame-src now reference the custom domain automatically via the existing
+   `hosted_ui_domain` output.
+2. **Managed login branding** (`aws_cognito_managed_login_branding` on the SPA client) —
+   settings JSON in `tf/main.tf` mirrors the web app theme (accent indigo, neutral
+   palette, small radii) with light+dark variants. Managed login does not accept raw CSS;
+   assets (logo, favicon) are uploaded via the console and do not conflict with IaC
+   settings. Known provider quirk: any change to branding *assets* forces resource
+   replacement; settings-only edits update in place.
+
+Rejection considered: classic hosted-UI CSS customization — unreliable on prefix domains,
+no dark mode, deprecated direction vs managed login; skipped.

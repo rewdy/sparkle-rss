@@ -25,3 +25,9 @@ variable "site_fqdn" {
   type        = string
   default     = null
 }
+
+variable "auth_fqdn" {
+  description = "Full hostname for the Cognito hosted UI custom domain (e.g. auth.example.com). null skips the auth certificate."
+  type        = string
+  default     = null
+}
