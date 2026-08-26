@@ -1,6 +1,7 @@
 # Sparkle RSS deployment config.
-# Forks: adjust these, then `terraform init -backend-config=backend.conf`.
-# Everything here is safe to commit — no secrets.
+# Forks adjust these. The S3 state backend is configured inline in tf/main.tf
+# (edit the bucket/key there for your own account). Everything here is safe to
+# commit — no secrets.
 app_domain = "app.sparklerss.com"
 
 # Publish the marketing site at the apex + www redirect (our install).

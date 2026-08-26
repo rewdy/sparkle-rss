@@ -50,13 +50,18 @@ pnpm install</code></pre>
       <div class="step">
         <span class="arch-idx">03</span>
         <div>
-          <h3>Configure the environment</h3>
+          <h3>Configure for your account</h3>
           <p>
-            The prod environment is parameterized in <code>tf/envs/prod/variables.tf</code> —
-            set your domain, hostnames, and the GitHub repo you'll deploy from. Terraform state
-            lives in S3; for a laptop run, copy the committed example config.
+            Deployment is a single, fork-friendly config. Edit
+            <code>tf/terraform.tfvars</code> (backed by <code>tf/variables.tf</code>): set your
+            <code>app_domain</code>, whether to publish the marketing site, and sign-up policy.
+            Terraform state lives in S3, configured inline in <code>tf/main.tf</code> — point it
+            at your own bucket. No env vars or extra backend files.
           </p>
-          <pre><code>cp tf/envs/prod/backend.conf.example tf/envs/prod/backend.conf</code></pre>
+          <pre><code># tf/terraform.tfvars
+app_domain   = "app.example.com"
+deploy_site  = false   # most forks run app-only
+allow_signups = true   # or keep invite-only</code></pre>
         </div>
       </div>
 
