@@ -83,7 +83,6 @@ jobs:
       contents: read
     env:
       TF_DIR: tf
-      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
       - uses: actions/checkout@v4
@@ -111,11 +110,7 @@ jobs:
             echo "::notice::TF_PLAN_ROLE_ARN not set yet (this PR bootstraps the plan role). Skipping plan."
             exit 0
           fi
-          terraform -chdir=$TF_DIR init \
-            -backend-config="bucket=${STATE_BUCKET}" \
-            -backend-config="key=sparkle-rss/prod/terraform.tfstate" \
-            -backend-config="region=${AWS_REGION}" \
-            -backend-config="use_lockfile=true"
+          terraform -chdir=$TF_DIR init
 
       - name: terraform plan
         env:

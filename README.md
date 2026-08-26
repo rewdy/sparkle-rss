@@ -13,8 +13,9 @@ A serverless, FreshRSS-compatible RSS reader on AWS. Full documentation lives in
 - Deploy: push to `main` → `deploy.yaml` (OIDC-assumed role; no static keys)
 - Fork configuration: edit `tf/terraform.tfvars` (backed by `tf/variables.tf`, the
   single infra config: app_domain, deploy_site, site_domain, allow_signups,
-  prefixes/repo); state bucket via the `TF_STATE_BUCKET` repo variable or
-  `tf/backend.conf`, plus GitHub variables `AWS_DEPLOY_ROLE_ARN` and `AWS_REGION`.
+  prefixes/repo) and, for your own state bucket, the inline S3 backend in
+  `tf/main.tf`. No env vars or backend files needed. GitHub variables:
+  `AWS_DEPLOY_ROLE_ARN` and `AWS_REGION`.
 
 ## Quick start (local)
 

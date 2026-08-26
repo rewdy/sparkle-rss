@@ -19,17 +19,17 @@ tf/
 │  └─ github-oidc/  # OIDC provider lookup/creation + deploy role for CI
 ├─ variables.tf        # THE single fork config: app_domain, deploy_site,
 │                      # site_domain, allow_signups, prefixes, repo
-├─ main.tf             # module composition (backend block lives here)
+├─ main.tf             # module composition + inline S3 backend block
 ├─ terraform.tfvars    # committed defaults (no secrets)
-└─ backend.conf.example  # copy to backend.conf for laptop runs (gitignored)
 ```
 
 Conventions:
 
-- **State**: single state per environment in S3 (`drewmey--devops-tf-state` bucket,
-  key `sparkle-rss/prod/terraform.tfstate`, `use_lockfile = true` — no DynamoDB lock
-  table). Bucket name is passed via `-backend-config` flags (CI reads the
-  `TF_STATE_BUCKET` repo variable) or a local `backend.conf`; forks change one or both.
+- **State**: single state at the `sparkle-rss/prod/terraform.tfstate` key in the
+  `drewmey--devops-tf-state` bucket, `use_lockfile = true` — no DynamoDB lock table.
+  The S3 backend is configured inline in `tf/main.tf`, so `terraform plan`/`apply` just
+  work with no flags, env vars, or backend files. Forks edit those backend fields to use
+  their own bucket.
   One root module (`tf/`) is live; there is no separate dev environment — the ephemeral
   `tf/envs/dev` spike env from bring-up has been removed (its resources were destroyed).
   Gotcha from

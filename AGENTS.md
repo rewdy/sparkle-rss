@@ -44,11 +44,10 @@ docs/            Source of truth for design
   `docs/07-local-development.md`. DSQL has no emulator — production parity comes from
   keeping all SQL extension-free.
 - Terraform root is `tf/`; `tf/variables.tf` is the single fork-facing config
-  (app_domain, deploy_site, site_domain, allow_signups, prefixes/repo). State lives
-
-  in S3 (`drewmey--devops-tf-state`, key `sparkle-rss/prod/terraform.tfstate`).
-  Laptop runs need `cp tf/backend.conf.example tf/backend.conf` first (gitignored).
-  Deploys happen by pushing to main; hand-applies are for breakage only.
+  (app_domain, deploy_site, site_domain, allow_signups, prefixes/repo). The S3 state
+  backend is configured inline in `tf/main.tf` (no flags/env vars), so a local
+  `terraform -chdir=tf plan` just works. Deploys happen by pushing to main;
+  hand-applies are for breakage only.
 
 ## Architecture invariants (do not break without a decision-log entry)
 

@@ -1,8 +1,0 @@
-# Copy to backend.conf for laptop runs:
-#   terraform -chdir=tf init -backend-config=tf/backend.conf
-# CI passes these as -backend-config flags instead; the bucket name is a repo
-# variable there so forks only change their GitHub settings + this file.
-bucket       = "drewmey--devops-tf-state"
-key          = "sparkle-rss/prod/terraform.tfstate"
-region       = "us-east-1"
-use_lockfile = true

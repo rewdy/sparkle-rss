@@ -1,9 +1,14 @@
 terraform {
   required_version = ">= 1.10"
 
-  # Real backend values come from -backend-config flags (CI) or a local
-  # tf/backend.conf (copy from tf/backend.conf.example).
-  backend "s3" {}
+  # State backend is configured inline — no -backend-config flags or env vars
+  # needed. Forks change these four values to point at their own bucket.
+  backend "s3" {
+    bucket       = "drewmey--devops-tf-state"
+    key          = "sparkle-rss/prod/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true
+  }
 }
 
 locals {
