@@ -61,3 +61,39 @@
   padding: var(--mantine-spacing-xs);
   background: var(--mantine-color-dark-7);
 }
+
+/* Tap-away backdrop for the mobile sidebar drawer below the `sm` breakpoint */
+.mobile-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  top: var(--app-shell-header-offset, 44px);
+  background: rgba(0, 0, 0, 0.5);
+  z-index: calc(var(--app-shell-navbar-z-index, 101) - 1);
+  display: none;
+}
+
+@media (max-width: 47.99em) {
+  .mobile-nav-backdrop {
+    display: block;
+  }
+
+  /* Comfortable touch targets in the header and the reading pane toolbar */
+  [data-app-header] button,
+  [data-reading-pane] button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Full-bleed reading surface: pull content out to the screen edges */
+  .reading-pane-stack {
+    padding-left: var(--mantine-spacing-md) !important;
+    padding-right: var(--mantine-spacing-md) !important;
+  }
+
+  /* Prevent iOS Safari from auto-zooming inputs/selects on focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

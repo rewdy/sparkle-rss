@@ -1,4 +1,4 @@
-import { ActionIcon, Button, Divider, Group, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Burger, Button, Divider, Group, Text, Tooltip } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import { LuMoon, LuRefreshCw, LuSparkles, LuSun } from 'react-icons/lu';
@@ -12,11 +12,15 @@ export function Topbar({
   title,
   filter,
   onFilterChange,
+  navOpened,
+  onToggleNav,
 }: {
   stream: StreamDescriptor;
   title: string;
   filter: 'all' | 'unread';
   onFilterChange: (f: 'all' | 'unread') => void;
+  navOpened: boolean;
+  onToggleNav: () => void;
 }): ReactElement {
   const qc = useQueryClient();
   const markAll = useMarkAllRead(stream);
@@ -25,6 +29,13 @@ export function Topbar({
   return (
     <Group justify="space-between" h="100%" px="md" wrap="nowrap" miw={0}>
       <Group gap="sm" wrap="nowrap" miw={0}>
+        <Burger
+          opened={navOpened}
+          onClick={onToggleNav}
+          hiddenFrom="sm"
+          size="sm"
+          aria-label="toggle navigation"
+        />
         <Text
           size="sm"
           fw={700}
@@ -36,15 +47,20 @@ export function Topbar({
           <LuSparkles size={15} />
           Sparkle RSS
         </Text>
-        <Divider orientation="vertical" c="dimmed" style={{ alignSelf: 'center', height: 14 }} />
-        <Text size="sm" truncate={true} maw={320}>
+        <Divider
+          orientation="vertical"
+          c="dimmed"
+          hiddenFrom="sm"
+          style={{ alignSelf: 'center', height: 14 }}
+        />
+        <Text size="sm" truncate={true} maw={320} hiddenFrom="sm">
           {title}
         </Text>
       </Group>
 
       <Group gap="xs" wrap="nowrap">
         {stream.kind !== 'starred' && stream.kind !== 'unread' && (
-          <Button.Group>
+          <Button.Group hiddenFrom="sm">
             <Button
               size="compact-xs"
               variant={filter === 'all' ? 'default' : 'subtle'}
@@ -68,6 +84,7 @@ export function Topbar({
             <Button
               size="compact-xs"
               variant="default"
+              hiddenFrom="sm"
               loading={markAll.isPending}
               onClick={() => markAll.mutate(undefined)}
             >
