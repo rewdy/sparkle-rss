@@ -76,45 +76,25 @@ module "auth" {
   branding_settings             = local.managed_login_settings
 }
 
-# Managed login styling for the Cognito hosted UI, matched to the web app
-# theme (apps/web/src/theme.ts): DM Sans/Space Mono palette, accent indigo,
-# small radii, light + dark variants.
+# Managed login styling for the Cognito hosted UI. The AWS managed-login
+# Settings schema is categories/componentClasses/components; the earlier
+# colorScheme/componentClasses.{containers,inputs} keys were rejected by AWS
+# (UnknownProperty), which broke `terraform apply`. Radius + dark-mode scheme
+# are restored below; custom palette colors are deferred (add them via a
+# DescribeManagedLoginBrandingByClient read-modify-write, not by guessing).
 locals {
   managed_login_settings = jsonencode({
-    colorScheme = {
-      light = {
-        primary        = "#314394"
-        background     = "#fafafa"
-        headerFooter   = "#f1f1f2"
-        text           = "#222228"
-        textSecondary  = "#55555c"
-        error          = "#b3261e"
-        success        = "#2e6b34"
-        formBackground = "#ffffff"
-        border         = "#c4c4c9"
-        inputBorder    = "#9a9aa2"
-        inputText      = "#17171b"
-        link           = "#314394"
-      }
-      dark = {
-        primary        = "#8d9dd9"
-        background     = "#111114"
-        headerFooter   = "#17171b"
-        text           = "#f1f1f2"
-        textSecondary  = "#9a9aa2"
-        error          = "#f2b8b5"
-        success        = "#a5d6a7"
-        formBackground = "#17171b"
-        border         = "#33333a"
-        inputBorder    = "#55555c"
-        inputText      = "#fafafa"
-        link           = "#8d9dd9"
+    categories = {
+      global = {
+        colorSchemeMode = "AUTO"
       }
     }
     componentClasses = {
-      buttons    = { borderRadius = 3 }
-      inputs     = { borderRadius = 2 }
-      containers = { borderRadius = 4 }
+      buttons = { borderRadius = 3 }
+      input   = { borderRadius = 2 }
+    }
+    components = {
+      form = { borderRadius = 4 }
     }
   })
 }

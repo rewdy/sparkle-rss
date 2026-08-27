@@ -373,3 +373,19 @@ nothing could re-open it. First small-screen pass:
   insets on the reader and stream scroller (`viewport-fit=cover`), `≥40px` touch
   targets in header/reader, byline row hidden below `md`, iOS input auto-zoom
   suppressed with a `16px` floor, and `theme-color` meta follows light/dark.
+
+## Deploy fix: Cognito managed-login branding settings schema (2026-08-26)
+
+Since the auth branding PR, every `terraform apply` failed with
+`InvalidParameterException: UnknownProperty` for `$.colorScheme`,
+`$.componentClasses.containers`, and `$.componentClasses.inputs`. Those keys
+are not part of the AWS managed-login `Settings` schema: the valid top-level
+keys are `categories`, `componentClasses`, and `components`, and
+`componentClasses` only accepts `buttons`/`input`/etc. (no `containers`/`inputs`).
+Colors are not set via a `colorScheme` map.
+
+`tf/main.tf` now emits schema-valid settings: `categories.global.colorSchemeMode`
+(`AUTO`), `componentClasses.buttons/input.borderRadius`, and
+`components.form.borderRadius`. Custom accent/background colors are intentionally
+deferred — hand-coding them risks another rejected apply; the robust route is a
+`DescribeManagedLoginBrandingByClient` read-modify-write round-trip.
