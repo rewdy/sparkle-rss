@@ -63,7 +63,7 @@ shareable via query string).
 
 - Sidebar: fixed stream rows (Today, All unread, Starred, All items), scrollable
   folder/feed list, fixed footer (settings, sign out); unread badges per feed/folder.
-  At `< sm` the sidebar becomes a tap-away drawer toggled by a Burger in the top bar,
+  At `< sm` the sidebar becomes a full-screen drawer toggled by a Burger in the top bar,
   auto-closing on navigation. A desktop icon rail is deferred (`sidebarOpenAtom` reserved).
 - Article opens as a focused single-column reading pane (in-place overlay on desktop,
   full-screen full-bleed on mobile) at `<stream>/e/:id`. Back/Esc returns to the list

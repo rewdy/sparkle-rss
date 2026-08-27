@@ -252,9 +252,6 @@ export function Shell(): ReactElement {
         <Sidebar onNavigate={closeNav} />
       </AppShell.Navbar>
 
-      {/* Tap-away backdrop for the mobile drawer; hidden at/above `sm`. */}
-      {navOpened && <div className="mobile-nav-backdrop" onClick={closeNav} aria-hidden="true" />}
-
       <AppShell.Main style={{ position: 'relative' }} data-density={density}>
         {location === '/settings' ? (
           <Suspense

@@ -192,7 +192,7 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
 
 **Landed 2026-08-26** (see decisions.md):
 - [x] **Mobile styling pass** — small-screen pass on the reader. The sidebar collapse
-  shipped with no way to re-open it: a top-bar Burger now toggles it as a tap-away drawer
+  shipped with no way to re-open it: a top-bar Burger now toggles it as a full-screen drawer
   below `sm` (auto-closing on navigation). Top bar de-crams on phones (Burger + brand +
   refresh/theme; stream title, all/unread filter, and mark-all-read move to desktop-only).
   Reading pane goes full-bleed with `100dvh` heights, iOS safe-area insets, a hidden
