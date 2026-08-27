@@ -362,12 +362,13 @@ no dark mode, deprecated direction vs managed login; skipped.
 The reader had a "mobile collapse" that was unusable: the sidebar hid below `sm` but
 nothing could re-open it. First small-screen pass:
 
-- **Top-bar Burger toggles the sidebar as a tap-away drawer** below `sm`, auto-closing
-  on navigation (Mantine AppShell `collapsed: { mobile }` + a manual backdrop since
-  v9 ships no built-in one).
-- **Top bar de-crams on phones** via `hiddenFrom="sm"`: stream title, the all/unread
-  filter group, and "mark all read" become desktop-only (stream switching incl.
-  All-unread vs All-items already lives in the sidebar drawer).
+- **Top-bar Burger toggles the sidebar as a full-screen drawer** below `sm`, auto-closing
+  on navigation (Mantine AppShell `collapsed: { mobile }`; Mantine forces the mobile
+  navbar to full width, so there is no tap-away backdrop — close via the Burger toggle or
+  by selecting a list item).
+- **Top bar de-crams on phones** via `visibleFrom="sm"`: stream title, the all/unread
+  filter group, and "mark all read" become desktop-only; the Burger shows on mobile only
+  (stream switching incl. All-unread vs All-items already lives in the sidebar drawer).
 - **Reading pane goes full-bleed**: `100dvh` heights, `env(safe-area-inset-bottom)`
   insets on the reader and stream scroller (`viewport-fit=cover`), `≥40px` touch
   targets in header/reader, byline row hidden below `md`, iOS input auto-zoom

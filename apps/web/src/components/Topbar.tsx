@@ -50,17 +50,17 @@ export function Topbar({
         <Divider
           orientation="vertical"
           c="dimmed"
-          hiddenFrom="sm"
+          visibleFrom="sm"
           style={{ alignSelf: 'center', height: 14 }}
         />
-        <Text size="sm" truncate={true} maw={320} hiddenFrom="sm">
+        <Text size="sm" truncate={true} maw={320} visibleFrom="sm">
           {title}
         </Text>
       </Group>
 
       <Group gap="xs" wrap="nowrap">
         {stream.kind !== 'starred' && stream.kind !== 'unread' && (
-          <Button.Group hiddenFrom="sm">
+          <Button.Group visibleFrom="sm">
             <Button
               size="compact-xs"
               variant={filter === 'all' ? 'default' : 'subtle'}
@@ -84,7 +84,7 @@ export function Topbar({
             <Button
               size="compact-xs"
               variant="default"
-              hiddenFrom="sm"
+              visibleFrom="sm"
               loading={markAll.isPending}
               onClick={() => markAll.mutate(undefined)}
             >
