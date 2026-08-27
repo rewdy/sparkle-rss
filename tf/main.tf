@@ -86,7 +86,7 @@ locals {
   managed_login_settings = jsonencode({
     categories = {
       global = {
-        colorSchemeMode = "AUTO"
+        colorSchemeMode = "DARK"
       }
     }
     componentClasses = {

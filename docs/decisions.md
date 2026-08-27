@@ -389,3 +389,8 @@ Colors are not set via a `colorScheme` map.
 `components.form.borderRadius`. Custom accent/background colors are intentionally
 deferred — hand-coding them risks another rejected apply; the robust route is a
 `DescribeManagedLoginBrandingByClient` read-modify-write round-trip.
+
+Follow-up (same day): the first fix used `colorSchemeMode = "AUTO"`, which AWS
+rejects as `InvalidValue` — the API only accepts `LIGHT` or `DARK` (the `AUTO`
+option exists in the web console only). Set to `"DARK"` to match the app's
+dark-first default.
