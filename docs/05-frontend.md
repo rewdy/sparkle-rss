@@ -39,9 +39,10 @@ implemented as a URL route change via wouter `navigate`, so browser back/forward
 works: selecting an entry pushes `<stream>/e/:id`, `j`/`k` inside the reader push the
 sibling entry's route (back walks them), and closing the reader (back button/Esc) replaces
 back to the bare stream path. Deep links to an entry id render from the loaded list cache or
-fetch it via `GET /api/v1/entries/:id`; a 404 closes back to the stream. Moving the
-`?filter=`/`?sort=` query state into the URL is a recognized follow-up (views are not yet
-shareable via query string).
+fetch it via `GET /api/v1/entries/:id`; a 404 closes back to the stream. View preferences
+(`filter`, `sort`) live in the query string (`?filter=unread&sort=asc`) as of a later
+cleanup, so views are shareable deep links and back/forward restores them; the reader URL
+carries the same params so they survive opening and closing an article.
 
 ## Layout: "minimal reader"
 
@@ -92,7 +93,8 @@ shareable via query string).
 - **TanStack Query owns everything from the server.** Query keys:
   `['entries', streamKey, {filter, sort}]` — `streamKey` distinguishes `all` / `starred` /
   `today` / `unread` / `feed:<id>` / `folder:<id>`, and `today` appends the local date
-  (`today:2026-08-24`) so the key rolls over at midnight; `['entry', id]` (single-entry
+  (`today:2026-08-24`) so the key rolls over at midnight; a midnight timer re-renders the
+  tree so an open tab rolls `today` over without navigation. `['entry', id]` (single-entry
   fetch for deep links not in the loaded list); `['unread-counts']`,
   `['subscriptions']`, `['folders']`, `['me']`. Infinite queries use our opaque cursor.
 - Mutations: `markRead`, `toggleStar` (optimistic set, rollback on error),
@@ -101,11 +103,14 @@ shareable via query string).
 - **jotai owns ephemeral UI**: `colorSchemeAtom`, `themeIdAtom`, `sidebarOpenAtom`,
   `markReadOnOpenAtom` (reading prefs also mirrored into
   `user_settings.data` via `/api/v1/me/settings` — server = source of truth across
-  devices; local `sparkle.ui` localStorage is the pre-mount first-paint fallback). The
-  **open entry is not UI state**: it is derived from the URL (`<stream>/e/:id`) by
-  `parseRoute`, so there is no selected-entry atom.
+  devices; local `sparkle.ui` localStorage is the pre-mount first-paint fallback), plus
+  `todayRolloverAtom` (a midnight tick). The **open entry is not UI state**: it is derived
+  from the URL (`<stream>/e/:id`) by `parseRoute`, so there is no selected-entry atom; the
+  stream `filter`/`sort` are URL query params, not atoms. `applySettings` mirrors server
+  settings into the atoms after the first load via the default store (setting `atom.init`
+  post-mount is a no-op).
 - No cross-contamination: no server payloads inside atoms, no fetches outside
-  react-query.
+  react-query. The API client retries a 401 once after a silent token renewal.
 
 ## API client
 
