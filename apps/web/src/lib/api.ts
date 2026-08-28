@@ -1,4 +1,4 @@
-import { accessToken, devAuthBypassed } from './auth';
+import { accessToken, devAuthBypassed, renewToken } from './auth';
 import { localMidnightIso } from './keys';
 import type {
   Entry,
@@ -20,18 +20,30 @@ export class ApiError extends Error {
   }
 }
 
+/** Shared fetch core: attaches auth, retries once on 401 after a silent renew. */
+async function authedFetch(path: string, init?: RequestInit, json?: boolean): Promise<Response> {
+  const doFetch = (token: string) =>
+    fetch(path, {
+      ...init,
+      headers: {
+        ...(json ? { Accept: 'application/json' } : {}),
+        Authorization: `Bearer ${token}`,
+        ...(devAuthBypassed ? { 'X-Dev-User': 'dev-user' } : {}),
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...init?.headers,
+      },
+    });
+
+  let res = await doFetch(await accessToken());
+  if (res.status === 401) {
+    // Credentials were rejected server-side: renew once and retry.
+    res = await doFetch(await renewToken());
+  }
+  return res;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await accessToken();
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...(devAuthBypassed ? { 'X-Dev-User': 'dev-user' } : {}),
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init?.headers,
-    },
-  });
+  const res = await authedFetch(path, init, true);
   if (!res.ok) {
     throw new ApiError(res.status, `${res.status} ${res.statusText}`);
   }
@@ -39,16 +51,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 function raw(path: string, init?: RequestInit): Promise<Response> {
-  return accessToken().then((token) =>
-    fetch(path, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(devAuthBypassed ? { 'X-Dev-User': 'dev-user' } : {}),
-        ...init?.headers,
-      },
-    }),
-  );
+  return authedFetch(path, init, false);
 }
 
 export const api = {

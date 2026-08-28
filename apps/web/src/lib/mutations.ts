@@ -14,7 +14,9 @@ export function useMarkRead() {
       const entriesSnapshot = qc.getQueriesData<{ pages: Array<{ items: Entry[] }> }>({
         queryKey: ['entries'],
       });
-      const entrySnapshots = ids.map((id) => [qk.entry(id), qc.getQueryData(qk.entry(id))] as const);
+      const entrySnapshots = ids.map(
+        (id) => [qk.entry(id), qc.getQueryData(qk.entry(id))] as const,
+      );
 
       // optimistic: flip flags in every cached entries page
       qc.setQueriesData<{ pages: Array<{ items: Array<{ id: string; isRead: boolean }> }> }>(
@@ -58,7 +60,9 @@ export function useToggleStar() {
       const entriesSnapshot = qc.getQueriesData<{ pages: Array<{ items: Entry[] }> }>({
         queryKey: ['entries'],
       });
-      const entrySnapshots = ids.map((id) => [qk.entry(id), qc.getQueryData(qk.entry(id))] as const);
+      const entrySnapshots = ids.map(
+        (id) => [qk.entry(id), qc.getQueryData(qk.entry(id))] as const,
+      );
       qc.setQueriesData<{ pages: Array<{ items: Array<{ id: string; isStarred: boolean }> }> }>(
         { queryKey: ['entries'] },
         (data) =>

@@ -62,11 +62,21 @@ export async function accessToken(): Promise<string> {
   if (devAuthBypassed) return 'dev-token';
   const user = await um().getUser();
   if (!user || user.expired) {
-    const renewed = await um()
-      .signinSilent()
-      .catch(() => null);
-    if (!renewed?.access_token) throw new Error('session expired');
-    return renewed.access_token;
+    return renewToken();
   }
   return user.access_token;
+}
+
+/** Force a silent token renewal. Throws if the refresh throws and fails loudly.
+ * Used by the API client to retry a 401 with fresh credentials. */
+export async function renewToken(): Promise<string> {
+  if (devAuthBypassed) return 'dev-token';
+  const renewed = await um()
+    .signinSilent()
+    .catch((e: unknown) => {
+      logout();
+      throw new Error('session expired', { cause: e });
+    });
+  if (!renewed?.access_token) throw new Error('session expired');
+  return renewed.access_token;
 }

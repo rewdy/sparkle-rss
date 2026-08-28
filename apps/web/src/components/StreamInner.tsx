@@ -13,14 +13,12 @@ export function StreamInner({
   sort,
   activeEntryId,
   onSelect,
-  onEntriesChange,
 }: {
   stream: StreamDescriptor;
   filter: 'all' | 'unread';
   sort: 'asc' | 'desc';
   activeEntryId: string | null;
   onSelect: (entry: Entry) => void;
-  onEntriesChange: (entries: Entry[]) => void;
 }): ReactElement {
   const query = useInfiniteQuery({
     queryKey: qk.entries(stream, filter, sort),
@@ -37,12 +35,6 @@ export function StreamInner({
   });
 
   const entries = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data]);
-  const entriesRef = useRef<Entry[]>(entries);
-  entriesRef.current = entries;
-
-  useEffect(() => {
-    onEntriesChange(entries);
-  }, [entries, onEntriesChange]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);

@@ -1,9 +1,9 @@
 import { AppShell, Center, Loader } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useAtomValue, useSetAtom } from 'jotai';
 import type { ReactElement } from 'react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { PageTitle } from '../components/PageTitle';
 import { ReaderPane } from '../components/ReaderPane';
@@ -73,23 +73,33 @@ export function Shell(): ReactElement {
 
   const subsQ = useQuery({ queryKey: qk.subscriptions, queryFn: api.subscriptions.list });
   const foldersQ = useQuery({ queryKey: qk.folders, queryFn: api.folders.list });
+  const settingsQ = useQuery({ queryKey: qk.settings, queryFn: api.settings.get });
 
+  // Reconcile server settings (source of truth) over the local first-paint
+  // fallback once the settings have loaded.
   useEffect(() => {
-    let cancelled = false;
-    void api.settings
-      .get()
-      .then((res) => {
-        if (!cancelled) applySettings({ ...loadLocalUi(), ...res.data });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (settingsQ.data) applySettings({ ...loadLocalUi(), ...settingsQ.data.data });
+  }, [settingsQ.data]);
 
-  // flat entry cache for keyboard navigation
-  const [entriesCache, setEntriesCache] = useState<Entry[]>([]);
-  const onEntriesChange = useCallback((entries: Entry[]) => setEntriesCache(entries), []);
+  // Flat entry list for keyboard navigation / seeding the reader. Reads the
+  // same infinite entries cache all stream views share (react-query coalesces
+  // identical keys), flattened via `select` — no local duplicate of server state.
+  const activeStream = descriptor ?? { kind: 'all' as const };
+  const entriesQ = useInfiniteQuery({
+    queryKey: qk.entries(activeStream, filter, 'desc'),
+    queryFn: ({ pageParam }) =>
+      api.entries.list(activeStream, {
+        filter,
+        sort: 'desc',
+        limit: 50,
+        cursor: pageParam as string | undefined,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    select: (data) => data.pages.flatMap((p) => p.items),
+    enabled: descriptor !== null,
+  });
+  const entriesCache = entriesQ.data ?? [];
 
   // Source of truth for the open entry is the react-query cache (mutations
   // patch it optimistically); seed it from the stream cache to avoid a flash.
@@ -285,7 +295,6 @@ export function Shell(): ReactElement {
               sort="desc"
               activeEntryId={routeEntryId}
               onSelect={openEntry}
-              onEntriesChange={onEntriesChange}
             />
           )
         ) : (
