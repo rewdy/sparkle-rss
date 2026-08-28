@@ -48,25 +48,21 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         run: terraform init
 
-      - name: collect build env
-        id: buildenv
-        working-directory: ${{ env.TF_DIR }}
-        run: |
-          echo "cognito_issuer=$(terraform output -raw cognito_issuer 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
-          echo "cognito_client_id=$(terraform output -raw cognito_client_id 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
-
       - name: quality gate
         run: |
           pnpm lint
           pnpm typecheck
           pnpm test
 
-      - name: build web + lambdas
-        run: pnpm build
-        env:
-          VITE_COGNITO_ISSUER: ${{ steps.buildenv.outputs.cognito_issuer }}
-          VITE_COGNITO_CLIENT_ID: ${{ steps.buildenv.outputs.cognito_client_id }}
-
+      # Lambdas and the marketing site are independent of Cognito, so build them
+      # up front (terraform apply references the lambda zips). The web bundle
+      # embeds the Cognito client id and is built AFTER apply from post-apply
+      # outputs (see below) so a user-pool replacement during apply can never
+      # ship a stale client id and break sign-in with "Client does not exist".
+      - name: build lambdas + site
+        run: |
+          pnpm build:lambdas
+          pnpm --filter @sparkle/site build
 
       - name: terraform plan
         working-directory: ${{ env.TF_DIR }}
@@ -80,6 +76,8 @@ jobs:
         id: tfout
         working-directory: ${{ env.TF_DIR }}
         run: |
+          echo "cognito_issuer=$(terraform output -raw cognito_issuer 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
+          echo "cognito_client_id=$(terraform output -raw cognito_client_id 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
           echo "db_endpoint=$(terraform output -raw db_endpoint)" >> "$GITHUB_OUTPUT"
           echo "assets_bucket=$(terraform output -raw assets_bucket_name)" >> "$GITHUB_OUTPUT"
           echo "distribution_id=$(terraform output -raw distribution_id)" >> "$GITHUB_OUTPUT"
@@ -91,6 +89,14 @@ jobs:
         run: pnpm --filter @sparkle/db exec tsx src/migrate.ts
         env:
           DSQL_ENDPOINT: ${{ steps.tfout.outputs.db_endpoint }}
+
+      # Build the web bundle from post-apply Cognito outputs so the baked-in
+      # client id always matches the pool that owns the hosted-UI domain.
+      - name: build web
+        run: pnpm build:web
+        env:
+          VITE_COGNITO_ISSUER: ${{ steps.tfout.outputs.cognito_issuer }}
+          VITE_COGNITO_CLIENT_ID: ${{ steps.tfout.outputs.cognito_client_id }}
 
       - name: publish web assets
         run: |
