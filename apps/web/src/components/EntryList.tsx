@@ -2,6 +2,7 @@ import { Box, Group, Text } from '@mantine/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ReactElement, RefObject } from 'react';
 import { memo, useCallback, useEffect, useMemo } from 'react';
+import { groupByDay, timeLabel } from '../lib/date-grouping';
 import { useFeedTitles } from '../lib/feed-titles';
 import type { Entry } from '../lib/types';
 import { fonts } from '../themes';
@@ -14,37 +15,6 @@ const HEADER_HEIGHT = 30;
 const ENTRY_HEIGHT = 68;
 const OVERSCAN = 15;
 const SKELETON_COUNT = 12;
-
-function dayGroup(ms: number): string {
-  const d = new Date(ms);
-  const today = new Date();
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  if (ms >= startOfToday) return 'today';
-  if (ms >= startOfToday - 86_400_000) return 'yesterday';
-  if (ms >= startOfToday - 7 * 86_400_000) return 'this week';
-  if (ms >= startOfToday - 30 * 86_400_000) return 'this month';
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-}
-
-function timeLabel(ms: number): string {
-  const d = new Date(ms);
-  const now = new Date();
-  if (d.toDateString() === now.toDateString()) {
-    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-export function groupByDay(entries: Entry[]): Array<{ label: string; items: Entry[] }> {
-  const groups: Array<{ label: string; items: Entry[] }> = [];
-  for (const entry of entries) {
-    const label = dayGroup(entry.publishedAtMs);
-    const last = groups.at(-1);
-    if (last?.label === label) last.items.push(entry);
-    else groups.push({ label, items: [entry] });
-  }
-  return groups;
-}
 
 export function EntryList({
   entries,
