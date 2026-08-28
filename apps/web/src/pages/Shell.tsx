@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useAtomValue, useSetAtom } from 'jotai';
 import type { ReactElement } from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { PageTitle } from '../components/PageTitle';
 import { ReaderPane } from '../components/ReaderPane';
 import { Sidebar } from '../components/Sidebar';
@@ -74,16 +74,13 @@ function useMidnightTick(): void {
 export function Shell(): ReactElement {
   const authState = useAuthGuard();
   const [location, navigate] = useLocation();
+  // wouter's useLocation returns the path only; the query string (view prefs)
+  // is read separately so ?filter=&sort= changes re-render this component.
+  const search = useSearch();
   // Mobile navbar drawer: collapsed.mobile is ignored at/above `sm`, so this
   // state only affects phones where the sidebar is hidden until the Burger opens it.
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
-  // View prefs live in the URL (?filter=/&sort=) so views are shareable and
-  // survive back/forward; split the path portion for route matching.
-  const [pathname, search] = useMemo(() => {
-    const i = location.indexOf('?');
-    return i === -1 ? [location, ''] : [location.slice(0, i), location.slice(i + 1)];
-  }, [location]);
   const filter = useMemo(() => filterFromSearch(search), [search]);
   const sort = useMemo(() => sortFromSearch(search), [search]);
 
@@ -96,7 +93,7 @@ export function Shell(): ReactElement {
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
 
-  const route = useMemo(() => parseRoute(pathname), [pathname]);
+  const route = useMemo(() => parseRoute(location), [location]);
   const descriptor = route?.stream ?? null;
   const routeEntryId = route?.entryId ?? null;
 
