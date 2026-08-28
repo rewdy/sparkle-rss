@@ -23,8 +23,26 @@
   },
   "linter": {
     "enabled": true,
-    "rules": {}
+    "rules": {
+      "preset": "recommended"
+    }
   },
+  "overrides": [
+    {
+      "includes": ["**/apps/web/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "preset": "recommended"
+          },
+          "security": {
+            "preset": "recommended",
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "single",

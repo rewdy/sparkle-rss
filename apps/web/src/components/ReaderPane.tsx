@@ -33,7 +33,9 @@ export function ReaderPane({
   const feedTitles = useFeedTitles();
   const viewportRef = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based scroll reset, entry id is the only trigger
   useEffect(() => {
+    // Reset scroll to the top only when the entry changes; the ref is stable.
     viewportRef.current?.scrollTo({ top: 0 });
   }, [entry.id]);
 
@@ -110,15 +112,15 @@ export function ReaderPane({
               <Divider label="attachments" c="dimmed" />
               {entry.enclosures
                 .filter((e) => e.href && e.type?.startsWith('audio/'))
-                .map((enc, i) => (
-                  <audio key={i} controls src={enc.href} style={{ width: '100%' }}>
+                .map((enc) => (
+                  <audio key={enc.href} controls src={enc.href} style={{ width: '100%' }}>
                     <track kind="captions" />
                   </audio>
                 ))}
             </Stack>
           )}
 
-          {/* content is sanitized server-side at ingest */}
+          {/* content is sanitized server-side at ingest; stored HTML rendered as-is */}
           <div
             className="reading-content"
             dangerouslySetInnerHTML={{ __html: entry.contentHtml }}

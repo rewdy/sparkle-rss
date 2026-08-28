@@ -169,25 +169,28 @@ export function Shell(): ReactElement {
     [descriptor, filter, sort, markRead, markReadOnOpen, navigate],
   );
 
-  function closeReader(): void {
+  const closeReader = useCallback((): void => {
     if (!descriptor) return;
     navigate(`${streamPath(descriptor)}${viewSearch(filter, sort)}`, { replace: true });
-  }
+  }, [descriptor, filter, sort, navigate]);
 
-  function move(delta: 1 | -1): void {
-    if (!descriptor || entriesCache.length === 0) return;
-    const idx = routeEntryId ? entriesCache.findIndex((e) => e.id === routeEntryId) : -1;
-    const next =
-      idx === -1
-        ? delta === 1
-          ? 0
-          : entriesCache.length - 1
-        : Math.min(Math.max(idx + delta, 0), entriesCache.length - 1);
-    const target = entriesCache[next];
-    if (!target) return;
-    if (markReadOnOpen) markRead.mutate({ ids: [target.id], read: true });
-    navigate(`${streamPath(descriptor)}/e/${target.id}${viewSearch(filter, sort)}`);
-  }
+  const move = useCallback(
+    (delta: 1 | -1): void => {
+      if (!descriptor || entriesCache.length === 0) return;
+      const idx = routeEntryId ? entriesCache.findIndex((e) => e.id === routeEntryId) : -1;
+      const next =
+        idx === -1
+          ? delta === 1
+            ? 0
+            : entriesCache.length - 1
+          : Math.min(Math.max(idx + delta, 0), entriesCache.length - 1);
+      const target = entriesCache[next];
+      if (!target) return;
+      if (markReadOnOpen) markRead.mutate({ ids: [target.id], read: true });
+      navigate(`${streamPath(descriptor)}/e/${target.id}${viewSearch(filter, sort)}`);
+    },
+    [descriptor, entriesCache, filter, markRead, markReadOnOpen, navigate, routeEntryId, sort],
+  );
 
   function onFilterChange(next: 'all' | 'unread'): void {
     if (!descriptor) return;
@@ -238,7 +241,16 @@ export function Shell(): ReactElement {
           break;
       }
     },
-    [descriptor, routeEntryId, activeEntry, move, closeReader, setShortcutsOpen],
+    [
+      descriptor,
+      routeEntryId,
+      activeEntry,
+      move,
+      closeReader,
+      setShortcutsOpen,
+      markRead,
+      toggleStar,
+    ],
   );
 
   useEffect(() => {

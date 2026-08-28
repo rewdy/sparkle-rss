@@ -134,6 +134,8 @@ function SkeletonList(): ReactElement {
   return (
     <Box>
       {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+        // Static placeholder rows; index key is stable across renders.
+        // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton scaffold
         <div key={i} className="skeleton-row" />
       ))}
     </Box>

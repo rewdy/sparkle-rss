@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { getDefaultStore } from 'jotai';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   applySettings,
   colorSchemeAtom,
