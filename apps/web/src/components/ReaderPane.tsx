@@ -32,11 +32,21 @@ export function ReaderPane({
   const toggleStar = useToggleStar();
   const feedTitles = useFeedTitles();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based scroll reset, entry id is the only trigger
   useEffect(() => {
     // Reset scroll to the top only when the entry changes; the ref is stable.
     viewportRef.current?.scrollTo({ top: 0 });
+  }, [entry.id]);
+
+  // Defer off-screen article images; ingested HTML won't always set lazy.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based DOM post-processing keyed on entry change
+  useEffect(() => {
+    contentRef.current?.querySelectorAll('img').forEach((img) => {
+      img.loading = 'lazy';
+      img.decoding = 'async';
+    });
   }, [entry.id]);
 
   return (
@@ -122,6 +132,7 @@ export function ReaderPane({
 
           {/* content is sanitized server-side at ingest; stored HTML rendered as-is */}
           <div
+            ref={contentRef}
             className="reading-content"
             dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
           />

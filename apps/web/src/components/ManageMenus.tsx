@@ -20,6 +20,7 @@ import {
   useUnsubscribe,
 } from '../lib/mutations';
 import type { Folder, Subscription } from '../lib/types';
+import { ConfirmModal } from './ConfirmModal';
 
 function stop(e: { stopPropagation: () => void; preventDefault: () => void }): void {
   e.stopPropagation();
@@ -75,6 +76,7 @@ export function FolderMenu({ folder }: { folder: Folder }): ReactElement {
   const rename = useFolderRename();
   const remove = useFolderRemove();
   const [renameOpened, { open: openRename, close: closeRename }] = useDisclosure(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [name, setName] = useState(folder.name);
 
   function submitRename(): void {
@@ -115,15 +117,7 @@ export function FolderMenu({ folder }: { folder: Folder }): ReactElement {
           <Menu.Item
             leftSection={<LuTrash2 size={14} />}
             color="red"
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Delete folder "${folder.name}"? Its ${folder.feedCount} feed(s) move to no folder.`,
-                )
-              ) {
-                remove.mutate(folder.id);
-              }
-            }}
+            onClick={() => setDeleteOpen(true)}
           >
             delete folder
           </Menu.Item>
@@ -143,6 +137,18 @@ export function FolderMenu({ folder }: { folder: Folder }): ReactElement {
           </Button>
         </Stack>
       </Modal>
+      <ConfirmModal
+        opened={deleteOpen}
+        title="delete folder"
+        confirmLabel="delete"
+        loading={remove.isPending}
+        onConfirm={() => {
+          remove.mutate(folder.id, { onSuccess: () => setDeleteOpen(false) });
+        }}
+        onClose={() => setDeleteOpen(false)}
+      >
+        Delete folder &quot;{folder.name}&quot;? Its {folder.feedCount} feed(s) move to no folder.
+      </ConfirmModal>
     </>
   );
 }
@@ -153,6 +159,7 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
   const createFolder = useFolderCreate();
   const [renameOpened, { open: openRename, close: closeRename }] = useDisclosure(false);
   const [moveOpened, { open: openMove, close: closeMove }] = useDisclosure(false);
+  const [unsubOpen, setUnsubOpen] = useState(false);
   const [title, setTitle] = useState(sub.displayTitle);
   const [folderChoice, setFolderChoice] = useState(sub.categoryId ?? '');
   const [newFolderName, setNewFolderName] = useState('');
@@ -231,11 +238,7 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
           <Menu.Item
             leftSection={<LuTrash2 size={14} />}
             color="red"
-            onClick={() => {
-              if (window.confirm(`Unsubscribe from "${sub.displayTitle}"?`)) {
-                unsub.mutate(sub.feedId);
-              }
-            }}
+            onClick={() => setUnsubOpen(true)}
           >
             unsubscribe
           </Menu.Item>
@@ -291,6 +294,18 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
           </Button>
         </Stack>
       </Modal>
+      <ConfirmModal
+        opened={unsubOpen}
+        title="unsubscribe"
+        confirmLabel="unsubscribe"
+        loading={unsub.isPending}
+        onConfirm={() => {
+          unsub.mutate(sub.feedId, { onSuccess: () => setUnsubOpen(false) });
+        }}
+        onClose={() => setUnsubOpen(false)}
+      >
+        Unsubscribe from &quot;{sub.displayTitle}&quot;?
+      </ConfirmModal>
     </>
   );
 }
