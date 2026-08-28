@@ -1,5 +1,6 @@
 import { atom, getDefaultStore, useAtom } from 'jotai';
 import { DEFAULT_THEME_ID, type ThemeId } from '../themes';
+import { localDateKey } from './keys';
 
 export type ColorSchemePref = 'light' | 'dark';
 
@@ -65,13 +66,11 @@ export const markReadOnOpenAtom = atom(
   },
 );
 
-const filterBaseAtom = atom<'all' | 'unread'>('all');
-export const filterAtom = atom(
-  (get) => get(filterBaseAtom),
-  (_get, set, next: 'all' | 'unread') => {
-    set(filterBaseAtom, next);
-  },
-);
+/**
+ * Ticks to the next local calendar date at midnight so stream views keyed on
+ * "today" roll over and refetch without requiring a navigation.
+ */
+export const todayRolloverAtom = atom<string>(localDateKey());
 
 export const shortcutsOpenAtom = atom(false);
 

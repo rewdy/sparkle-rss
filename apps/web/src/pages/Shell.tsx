@@ -11,15 +11,23 @@ import { Sidebar } from '../components/Sidebar';
 import { StreamInner } from '../components/StreamInner';
 import { Topbar } from '../components/Topbar';
 import { ApiError, api } from '../lib/api';
-import { parseRoute, qk, streamPath } from '../lib/keys';
+import {
+  filterFromSearch,
+  localDateKey,
+  parseRoute,
+  qk,
+  sortFromSearch,
+  streamPath,
+  viewSearch,
+} from '../lib/keys';
 import { useMarkRead, useToggleStar } from '../lib/mutations';
 import type { Entry, StreamDescriptor } from '../lib/types';
 import {
   applySettings,
-  filterAtom,
   loadLocalUi,
   markReadOnOpenAtom,
   shortcutsOpenAtom,
+  todayRolloverAtom,
 } from '../lib/ui-state';
 import { FullscreenLoader, useAuthGuard } from './guard';
 
@@ -52,6 +60,17 @@ function streamTitle(
   }
 }
 
+/** Re-renders the tree at the next local midnight so date-keyed views roll over. */
+function useMidnightTick(): void {
+  const setToday = useSetAtom(todayRolloverAtom);
+  useEffect(() => {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timer = setTimeout(() => setToday(localDateKey()), next.getTime() - now.getTime() + 1000);
+    return () => clearTimeout(timer);
+  }, [setToday]);
+}
+
 export function Shell(): ReactElement {
   const authState = useAuthGuard();
   const [location, navigate] = useLocation();
@@ -59,15 +78,25 @@ export function Shell(): ReactElement {
   // state only affects phones where the sidebar is hidden until the Burger opens it.
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
-  const filter = useAtomValue(filterAtom);
-  const setFilter = useSetAtom(filterAtom);
+  // View prefs live in the URL (?filter=/&sort=) so views are shareable and
+  // survive back/forward; split the path portion for route matching.
+  const [pathname, search] = useMemo(() => {
+    const i = location.indexOf('?');
+    return i === -1 ? [location, ''] : [location.slice(0, i), location.slice(i + 1)];
+  }, [location]);
+  const filter = useMemo(() => filterFromSearch(search), [search]);
+  const sort = useMemo(() => sortFromSearch(search), [search]);
+
+  // Re-render at local midnight so "today" stream keys roll over on their own.
+  useMidnightTick();
+
   const setShortcutsOpen = useSetAtom(shortcutsOpenAtom);
   const shortcutsOpen = useAtomValue(shortcutsOpenAtom);
   const markReadOnOpen = useAtomValue(markReadOnOpenAtom);
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
 
-  const route = useMemo(() => parseRoute(location), [location]);
+  const route = useMemo(() => parseRoute(pathname), [pathname]);
   const descriptor = route?.stream ?? null;
   const routeEntryId = route?.entryId ?? null;
 
@@ -86,11 +115,11 @@ export function Shell(): ReactElement {
   // identical keys), flattened via `select` — no local duplicate of server state.
   const activeStream = descriptor ?? { kind: 'all' as const };
   const entriesQ = useInfiniteQuery({
-    queryKey: qk.entries(activeStream, filter, 'desc'),
+    queryKey: qk.entries(activeStream, filter, sort),
     queryFn: ({ pageParam }) =>
       api.entries.list(activeStream, {
         filter,
-        sort: 'desc',
+        sort,
         limit: 50,
         cursor: pageParam as string | undefined,
       }),
@@ -126,23 +155,23 @@ export function Shell(): ReactElement {
       entryQ.error instanceof ApiError &&
       entryQ.error.status === 404
     ) {
-      navigate(streamPath(descriptor), { replace: true });
+      navigate(`${streamPath(descriptor)}${viewSearch(filter, sort)}`, { replace: true });
     }
-  }, [descriptor, routeEntryId, entryQ.error, navigate]);
+  }, [descriptor, routeEntryId, entryQ.error, filter, sort, navigate]);
 
   // Stable callback: rows in the virtualized list are memoized on it.
   const openEntry = useCallback(
     (entry: Entry) => {
       if (!descriptor) return;
       if (markReadOnOpen) markRead.mutate({ ids: [entry.id], read: true });
-      navigate(`${streamPath(descriptor)}/e/${entry.id}`);
+      navigate(`${streamPath(descriptor)}/e/${entry.id}${viewSearch(filter, sort)}`);
     },
-    [descriptor, markRead, markReadOnOpen, navigate],
+    [descriptor, filter, sort, markRead, markReadOnOpen, navigate],
   );
 
   function closeReader(): void {
     if (!descriptor) return;
-    navigate(streamPath(descriptor), { replace: true });
+    navigate(`${streamPath(descriptor)}${viewSearch(filter, sort)}`, { replace: true });
   }
 
   function move(delta: 1 | -1): void {
@@ -157,12 +186,13 @@ export function Shell(): ReactElement {
     const target = entriesCache[next];
     if (!target) return;
     if (markReadOnOpen) markRead.mutate({ ids: [target.id], read: true });
-    navigate(`${streamPath(descriptor)}/e/${target.id}`);
+    navigate(`${streamPath(descriptor)}/e/${target.id}${viewSearch(filter, sort)}`);
   }
 
   function onFilterChange(next: 'all' | 'unread'): void {
-    setFilter(next);
-    if (routeEntryId !== null && descriptor) navigate(streamPath(descriptor), { replace: true });
+    if (!descriptor) return;
+    // If a reader is open, drop back to the bare stream while switching filter.
+    navigate(`${streamPath(descriptor)}${viewSearch(next, sort)}`, { replace: true });
   }
 
   // global hotkeys
@@ -292,7 +322,7 @@ export function Shell(): ReactElement {
             <StreamInner
               stream={descriptor}
               filter={filter}
-              sort="desc"
+              sort={sort}
               activeEntryId={routeEntryId}
               onSelect={openEntry}
             />

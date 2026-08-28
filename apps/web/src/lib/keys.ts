@@ -60,6 +60,23 @@ export function streamPath(d: StreamDescriptor): string {
   }
 }
 
+/** Read the `filter`/`sort` view prefs from the URL search string. */
+export function filterFromSearch(search: string): 'all' | 'unread' {
+  return new URLSearchParams(search).get('filter') === 'unread' ? 'unread' : 'all';
+}
+export function sortFromSearch(search: string): 'asc' | 'desc' {
+  return new URLSearchParams(search).get('sort') === 'asc' ? 'asc' : 'desc';
+}
+
+/** Serialize view params into a query string for a stream (or reader) URL. */
+export function viewSearch(filter: 'all' | 'unread', sort: 'asc' | 'desc'): string {
+  const params = new URLSearchParams();
+  if (filter !== 'all') params.set('filter', filter);
+  if (sort !== 'desc') params.set('sort', sort);
+  const q = params.toString();
+  return q ? `?${q}` : '';
+}
+
 export interface RouteInfo {
   stream: StreamDescriptor;
   entryId: string | null;
