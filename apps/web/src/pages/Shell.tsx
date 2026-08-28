@@ -76,9 +76,12 @@ export function Shell(): ReactElement {
 
   useEffect(() => {
     let cancelled = false;
-    void api.settings.get().then((res) => {
-      if (!cancelled) applySettings({ ...loadLocalUi(), ...res.data });
-    });
+    void api.settings
+      .get()
+      .then((res) => {
+        if (!cancelled) applySettings({ ...loadLocalUi(), ...res.data });
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -166,7 +169,7 @@ export function Shell(): ReactElement {
           descriptor && descriptor.kind === 'unread'
             ? { kind: 'all' }
             : (descriptor ?? { kind: 'all' });
-        void api.entries.markAllRead(apiStream);
+        void api.entries.markAllRead(apiStream).catch(() => undefined);
         return;
       }
       switch (e.key) {

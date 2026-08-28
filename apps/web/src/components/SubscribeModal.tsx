@@ -22,6 +22,7 @@ export function SubscribeModal({
     if (!url.trim()) return;
     await subscribe.mutateAsync({
       url: url.trim(),
+      title: title.trim() || undefined,
       folderId: folderId === '' ? null : Number(folderId),
     });
     setUrl('');
