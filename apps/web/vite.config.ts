@@ -29,5 +29,21 @@ export default defineConfig({
   build: {
     sourcemap: false,
     target: 'es2022',
+    rollupOptions: {
+      output: {
+        // Split stable third-party code into cache-friendly vendor chunks so
+        // library bumps don't invalidate the app shell and vice-versa.
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          query: ['@tanstack/react-query', '@tanstack/react-virtual'],
+          mantine: ['@mantine/core', '@mantine/hooks'],
+          oidc: ['oidc-client-ts'],
+          state: ['jotai'],
+          routes: ['wouter'],
+          icons: ['react-icons'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 700,
   },
 });
