@@ -394,3 +394,21 @@ Follow-up (same day): the first fix used `colorSchemeMode = "AUTO"`, which AWS
 rejects as `InvalidValue` — the API only accepts `LIGHT` or `DARK` (the `AUTO`
 option exists in the web console only). Set to `"DARK"` to match the app's
 dark-first default.
+
+## Feature: accent theme presets (2026-08-26)
+
+Added five accent palettes (blue default, scarlet, steel, magenta, purple) selectable on
+the settings appearance card as a swatch row (radios under each swatch). Chosen approach:
+**a single Mantine `accent` color key whose values are swapped at runtime** rather than
+per-theme CSS or per-component conditionals. All existing `--mantine-color-accent-*`
+usages (component `color="accent"` props, `light-dark()` CSS vars for hover/active) adapt
+automatically, and light/dark compatibility is free because they already use `light-dark()`.
+
+- Persisted per-user as the `themeId` key in the existing `user_settings` jsonb blob
+  (generic merge service / `GET|PUT /api/v1/settings` — no schema or API change). Restored
+  cross-device by `applySettings()` beside `colorScheme`.
+- Scaffolded as `ThemeDef` in `apps/web/src/themes.ts` (`buildTheme` composes each preset
+  from the def; `THEMES[themeId]` selected in `MantineProvider`), so future style settings
+  (e.g. fonts, density presets) extend `ThemeDef` without changing consumers.
+- Three CSS accent-shade usages (entry-row hover/active, shadow) kept shared with shade
+  indexes 0/1/6/9 per theme; user approved refining per-theme values later if needed.

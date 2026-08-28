@@ -98,12 +98,12 @@ shareable via query string).
 - Mutations: `markRead`, `toggleStar` (optimistic set, rollback on error),
   `markAllRead(stream, ts)`, subscription CRUD. Any entry mutation invalidates
   `['unread-counts']`.
-- **jotai owns ephemeral UI**: `colorSchemeAtom`, `sidebarOpenAtom`, `densityAtom`,
-  `markReadOnOpenAtom` (reading prefs also mirrored into `user_settings.data` via
-  `/api/v1/me/settings` — server = source of truth across devices; local `sparkle.ui`
-  localStorage is the pre-mount first-paint fallback). The **open entry is not UI
-  state**: it is derived from the URL (`<stream>/e/:id`) by `parseRoute`, so there is no
-  selected-entry atom.
+- **jotai owns ephemeral UI**: `colorSchemeAtom`, `themeIdAtom`, `sidebarOpenAtom`,
+  `markReadOnOpenAtom` (reading prefs also mirrored into
+  `user_settings.data` via `/api/v1/me/settings` — server = source of truth across
+  devices; local `sparkle.ui` localStorage is the pre-mount first-paint fallback). The
+  **open entry is not UI state**: it is derived from the URL (`<stream>/e/:id`) by
+  `parseRoute`, so there is no selected-entry atom.
 - No cross-contamination: no server payloads inside atoms, no fetches outside
   react-query.
 
@@ -125,6 +125,14 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
 ## Build & deploy outputs
 
 - `pnpm build:web` → static bundle in `apps/web/dist`; CI syncs to S3 and invalidates
+- The active theme is chosen via the `themeIdAtom` and passed to
+  `MantineProvider theme={THEMES[themeId]}`. `apps/web/src/themes.ts` defines a
+  `ThemeDef` (id, label, 10-shade `accent` ramp) per preset; each builds a full Mantine
+  theme that swaps only the `accent` palette, so every `--mantine-color-accent-*` usage
+  (component `color="accent"` props, `light-dark()` CSS rules) adapts automatically in
+  both light/dark. Future style settings (e.g. fonts) extend `ThemeDef` and are merged
+  in `buildTheme`, so consumers never change shape.
+- `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
   CloudFront (`/index.html` + hashed assets pattern).
 - `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
   font subset. PWA manifest + service-worker shell deferred to Phase 6 (installability

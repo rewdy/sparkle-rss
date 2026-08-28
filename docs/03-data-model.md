@@ -53,6 +53,11 @@ content rows are materialized per subscriber by the ingest worker.
 Tables: `users`, `api_tokens`, `categories`, `feeds`, `subscriptions`, `user_entries`,
 `user_settings`. Key points where reality differs from a vanilla-PG design:
 
+- `user_settings` is a single `data` jsonb blob keyed by `user_id`; per-user preferences
+  (currently `colorScheme`, `themeId`, `markReadOnOpen`, `sidebarOpen`) are
+  plain keys merged by `packages/core/src/services/settings.ts`. Adding a preference is a
+  new key, never a migration.
+
 - All child tables carry bare `user_id` / `feed_id` / etc. columns (no FKs — A3).
 - `user_entries.guid_hash` is **text** (hex sha256): bytea is not supported in unique keys
   on DSQL.

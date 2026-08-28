@@ -4,7 +4,7 @@ import type { ReactElement, RefObject } from 'react';
 import { memo, useCallback, useEffect, useMemo } from 'react';
 import { useFeedTitles } from '../lib/feed-titles';
 import type { Entry } from '../lib/types';
-import { fonts } from '../theme';
+import { fonts } from '../themes';
 
 type Row =
   | { kind: 'header'; key: string; label: string; count: number }

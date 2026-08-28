@@ -1,6 +1,6 @@
 import { atom, getDefaultStore, useAtom } from 'jotai';
+import { DEFAULT_THEME_ID, type ThemeId } from '../themes';
 
-export type Density = 'compact' | 'cozy';
 export type ColorSchemePref = 'light' | 'dark';
 
 export function loadLocalUi(): Record<string, unknown> {
@@ -15,8 +15,8 @@ function isColorScheme(v: unknown): v is ColorSchemePref {
   return v === 'light' || v === 'dark';
 }
 
-function isDensity(v: unknown): v is Density {
-  return v === 'compact' || v === 'cozy';
+function isThemeId(v: unknown): v is ThemeId {
+  return v === 'scarlet' || v === 'blue' || v === 'steel' || v === 'magenta' || v === 'purple';
 }
 
 function asBool(v: unknown, fallback: boolean): boolean {
@@ -38,21 +38,21 @@ export const colorSchemeAtom = atom(
   },
 );
 
+const themeIdBaseAtom = atom<ThemeId>(isThemeId(local.themeId) ? local.themeId : DEFAULT_THEME_ID);
+export const themeIdAtom = atom(
+  (get) => get(themeIdBaseAtom),
+  (_get, set, next: ThemeId) => {
+    set(themeIdBaseAtom, next);
+    persistUiPatch({ themeId: next });
+  },
+);
+
 const sidebarOpenBaseAtom = atom<boolean>(asBool(local.sidebarOpen, true));
 export const sidebarOpenAtom = atom(
   (get) => get(sidebarOpenBaseAtom),
   (_get, set, next: boolean) => {
     set(sidebarOpenBaseAtom, next);
     persistUiPatch({ sidebarOpen: next });
-  },
-);
-
-const densityBaseAtom = atom<Density>(isDensity(local.density) ? local.density : 'cozy');
-export const densityAtom = atom(
-  (get) => get(densityBaseAtom),
-  (_get, set, next: Density) => {
-    set(densityBaseAtom, next);
-    persistUiPatch({ density: next });
   },
 );
 
@@ -86,8 +86,8 @@ export function applySettings(data: Record<string, unknown>): void {
   if (isColorScheme(data.colorScheme) && data.colorScheme !== store.get(colorSchemeBaseAtom)) {
     store.set(colorSchemeAtom, data.colorScheme);
   }
-  if (isDensity(data.density) && data.density !== store.get(densityBaseAtom)) {
-    store.set(densityAtom, data.density);
+  if (isThemeId(data.themeId) && data.themeId !== store.get(themeIdBaseAtom)) {
+    store.set(themeIdAtom, data.themeId);
   }
   if (
     typeof data.markReadOnOpen === 'boolean' &&
@@ -114,4 +114,8 @@ export function persistUiPatch(patch: Record<string, unknown>): void {
 
 export function useColorSchemeValue(): [ColorSchemePref, (n: ColorSchemePref) => void] {
   return useAtom(colorSchemeAtom);
+}
+
+export function useThemeValue(): [ThemeId, (n: ThemeId) => void] {
+  return useAtom(themeIdAtom);
 }

@@ -199,6 +199,17 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   byline row on small screens, and ≥40px touch targets; iOS auto-zoom on inputs is
   suppressed and `theme-color` follows light/dark.
 
+**Landed 2026-08-26 (theme presets)** (see decisions.md):
+- [x] **Accent themes** — five accent palettes (blue, scarlet, steel, magenta, purple)
+  selectable on the settings appearance card as a color-swatch row with radios under
+  each swatch. Implemented as a runtime palette swap under the single `accent` Mantine
+  color key, so every existing `--mantine-color-accent-*` var, `light-dark()` rule, and
+  `color="accent"` prop adapts in both light/dark without CSS changes. Persisted per-user
+  via `user_settings` jsonb (`themeId` key), restored cross-device alongside
+  `colorScheme`. Scaffolded as `ThemeDef` in `apps/web/src/themes.ts` so future style
+  settings (e.g. fonts) extend the same shape. *Exit: choosing any theme updates the UI
+  immediately and persists across devices.*
+
 **Remaining (in suggested order):**
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
       image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse

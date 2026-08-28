@@ -3,12 +3,14 @@ import {
   Box,
   Button,
   Card,
+  CheckIcon,
   Code,
+  ColorSwatch,
   CopyButton,
   Divider,
   Group,
   Modal,
-  NativeSelect,
+  SegmentedControl,
   Stack,
   Switch,
   Text,
@@ -16,22 +18,24 @@ import {
   Title,
 } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAtom } from 'jotai';
 import type { ReactElement } from 'react';
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { logout } from '../lib/auth';
 import { qk } from '../lib/keys';
 import {
-  densityAtom,
   markReadOnOpenAtom,
   persistUiPatch,
   useColorSchemeValue,
+  useThemeValue,
 } from '../lib/ui-state';
+import { THEME_DEFS } from '../themes';
 
 export function SettingsPage(): ReactElement {
   const settingsQ = useQuery({ queryKey: qk.settings, queryFn: api.settings.get });
   const [scheme, setScheme] = useColorSchemeValue();
-  const [density, setDensity] = useDensity();
+  const [themeId, setThemeId] = useThemeValue();
   const [markOnOpen, setMarkOnOpen] = useMarkOnOpen();
 
   async function saveSetting(patch: Record<string, unknown>): Promise<void> {
@@ -49,34 +53,56 @@ export function SettingsPage(): ReactElement {
           <Text fw={700} size="sm">
             appearance
           </Text>
-          <NativeSelect
-            label="color scheme"
+          <Text size="sm" fw={600}>
+            light / dark
+          </Text>
+          <SegmentedControl
             value={scheme}
+            onChange={(next) => {
+              const v = next as 'light' | 'dark';
+              setScheme(v);
+              void saveSetting({ colorScheme: v });
+            }}
             data={[
               { value: 'dark', label: 'dark' },
               { value: 'light', label: 'light' },
             ]}
-            onChange={(e) => {
-              const next = e.currentTarget.value as 'light' | 'dark';
-              setScheme(next);
-              void saveSetting({ colorScheme: next });
-            }}
             w={220}
           />
-          <NativeSelect
-            label="list density"
-            value={density}
-            data={[
-              { value: 'cozy', label: 'cozy' },
-              { value: 'compact', label: 'compact' },
-            ]}
-            onChange={(e) => {
-              const next = e.currentTarget.value as 'compact' | 'cozy';
-              setDensity(next);
-              void saveSetting({ density: next });
-            }}
-            w={220}
-          />
+          <Text size="sm" fw={600}>
+            theme
+          </Text>
+          <Group gap="sm">
+            {Object.values(THEME_DEFS).map((def) => (
+              <Stack key={def.id} gap={4} align="center">
+                <ColorSwatch
+                  component="button"
+                  color={def.accent[6]}
+                  radius="sm"
+                  size={38}
+                  aria-label={`${def.label} theme`}
+                  onClick={() => {
+                    const next = def.id;
+                    setThemeId(next);
+                    void saveSetting({ themeId: next });
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    color: '#fff',
+                    boxShadow:
+                      themeId === def.id
+                        ? '0 0 0 3px var(--mantine-color-body), 0 0 0 5px var(--mantine-color-accent-5)'
+                        : undefined,
+                  }}
+                >
+                  {themeId === def.id && <CheckIcon size={16} />}
+                </ColorSwatch>
+                <Text size="xs" c={themeId === def.id ? undefined : 'dimmed'}>
+                  {def.label}
+                </Text>
+              </Stack>
+            ))}
+          </Group>
           <Switch
             label="mark items read when opened"
             checked={markOnOpen}
@@ -105,17 +131,6 @@ export function SettingsPage(): ReactElement {
   );
 }
 
-function useDensity() {
-  // thin wrapper so the page reads cleanly; atom lives in ui-state
-  const [value, setValue] = useDensityInternal();
-  return [value, setValue] as const;
-}
-
-import { useAtom } from 'jotai';
-
-function useDensityInternal() {
-  return useAtom(densityAtom);
-}
 function useMarkOnOpen() {
   return useAtom(markReadOnOpenAtom);
 }

@@ -16,7 +16,6 @@ import { useMarkRead, useToggleStar } from '../lib/mutations';
 import type { Entry, StreamDescriptor } from '../lib/types';
 import {
   applySettings,
-  densityAtom,
   filterAtom,
   loadLocalUi,
   markReadOnOpenAtom,
@@ -60,7 +59,6 @@ export function Shell(): ReactElement {
   // state only affects phones where the sidebar is hidden until the Burger opens it.
   const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
-  const density = useAtomValue(densityAtom);
   const filter = useAtomValue(filterAtom);
   const setFilter = useSetAtom(filterAtom);
   const setShortcutsOpen = useSetAtom(shortcutsOpenAtom);
@@ -252,7 +250,7 @@ export function Shell(): ReactElement {
         <Sidebar onNavigate={closeNav} />
       </AppShell.Navbar>
 
-      <AppShell.Main style={{ position: 'relative' }} data-density={density}>
+      <AppShell.Main style={{ position: 'relative' }}>
         {location === '/settings' ? (
           <Suspense
             fallback={
