@@ -126,6 +126,8 @@ module "api" {
   hmac_secret_arn   = aws_secretsmanager_secret.greader_hmac.arn
   refresh_queue_url = module.ingest.refresh_queue_url
   refresh_queue_arn = module.ingest.refresh_queue_arn
+  media_bucket_name = module.ingest.media_bucket_name
+  media_bucket_arn  = module.ingest.media_bucket_arn
 }
 
 locals {

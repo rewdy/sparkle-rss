@@ -51,7 +51,8 @@ content rows are materialized per subscriber by the ingest worker.
 ## Schema (as built — see `packages/db/src/schema.ts`)
 
 Tables: `users`, `api_tokens`, `categories`, `feeds`, `subscriptions`, `user_entries`,
-`user_settings`. Key points where reality differs from a vanilla-PG design:
+`user_settings`, `media_objects`, `user_media`. Key points where reality differs from a
+vanilla-PG design:
 
 - `user_settings` is a single `data` jsonb blob keyed by `user_id`; per-user preferences
   (currently `colorScheme` (`light`, `dark`, or `system`), `themeId`, `markReadOnOpen`, `sidebarOpen`) are

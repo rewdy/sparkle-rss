@@ -141,6 +141,39 @@ export const userEntries = pgTable(
   ],
 );
 
+export const mediaObjects = pgTable("media_objects", {
+  id: uuid("id").primaryKey(),
+  objectKey: text("object_key").notNull().unique(),
+  sha256: text("sha256").notNull().unique(),
+  mimeType: text("mime_type").notNull(),
+  byteSize: bigint("byte_size", { mode: "number" }).notNull(),
+  width: bigint("width", { mode: "number" }).notNull(),
+  height: bigint("height", { mode: "number" }).notNull(),
+  sourceUrl: text("source_url").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const userMedia = pgTable(
+  "user_media",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id").notNull(),
+    mediaObjectId: uuid("media_object_id").notNull(),
+    entryId: bigint("entry_id", { mode: "number" }),
+    kind: text("kind").notNull(),
+    alt: text("alt").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("user_media_user_entry_idx").on(t.userId, t.entryId),
+    index("user_media_user_kind_idx").on(t.userId, t.kind),
+  ],
+);
+
 export const userSettings = pgTable("user_settings", {
   userId: uuid("user_id").primaryKey(),
   data: jsonb("data").notNull().default(sql`'{}'::jsonb`),

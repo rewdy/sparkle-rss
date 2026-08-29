@@ -12,7 +12,10 @@
     "ingest": "tsx scripts/ingest-local.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1121.0",
+    "@aws-sdk/client-secrets-manager": "^3.875.0",
     "@aws-sdk/client-sqs": "^3.1116.0",
+    "@aws-sdk/s3-request-presigner": "^3.1121.0",
     "@hono/node-server": "^1.19.0",
     "@sparkle/core": "workspace:*",
     "@sparkle/db": "workspace:*",
@@ -20,8 +23,7 @@
     "drizzle-orm": "^0.45.2",
     "hono": "^4.13.3",
     "jose": "^6.1.0",
-    "zod": "^4.1.11",
-    "@aws-sdk/client-secrets-manager": "^3.875.0"
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@sparkle/tooling": "workspace:*",

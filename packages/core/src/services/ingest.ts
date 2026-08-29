@@ -4,10 +4,17 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { FetchFeedResult } from "../feed/fetch-feed";
 import type { ParsedEntry } from "../feed/parse";
 import { parseFeed } from "../feed/parse";
-import { insertEntriesForUser } from "./subscriptions";
+import { guidHash, insertEntriesForUser } from "./subscriptions";
 
 export interface ServicesDeps {
   db: NodePgDatabase<typeof schema>;
+  media?: {
+    attachSplash(
+      userId: string,
+      entryId: number,
+      image: NonNullable<ParsedEntry["articleImage"]>,
+    ): Promise<string>;
+  };
 }
 
 const MAX_BACKOFF_MINUTES = 24 * 60;
@@ -30,7 +37,7 @@ export interface FeedRow {
   lastError: string | null;
 }
 
-export function createIngestService({ db }: ServicesDeps) {
+export function createIngestService({ db, media }: ServicesDeps) {
   return {
     async getDueFeeds(limit: number): Promise<FeedRow[]> {
       const rows = await db
@@ -112,6 +119,11 @@ export function createIngestService({ db }: ServicesDeps) {
 
       let removed = 0;
       for (const feed of candidates) {
+        await db
+          .delete(schema.userMedia)
+          .where(
+            sql`${schema.userMedia.entryId} in (select id from ${schema.userEntries} where ${schema.userEntries.feedId} = ${feed.id})`,
+          );
         await db
           .delete(schema.userEntries)
           .where(eq(schema.userEntries.feedId, feed.id));
@@ -215,6 +227,25 @@ export function createIngestService({ db }: ServicesDeps) {
       let inserted = 0;
       for (const userId of subscribers) {
         inserted += await insertEntriesForUser(db, userId, feedId, entries);
+        if (media) {
+          for (const entry of entries) {
+            if (!entry.articleImage) continue;
+            const row = (
+              await db
+                .select({ id: schema.userEntries.id })
+                .from(schema.userEntries)
+                .where(
+                  and(
+                    eq(schema.userEntries.userId, userId),
+                    eq(schema.userEntries.feedId, feedId),
+                    eq(schema.userEntries.guidHash, guidHash(entry.guid)),
+                  ),
+                )
+            ).at(0);
+            if (row)
+              await media.attachSplash(userId, row.id, entry.articleImage);
+          }
+        }
       }
       return inserted;
     },

@@ -243,6 +243,14 @@ export function createSubscriptionsService(
 
     async unsubscribe(userId: string, feedId: number): Promise<void> {
       await db
+        .delete(schema.userMedia)
+        .where(
+          and(
+            eq(schema.userMedia.userId, userId),
+            sql`${schema.userMedia.entryId} in (select id from ${schema.userEntries} where ${schema.userEntries.userId} = ${userId} and ${schema.userEntries.feedId} = ${feedId})`,
+          ),
+        );
+      await db
         .delete(schema.userEntries)
         .where(
           and(

@@ -15,6 +15,13 @@
       "when": 1788033722507,
       "tag": "0001_omniscient_skullbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788034013077,
+      "tag": "0002_daffy_black_widow",
+      "breakpoints": true
     }
   ]
 }

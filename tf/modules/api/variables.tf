@@ -42,3 +42,11 @@ variable "refresh_queue_arn" {
   description = "SQS queue ARN for the api Lambda's sqs:SendMessage policy"
   type        = string
 }
+
+variable "media_bucket_name" {
+  type = string
+}
+
+variable "media_bucket_arn" {
+  type = string
+}

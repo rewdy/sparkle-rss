@@ -56,6 +56,19 @@ data "aws_iam_policy_document" "refresh_queue" {
   }
 }
 
+data "aws_iam_policy_document" "media_read" {
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = ["${var.media_bucket_arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "media_read" {
+  role   = aws_iam_role.api.id
+  policy = data.aws_iam_policy_document.media_read.json
+}
+
 resource "aws_iam_role_policy" "hmac_secret" {
   role   = aws_iam_role.api.id
   policy = data.aws_iam_policy_document.hmac_secret.json
@@ -97,6 +110,7 @@ resource "aws_lambda_function" "api" {
       DSQL_ENDPOINT     = var.dsql_endpoint
       HMAC_SECRET_ARN   = var.hmac_secret_arn
       QUEUE_URL         = var.refresh_queue_url
+      MEDIA_BUCKET      = var.media_bucket_name
     }
   }
 

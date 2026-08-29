@@ -1,4 +1,4 @@
-import { fetchFeed } from "@sparkle/core";
+import { fetchFeed, findArticleImage } from "@sparkle/core";
 import type { SQSBatchResponse, SQSEvent } from "aws-lambda";
 import { getServices } from "../services";
 
@@ -38,6 +38,13 @@ export async function processFeed(feedId: number): Promise<{
       response.body ?? "",
       feed.siteUrl,
     );
+    for (const entry of parsed.entries) {
+      entry.articleImage =
+        (await findArticleImage(
+          entry.contentHtml,
+          entry.url || feed.siteUrl || feed.url,
+        )) ?? undefined;
+    }
     const inserted = await services.ingest.fanoutEntries(
       feed.id,
       parsed.entries,

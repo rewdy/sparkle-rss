@@ -57,6 +57,33 @@ data "aws_iam_policy_document" "dsql_connect" {
   }
 }
 
+resource "aws_s3_bucket" "media" {
+  bucket_prefix = "sparkle-rss-media-"
+  force_destroy = true
+  tags          = var.tags
+}
+
+resource "aws_s3_bucket_public_access_block" "media" {
+  bucket                  = aws_s3_bucket.media.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+data "aws_iam_policy_document" "worker_media" {
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.media.arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "worker_media" {
+  role   = aws_iam_role.worker.id
+  policy = data.aws_iam_policy_document.worker_media.json
+}
+
 resource "aws_iam_role_policy" "orchestrator_dsql" {
   role   = aws_iam_role.orchestrator.id
   policy = data.aws_iam_policy_document.dsql_connect.json
@@ -82,6 +109,7 @@ resource "aws_lambda_function" "orchestrator" {
     variables = {
       QUEUE_URL         = aws_sqs_queue.refresh.url
       DSQL_ENDPOINT     = var.dsql_endpoint
+      MEDIA_BUCKET      = aws_s3_bucket.media.bucket
       MAX_FEEDS_PER_RUN = "100"
       NODE_ENV          = "production"
     }

@@ -1,3 +1,5 @@
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AppError, type StreamSelector } from "@sparkle/core";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -201,6 +203,23 @@ export function createWebApiApp(): Hono<Env> {
     const [entry] = await s.entries.getByIds(await userIdOf(s, c), [id]);
     if (!entry) throw new AppError(404, "entry not found");
     return c.json({ entry });
+  });
+
+  app.get("/media/:id", async (c) => {
+    const s = await getServices();
+    const mediaId = c.req.param("id");
+    if (!/^[0-9a-f-]{36}$/iu.test(mediaId))
+      throw new AppError(400, "invalid media id");
+    const bucket = process.env.MEDIA_BUCKET;
+    if (!bucket) throw new AppError(503, "media storage unavailable");
+    const media = await s.media.getForUser(await userIdOf(s, c), mediaId);
+    if (!media) throw new AppError(404, "media not found");
+    const url = await getSignedUrl(
+      new S3Client({}),
+      new GetObjectCommand({ Bucket: bucket, Key: media.objectKey }),
+      { expiresIn: 300 },
+    );
+    return c.redirect(url, 302);
   });
 
   app.patch("/entries/read", async (c) => {

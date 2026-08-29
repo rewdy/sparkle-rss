@@ -1,4 +1,9 @@
 export {
+  findArticleImage,
+  imageCandidates,
+  type SelectedArticleImage,
+} from "./feed/article-image";
+export {
   type DiscoveredFeed,
   discoverFeed,
   type FetchLike,
@@ -34,6 +39,7 @@ export {
   createIngestService,
   type FeedRow,
 } from "./services/ingest";
+export { createMediaService, type MediaStore } from "./services/media";
 export { createOpmlService } from "./services/opml";
 export { createSettingsService, type SettingsData } from "./services/settings";
 export {

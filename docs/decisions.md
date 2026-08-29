@@ -465,3 +465,16 @@ required and existing sessions are unaffected.
   `docs/08-article-images.md`: automatic splash associations are removed with entries,
   explicit saved images survive unsubscribe, and unreferenced binary objects are
   garbage-collected after a grace period.
+
+## Phase 6 — article splash persistence (2026-08-29)
+
+- The worker selects the first non-icon/avatar image candidate whose intrinsic width and
+  height are both greater than 256 pixels, using bounded HTTP fetches and supported
+  JPEG/PNG/WebP/GIF validation. Image failures remain best effort and do not fail feed
+  ingestion.
+- Accepted bytes are immutable objects in a private Terraform-managed S3 bucket,
+  content-addressed by SHA-256. DSQL stores object metadata in `media_objects` and
+  user-scoped entry associations in `user_media`; `/api/v1/media/:id` authorizes the
+  association and redirects to a short-lived presigned S3 URL.
+- User-initiated saved-image behavior and its UI remain deferred, but the `kind` field
+  and media service are intentionally shaped to support it later.

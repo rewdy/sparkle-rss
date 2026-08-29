@@ -1,5 +1,6 @@
 import Parser from "rss-parser";
 import { AppError } from "../services/errors";
+import type { SelectedArticleImage } from "./article-image";
 import { sanitizeEntryHtml } from "./sanitize";
 
 export interface ParsedEntry {
@@ -10,6 +11,7 @@ export interface ParsedEntry {
   author: string;
   publishedAt: Date;
   enclosures: Array<{ href: string; type?: string; length?: number }>;
+  articleImage?: SelectedArticleImage;
 }
 
 export interface ParsedFeed {

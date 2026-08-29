@@ -1,8 +1,10 @@
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   createApiTokensService,
   createEntriesService,
   createFoldersService,
   createIngestService,
+  createMediaService,
   createOpmlService,
   createSettingsService,
   createSubscriptionsService,
@@ -22,6 +24,7 @@ export interface Services {
   apiTokens: ReturnType<typeof createApiTokensService>;
   opml: ReturnType<typeof createOpmlService>;
   ingest: ReturnType<typeof createIngestService>;
+  media: ReturnType<typeof createMediaService>;
 }
 
 interface Handle {
@@ -56,6 +59,25 @@ async function buildHandle(): Promise<Handle> {
 
 function createServices(db: NodePgDatabase<typeof schema>): Services {
   const deps = { db };
+  const s3 = new S3Client({});
+  const bucket = process.env.MEDIA_BUCKET;
+  const media = createMediaService({
+    db,
+    store: {
+      async put(key, bytes, mimeType) {
+        if (!bucket) throw new Error("MEDIA_BUCKET is required");
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: bytes,
+            ContentType: mimeType,
+            CacheControl: "public,max-age=31536000,immutable",
+          }),
+        );
+      },
+    },
+  });
   return {
     users: createUsersService(deps),
     folders: createFoldersService(deps),
@@ -66,7 +88,8 @@ function createServices(db: NodePgDatabase<typeof schema>): Services {
     settings: createSettingsService(deps),
     apiTokens: createApiTokensService(deps),
     opml: createOpmlService(deps),
-    ingest: createIngestService(deps),
+    ingest: createIngestService({ ...deps, media: bucket ? media : undefined }),
+    media,
   };
 }
 
