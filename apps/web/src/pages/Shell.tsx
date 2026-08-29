@@ -109,6 +109,7 @@ export function Shell(): ReactElement {
   const route = useMemo(() => parseRoute(location), [location]);
   const descriptor = route?.stream ?? null;
   const routeEntryId = route?.entryId ?? null;
+  const storyIndex = route?.storyIndex ?? 0;
 
   const subsQ = useQuery({
     queryKey: qk.subscriptions,
@@ -202,10 +203,23 @@ export function Shell(): ReactElement {
 
   const closeReader = useCallback((): void => {
     if (!descriptor) return;
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
     navigate(`${streamPath(descriptor)}${viewSearch(filter, sort)}`, {
       replace: true,
     });
   }, [descriptor, filter, sort, navigate]);
+
+  const onStoryIndexChange = useCallback(
+    (index: number): void => {
+      if (!descriptor) return;
+      const suffix = index > 0 ? `/story/${index}` : "";
+      navigate(`${streamPath(descriptor)}${suffix}${viewSearch(filter, sort)}`);
+    },
+    [descriptor, filter, navigate, sort],
+  );
 
   const move = useCallback(
     (delta: 1 | -1): void => {
@@ -397,6 +411,8 @@ export function Shell(): ReactElement {
               filter={filter}
               sort={sort}
               activeEntryId={routeEntryId}
+              storyIndex={storyIndex}
+              onStoryIndexChange={onStoryIndexChange}
               onSelect={openEntry}
               presentation={presentation}
               subscriptions={subsQ.data?.subscriptions ?? []}

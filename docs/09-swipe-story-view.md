@@ -9,16 +9,19 @@ TikTok-inspired story viewer on each device.
 - The header contains a toggle between `list` and `swipe` presentation.
 - The selected presentation is stored in device-local storage, not account settings.
   A user may therefore use swipe mode on a phone and list mode on a desktop.
-- Stream routes, article routes, query filters, and browser history remain unchanged.
-  Presentation is a local rendering preference, not navigation state.
+- The active story position is navigation state: story 0 uses the ordinary stream URL,
+  and later stories use `<stream>/story/<zero-based-index>`. Query filters remain in the
+  URL, so refresh and browser back/forward restore the viewed story when the same stream
+  data is available.
 - Swipe up advances to the next entry in the current list order (normally older); swipe
   down moves to the previous entry (normally newer).
 - Swiping past an article does not mark it read. Activating `Read` uses the existing
   article route and honors the existing `markReadOnOpen` preference.
 - Near the end of a loaded page, the view fetches the next cursor page. At the true end,
   navigation stops with a subtle end-of-list state.
-- The swipe view works on touch devices and supports mouse drag, trackpad gestures,
-  arrow keys, Page Up/Page Down, Enter, and Escape on desktop/keyboard.
+- The swipe view uses a real vertical scroll container with CSS scroll snapping. Touch
+  swipes, mouse-wheel scrolling, trackpad gestures, and keyboard scrolling therefore use
+  the same interaction model; the browser owns the gesture physics.
 
 ## Story presentation
 
@@ -35,7 +38,6 @@ downloaded images can be evaluated before visual refinement:
 │          headline            │
 │            Read              │
 │                              │
-│          ↑ / ↓ hint          │
 └──────────────────────────────┘
 ```
 
@@ -61,7 +63,8 @@ that later; the fallback should reflect only imagery already known to Sparkle RS
 
 Add a sibling component rather than modifying the existing list behavior:
 
-- `StoryView` owns the full-screen interaction surface and current story index.
+- `StoryView` owns the full-screen scroll-snap surface; the stream route owns the current
+  story index so it survives refresh and participates in browser history.
 - `StreamInner` or the stream shell chooses `EntryList` versus `StoryView` based on a
   local presentation atom.
 - `Topbar` owns the visible toggle control but not the story state.
@@ -84,7 +87,8 @@ the key requirement is that this value is local-only and never sent through
 
 The existing route-derived open-entry behavior remains authoritative. Clicking `Read`
 navigates to `<stream>/e/:id` using the existing `openEntry` path. Returning with Back or
-Escape returns to the stream and preserves the selected presentation.
+Escape returns to the stream/story route that opened the article and preserves the
+selected presentation.
 
 ## Entry and feed data contract
 
@@ -109,23 +113,20 @@ The source title and favicon should come from the existing subscription query, k
 
 ## Gesture behavior
 
-Use a small gesture state machine rather than changing the route on every drag:
+Use the browser's native scrolling and snapping rather than a custom gesture state machine:
 
 ```text
-pointer/touch start
-  → track vertical displacement and velocity
-  → preview current card movement
-  → threshold met: commit previous/next story
-  → threshold missed: spring back
+wheel/touch/trackpad/keyboard input
+  → native vertical scroll
+  → CSS scroll snap settles on one full-screen story
+  → IntersectionObserver identifies the settled story
+  → route updates to the story index
 ```
 
-Recommended initial interaction values:
-
-- Commit at roughly 20% of viewport height or a quick high-velocity flick.
-- Ignore gestures whose horizontal displacement dominates vertical displacement.
-- Animate committed transitions with a short transform/opacity transition.
-- Prevent rubber-band page scrolling while the story surface is active.
-- Ignore navigation while a transition is in progress.
+The story container should use `scroll-snap-type: y mandatory`, each story should use
+`scroll-snap-align: start` and `scroll-snap-stop: always`, and vertical overscroll should
+be contained within the story surface. Do not cancel wheel events or implement a second
+pointer-drag animation layer.
 
 The story index is derived from the currently flattened entry list. When the active index
 approaches the final loaded entry, request the next cursor page and append entries without
