@@ -412,3 +412,30 @@ automatically, and light/dark compatibility is free because they already use `li
   (e.g. fonts, density presets) extend `ThemeDef` without changing consumers.
 - Three CSS accent-shade usages (entry-row hover/active, shadow) kept shared with shade
   indexes 0/1/6/9 per theme; user approved refining per-theme values later if needed.
+
+## Fix: token expiry / silent-renew root cause (2026-08-29)
+
+Users repeatedly stalled on `/login` and hit errors on `auth.sparklerss.com`. The root
+cause: **the SPA never received a refresh token**, so every "silent renew" fell back to a
+cross-origin `prompt=none` iframe into the hosted UI, which browsers increasingly block
+(ITP / third-party-cookie phase-out). When renew failed, `renewToken()` fired a fire-and-
+forget full `logout()`, and `/login` had no error path — hence the stuck spinner.
+
+- **Add `offline_access`** to the Cognito SPA client scopes (`tf/modules/auth/main.tf`),
+  so a real refresh token is issued. Refresh grants then renew via a CORS `POST` to the
+  token endpoint (no hidden iframe, no third-party cookies).
+- **Add `web_origins`** to the same client, wired from the shared `local.web_origins` —
+  required or the browser blocks that refresh `POST`. (The local was previously only fed
+  to the API module's CORS, not to Cognito.)
+- **On-demand renewal**: `automaticSilentRenew` disabled; `accessToken()` and the API
+  client's 401-retry are the single code path that owns token freshness (was three racing
+  triggers across tabs).
+- **Classify renewal failure**: a provider rejection (`ErrorResponse` with `error`, e.g.
+  `invalid_grant`) clears local credentials and redirects to `/login`
+  (`SessionExpiredError`); a network/timeout failure rethrows *without* clearing the
+  session — transient blips no longer destroy it.
+- **Boot guard re-checks expiry** after the warm-up renewal instead of mounting authed on
+  a dead token, and **`/login` now surfaces redirect errors with a retry action**.
+
+Deploy note: `offline_access` + `web_origins` take effect on the next `terraform apply`;
+sessions minted before that lack a refresh token and may need one fresh sign-in.

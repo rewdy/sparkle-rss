@@ -18,9 +18,12 @@ function um(): UserManager {
       client_id: CLIENT_ID,
       redirect_uri: `${window.location.origin}/auth/callback`,
       post_logout_redirect_uri: `${window.location.origin}/`,
-      scope: 'openid profile email',
+      scope: 'openid profile email offline_access',
       response_type: 'code',
-      automaticSilentRenew: true,
+      // Renewal happens on demand (through accessToken / the API client's 401
+      // retry) rather than in the background, so a single code path owns token
+      // freshness and there is no renewal to race against.
+      automaticSilentRenew: false,
       userStore: new WebStorageStateStore({ store: sessionStorage }),
     });
   }
@@ -67,16 +70,49 @@ export async function accessToken(): Promise<string> {
   return user.access_token;
 }
 
-/** Force a silent token renewal. Throws if the refresh throws and fails loudly.
+/** The refresh token was rejected by the provider (revoked/expired) — the
+ * session is genuinely over and the app must send the user back to /login. */
+export class SessionExpiredError extends Error {
+  constructor(cause?: unknown) {
+    super('session expired');
+    this.name = 'SessionExpiredError';
+    if (cause !== undefined) {
+      // Standard Error cause so debugging keeps the original failure around.
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
+/** Hard redirect the app to /login (used on confirmed session expiry). */
+export function redirectToLogin(): void {
+  window.location.assign('/login');
+}
+
+/** Force a token renewal. Distinguishes a genuinely dead refresh token (the
+ * provider answered with an OAuth error like `invalid_grant`) from a transient
+ * network/timeout failure — only the former is allowed to destroy the session.
  * Used by the API client to retry a 401 with fresh credentials. */
 export async function renewToken(): Promise<string> {
   if (devAuthBypassed) return 'dev-token';
-  const renewed = await um()
-    .signinSilent()
-    .catch((e: unknown) => {
-      logout();
-      throw new Error('session expired', { cause: e });
-    });
-  if (!renewed?.access_token) throw new Error('session expired');
+  let renewed: User | null;
+  try {
+    renewed = await um().signinSilent();
+  } catch (cause) {
+    // oidc-client-ts surfaces provider rejections as an ErrorResponse carrying
+    // an `error` field; network/timeout errors have none. Rejections without
+    // that field are transient and must not clear the stored session.
+    const providerRejected = Boolean((cause as { error?: unknown })?.error);
+    if (!providerRejected) throw cause;
+    await um()
+      .removeUser()
+      .catch(() => {});
+    throw new SessionExpiredError(cause);
+  }
+  if (!renewed?.access_token) {
+    await um()
+      .removeUser()
+      .catch(() => {});
+    throw new SessionExpiredError();
+  }
   return renewed.access_token;
 }

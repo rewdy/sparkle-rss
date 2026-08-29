@@ -121,11 +121,22 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
 
 ## Auth flow details
 
-- PKCE + authorization code, scopes `openid profile email`.
-- Callback route swaps code → tokens; stores user in memory + sessionStorage;
-  silent renew via refresh token with fallback to iframe; expired-session navigation
-  triggers hosted-UI redirect preserving deep link (`state` param).
-- Logout: revoke refresh token + end session at Cognito, clear local state.
+- PKCE + authorization code, scopes `openid profile email offline_access`
+  (`offline_access` opts the client into a refresh token — required for the
+  silent renew to use a real refresh grant instead of a cross-origin iframe).
+- Callback route swaps code → tokens; stores user in memory + sessionStorage.
+- Token renewal is **on-demand**: `accessToken()` refreshes when the stored
+  token is expired, and the API client refreshes once after a 401. Renewal does
+  a CORS `POST` of the refresh token to the token endpoint (no hidden iframe),
+  so it does not depend on third-party cookies. This means the app client must
+  list the app origin in `web_origins`.
+- Renewal failure distinguishes a **dead session** (provider rejects the refresh
+  token with an OAuth error) from a **transient failure** (network/timeout). Only
+  a dead session clears local credentials and redirects the app to `/login`;
+  transient failures leave the session intact and surface to the caller.
+- Logout: `signoutRedirect` ends the session at Cognito and clears local state.
+- The `/login` page reports redirect failures with a retry action instead of
+  hanging on a spinner.
 
 ## Build & deploy outputs
 

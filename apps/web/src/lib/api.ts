@@ -1,4 +1,10 @@
-import { accessToken, devAuthBypassed, renewToken } from './auth';
+import {
+  accessToken,
+  devAuthBypassed,
+  redirectToLogin,
+  renewToken,
+  SessionExpiredError,
+} from './auth';
 import { localMidnightIso } from './keys';
 import type {
   Entry,
@@ -37,7 +43,14 @@ async function authedFetch(path: string, init?: RequestInit, json?: boolean): Pr
   let res = await doFetch(await accessToken());
   if (res.status === 401) {
     // Credentials were rejected server-side: renew once and retry.
-    res = await doFetch(await renewToken());
+    try {
+      res = await doFetch(await renewToken());
+    } catch (e) {
+      // Only a genuinely expired session sends the user back to /login; a
+      // transient renewal failure is left to the caller / next retry.
+      if (e instanceof SessionExpiredError) redirectToLogin();
+      throw e;
+    }
   }
   return res;
 }
