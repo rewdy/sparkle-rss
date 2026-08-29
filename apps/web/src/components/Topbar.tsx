@@ -4,6 +4,7 @@ import {
   Button,
   Divider,
   Group,
+  SegmentedControl,
   Text,
   Tooltip,
 } from "@mantine/core";
@@ -88,41 +89,31 @@ export function Topbar({
       </Group>
 
       <Group gap="xs" wrap="nowrap">
-        <Button.Group>
-          <Button
-            size="compact-xs"
-            variant={presentation === "list" ? "default" : "subtle"}
-            onClick={() => onPresentationChange("list")}
-          >
-            list
-          </Button>
-          <Button
-            size="compact-xs"
-            variant={presentation === "swipe" ? "default" : "subtle"}
-            onClick={() => onPresentationChange("swipe")}
-          >
-            swipe
-          </Button>
-        </Button.Group>
+        <SegmentedControl
+          size="xs"
+          value={presentation}
+          onChange={(value) => {
+            if (value === "list" || value === "swipe")
+              onPresentationChange(value);
+          }}
+          data={[
+            { label: "list", value: "list" },
+            { label: "swipe", value: "swipe" },
+          ]}
+        />
         {stream.kind !== "starred" && stream.kind !== "unread" && (
-          <Button.Group visibleFrom="sm">
-            <Button
-              size="compact-xs"
-              variant={filter === "all" ? "default" : "subtle"}
-              color="dimmed"
-              onClick={() => onFilterChange("all")}
-            >
-              all
-            </Button>
-            <Button
-              size="compact-xs"
-              variant={filter === "unread" ? "default" : "subtle"}
-              color="dimmed"
-              onClick={() => onFilterChange("unread")}
-            >
-              unread
-            </Button>
-          </Button.Group>
+          <SegmentedControl
+            size="xs"
+            visibleFrom="sm"
+            value={filter}
+            onChange={(value) => {
+              if (value === "all" || value === "unread") onFilterChange(value);
+            }}
+            data={[
+              { label: "all", value: "all" },
+              { label: "unread", value: "unread" },
+            ]}
+          />
         )}
         {stream.kind !== "starred" && stream.kind !== "today" && (
           <Tooltip label="mark everything read (Shift+A)">
