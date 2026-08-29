@@ -490,3 +490,13 @@ required and existing sessions are unaffected.
 - Stories use stored article hero images when present. Without one, the view uses a theme
   background and may show the small feed favicon beside the source title; a favicon is
   never promoted to hero imagery.
+- The active story position is route-backed: the first story uses the ordinary stream URL,
+  later stories use `<stream>/story/<zero-based-index>`, and query view parameters remain
+  in the URL. This preserves refresh and browser history position. Opening an article and
+  using its back button follows the browser history stack to the story that opened it.
+- The story surface uses native vertical scrolling with mandatory CSS scroll snapping and
+  `IntersectionObserver` route synchronization. A custom pointer-drag or wheel handler
+  was rejected because it interrupted smooth snap settling, especially for desktop mouse
+  wheel input.
+- Read stories remain actionable but use a gray Read button with a Lucide check icon and
+  a slightly muted headline, while unread stories retain the normal emphasis.

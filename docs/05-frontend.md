@@ -24,6 +24,7 @@
 | `/unread` | All unread items (API stream `all`, filter forced to unread) |
 | `/folder/:id` | Folder stream |
 | `/feed/:id` | Feed stream |
+| `<stream>/story/:index` | Swipe presentation position (zero-based story index) |
 | `<stream>/e/:id` | Reading pane for entry `:id` (e.g. `/all/e/123`, `/feed/5/e/123`) |
 | `/settings` | Profile, appearance, API tokens (revocation requires a confirmation modal), OPML import/export |
 
@@ -37,8 +38,8 @@ Unknown routes → redirect `/all`.
 opening/closing the reading pane, switching streams, stepping between entries — must be
 implemented as a URL route change via wouter `navigate`, so browser back/forward always
 works: selecting an entry pushes `<stream>/e/:id`, `j`/`k` inside the reader push the
-sibling entry's route (back walks them), and closing the reader (back button/Esc) replaces
-back to the bare stream path. Deep links to an entry id render from the loaded list cache or
+sibling entry's route (back walks them), and closing the reader (back button/Esc) follows
+browser history to the route that opened the reader. Deep links to an entry id render from the loaded list cache or
 fetch it via `GET /api/v1/entries/:id`; a 404 closes back to the stream. View preferences
 (`filter`, `sort`) live in the query string (`?filter=unread&sort=asc`) as of a later
 cleanup, so views are shareable deep links and back/forward restores them; the reader URL
@@ -157,7 +158,10 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
   without offline complexity).
 
 The stream shell also supports an optional device-local `swipe` presentation. It is
-controlled by `storyPresentationAtom` and the header toggle, and does not alter routes or
-the standard `EntryList`. Swipe stories use the entry's authorized article image when
+controlled by `storyPresentationAtom` and the header toggle, and does not alter the
+standard `EntryList`. Swipe stories use the entry's authorized article image when
 available, or a theme background with the small feed favicon beside the source title;
-the favicon is never used as the hero image.
+the favicon is never used as the hero image. The swipe surface is a native vertical
+scroll container with mandatory CSS scroll snapping; its settled story index is written
+to `<stream>/story/:index` so refresh and article back navigation preserve position.
+Read stories remain actionable but use a gray button, check icon, and muted headline.

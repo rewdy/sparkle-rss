@@ -10,7 +10,7 @@ live-verified; conformance suite runs in CI). Everything is done **except**:
 
 1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
    still pending; until it passes, Phase 4 is "done, pending device verification".
-2. **Phase 6** — the active backlog below (7 of 13 chunks landed; lifecycle cleanup
+2. **Phase 6** — the active backlog below (9 of 13 chunks landed; lifecycle cleanup
    and article splash persistence landed 2026-08-29).
 3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
    the app is live and fast enough that this never blocked anything).
@@ -212,9 +212,10 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
-- [ ] **Swipe story view** — optional device-local full-screen story presentation with
-      touch/pointer/keyboard navigation, hero-image rendering, favicon fallback, and
-      unchanged standard-list behavior. Plan: [09-swipe-story-view.md](09-swipe-story-view.md).
+- [x] **Swipe story view** — optional device-local full-screen story presentation with
+      native touch/mouse/trackpad scroll snapping, route-backed story position,
+      hero-image rendering, favicon fallback, read-state styling, and unchanged
+      standard-list behavior. Plan: [09-swipe-story-view.md](09-swipe-story-view.md). ✅
 - [x] **Feed and entry lifecycle cleanup** — unsubscribe deletes dependent
       user-scoped data in the correct order, feeds with no subscribers stop refreshing
       and enter grace-period cleanup, and future media associations have explicit
