@@ -50,6 +50,10 @@ export function createIngestService({ db }: ServicesDeps) {
           and(
             lte(schema.feeds.nextFetchAfter, sql`now()`),
             sql`${schema.feeds.errorCount} < ${QUARANTINE_ERROR_COUNT}`,
+            sql`exists (
+              select 1 from ${schema.subscriptions}
+              where ${schema.subscriptions.feedId} = ${schema.feeds.id}
+            )`,
           ),
         )
         .orderBy(schema.feeds.nextFetchAfter)
@@ -84,6 +88,49 @@ export function createIngestService({ db }: ServicesDeps) {
         .from(schema.feeds)
         .where(eq(schema.feeds.id, feedId));
       return rows.at(0) ?? null;
+    },
+
+    /** Remove feeds that have had no subscribers for the grace period. */
+    async cleanupOrphanedFeeds(
+      graceMinutes = 72 * 60,
+      limit = 100,
+    ): Promise<number> {
+      const cutoff = new Date(Date.now() - graceMinutes * 60_000);
+      const candidates = await db
+        .select({ id: schema.feeds.id })
+        .from(schema.feeds)
+        .where(
+          and(
+            lte(schema.feeds.orphanedAt, cutoff),
+            sql`not exists (
+              select 1 from ${schema.subscriptions}
+              where ${schema.subscriptions.feedId} = ${schema.feeds.id}
+            )`,
+          ),
+        )
+        .limit(limit);
+
+      let removed = 0;
+      for (const feed of candidates) {
+        await db
+          .delete(schema.userEntries)
+          .where(eq(schema.userEntries.feedId, feed.id));
+        const deleted = await db
+          .delete(schema.feeds)
+          .where(
+            and(
+              eq(schema.feeds.id, feed.id),
+              lte(schema.feeds.orphanedAt, cutoff),
+              sql`not exists (
+                select 1 from ${schema.subscriptions}
+                where ${schema.subscriptions.feedId} = ${schema.feeds.id}
+              )`,
+            ),
+          )
+          .returning({ id: schema.feeds.id });
+        removed += deleted.length;
+      }
+      return removed;
     },
 
     async recordNotModified(feedId: number, ttlMinutes: number): Promise<void> {

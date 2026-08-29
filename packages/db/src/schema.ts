@@ -76,13 +76,17 @@ export const feeds = pgTable(
     nextFetchAfter: timestamp("next_fetch_after", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    orphanedAt: timestamp("orphaned_at", { withTimezone: true }),
     errorCount: bigint("error_count", { mode: "number" }).notNull().default(0),
     lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("feeds_due_idx").on(t.nextFetchAfter)],
+  (t) => [
+    index("feeds_due_idx").on(t.nextFetchAfter),
+    index("feeds_orphaned_idx").on(t.orphanedAt),
+  ],
 );
 
 export const subscriptions = pgTable(

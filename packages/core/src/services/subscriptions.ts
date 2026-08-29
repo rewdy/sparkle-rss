@@ -164,6 +164,11 @@ export function createSubscriptionsService(
         throw new AppError(409, "already subscribed to this feed");
       }
 
+      await db
+        .update(schema.feeds)
+        .set({ orphanedAt: null })
+        .where(eq(schema.feeds.id, feedId));
+
       hooks.onSubscribed?.(feedId);
 
       const list = await this.list(userId);
@@ -226,7 +231,13 @@ export function createSubscriptionsService(
       const list = await this.list(userId);
       const dto = list.find((s) => s.url === feedUrl);
       if (!dto) throw new AppError(500, "subscription missing after insert");
-      if (inserted.length > 0) hooks.onSubscribed?.(feedId);
+      if (inserted.length > 0) {
+        await db
+          .update(schema.feeds)
+          .set({ orphanedAt: null })
+          .where(eq(schema.feeds.id, feedId));
+        hooks.onSubscribed?.(feedId);
+      }
       return dto;
     },
 
@@ -250,6 +261,19 @@ export function createSubscriptionsService(
         .returning({ feedId: schema.subscriptions.feedId });
       if (deleted.length === 0)
         throw new AppError(404, "subscription not found");
+
+      await db
+        .update(schema.feeds)
+        .set({ orphanedAt: new Date() })
+        .where(
+          and(
+            eq(schema.feeds.id, feedId),
+            sql`not exists (
+              select 1 from ${schema.subscriptions}
+              where ${schema.subscriptions.feedId} = ${schema.feeds.id}
+            )`,
+          ),
+        );
     },
 
     async edit(

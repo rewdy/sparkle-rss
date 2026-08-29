@@ -98,6 +98,13 @@ subscribe additionally enqueues an immediate refresh on the ingest queue (same
 `{ feedId }` message the orchestrator sends), so a newly subscribed feed is fetched
 within seconds instead of waiting for the next 5-minute orchestrator run.
 
+When the last subscription is removed, the feed is marked `orphaned_at` and is excluded
+from due-feed selection. The orchestrator removes orphaned feed rows after a 72-hour
+grace period, rechecking that no subscription appeared; resubscribing clears the marker.
+This is application-enforced because DSQL has no foreign keys. Removing a subscription
+still deletes that user's entries immediately; shared feed metadata remains during the
+grace period so a quick resubscribe can reuse it.
+
 ## Cursor format
 
 GReader clients treat continuation tokens as opaque, so we use one canonical encoding for

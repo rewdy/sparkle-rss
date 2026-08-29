@@ -3,6 +3,7 @@ import {
   createApiTokensService,
   createEntriesService,
   createFoldersService,
+  createIngestService,
   createOpmlService,
   createSettingsService,
   createSubscriptionsService,
@@ -75,6 +76,7 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
   let tokens: ReturnType<typeof createApiTokensService>;
   let users: ReturnType<typeof createUsersService>;
   let opml: ReturnType<typeof createOpmlService>;
+  let ingest: ReturnType<typeof createIngestService>;
 
   beforeAll(() => {
     folders = createFoldersService({ db });
@@ -84,6 +86,7 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
     tokens = createApiTokensService({ db });
     users = createUsersService({ db });
     opml = createOpmlService({ db });
+    ingest = createIngestService({ db });
   });
 
   describe("folders", () => {
@@ -209,9 +212,46 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
       await subs.unsubscribe(userId, feedId);
       const counts = await entries.unreadCountsByFeed(userId);
       expect(counts.has(feedId)).toBe(false);
+      const orphaned = await db
+        .select({ orphanedAt: schema.feeds.orphanedAt })
+        .from(schema.feeds)
+        .where(sql`${schema.feeds.id} = ${feedId}`);
+      expect(orphaned[0]?.orphanedAt).toBeInstanceOf(Date);
+      expect((await ingest.getDueFeeds(100)).some((f) => f.id === feedId)).toBe(
+        false,
+      );
       await expect(subs.unsubscribe(userId, feedId)).rejects.toMatchObject({
         status: 404,
       });
+    });
+
+    it("revives an orphaned feed on resubscribe and cleans old orphans", async () => {
+      const revived = await subs.subscribeDirect(
+        userId,
+        "https://revive.example/rss.xml",
+        {},
+      );
+      const revivedId = Number(revived.feedId);
+      await subs.unsubscribe(userId, revivedId);
+      await subs.subscribeDirect(userId, "https://revive.example/rss.xml", {});
+      const active = await db
+        .select({ orphanedAt: schema.feeds.orphanedAt })
+        .from(schema.feeds)
+        .where(sql`${schema.feeds.id} = ${revivedId}`);
+      expect(active[0]?.orphanedAt).toBeNull();
+      await subs.unsubscribe(userId, revivedId);
+
+      await db
+        .update(schema.feeds)
+        .set({ orphanedAt: new Date(0) })
+        .where(sql`${schema.feeds.id} = ${revivedId}`);
+      expect(await ingest.cleanupOrphanedFeeds()).toBe(1);
+      expect(
+        await db
+          .select({ id: schema.feeds.id })
+          .from(schema.feeds)
+          .where(sql`${schema.feeds.id} = ${revivedId}`),
+      ).toHaveLength(0);
     });
 
     it("edits title and folder", async () => {

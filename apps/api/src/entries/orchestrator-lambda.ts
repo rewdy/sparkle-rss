@@ -26,9 +26,10 @@ export async function handler(
   if (!queueUrl) throw new Error("QUEUE_URL is required");
 
   const services = await getServices();
+  const removedOrphans = await services.ingest.cleanupOrphanedFeeds();
   const due = await services.ingest.getDueFeeds(MAX_FEEDS_PER_RUN);
   if (due.length === 0) {
-    log({ dispatched: 0 });
+    log({ dispatched: 0, removedOrphans });
     return;
   }
 
@@ -59,5 +60,5 @@ export async function handler(
     }
   }
 
-  log({ dispatched, due: due.length });
+  log({ dispatched, due: due.length, removedOrphans });
 }

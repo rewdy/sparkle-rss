@@ -449,3 +449,19 @@ hence the stuck spinner.
 Deploy note: only the frontend changed behavior (the Cognito client keeps its existing
 scopes), so the fix takes effect on the next web bundle release — no Terraform apply is
 required and existing sessions are unaffected.
+
+## Phase 6 — feed lifecycle cleanup (2026-08-29)
+
+- Unsubscribing still deletes a user's materialized entries immediately, but now marks
+  the shared feed `orphaned_at` when no subscriptions remain. Due-feed selection requires
+  an active subscription, so orphaned feeds stop refreshing instead of being fetched and
+  fanned out to nobody.
+- Resubscribing clears `orphaned_at`, allowing a quick resubscribe to reuse shared feed
+  metadata and validators.
+- The orchestrator removes orphaned feed rows after a 72-hour grace period, rechecking
+  for a concurrent resubscribe before deletion. This is application-enforced because
+  DSQL has no foreign keys.
+- Article media is not part of this migration. Its lifecycle contract is documented in
+  `docs/08-article-images.md`: automatic splash associations are removed with entries,
+  explicit saved images survive unsubscribe, and unreferenced binary objects are
+  garbage-collected after a grace period.
