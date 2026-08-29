@@ -164,6 +164,7 @@ module "site" {
 
 module "ingest" {
   source           = "./modules/ingest"
+  depends_on       = [module.github_oidc]
   lambda_zip_dir   = var.lambda_zip_dir
   dsql_cluster_arn = module.db.cluster_arn
   dsql_endpoint    = module.db.endpoint
