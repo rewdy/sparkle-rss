@@ -15,8 +15,8 @@ describe.skipIf(!databaseUrl)("schema integration (docker Postgres)", () => {
     if (!databaseUrl) throw new Error("unreachable");
     pool = createLocalPool({ connectionString: databaseUrl });
     db = drizzle(pool, { schema });
-    await db.execute(sql`DROP TABLE IF EXISTS user_entries, subscriptions, feeds, categories,
-      api_tokens, user_settings, users CASCADE`);
+    await db.execute(sql`DROP TABLE IF EXISTS user_media, media_objects, user_entries,
+      subscriptions, feeds, categories, api_tokens, user_settings, users CASCADE`);
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     await db.execute(sql`DROP SCHEMA IF EXISTS public CASCADE`);
     await db.execute(sql`CREATE SCHEMA public`);

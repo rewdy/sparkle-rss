@@ -93,6 +93,7 @@ locals {
     "sns:ListTagsForResource",
     "sns:TagResource",
     "sns:UntagResource",
+    "s3:CreateBucket",
     "cloudwatch:ListTagsForResource",
     "cloudwatch:TagResource",
     "cloudwatch:UntagResource",
@@ -131,6 +132,8 @@ data "aws_iam_policy_document" "deploy" {
       "arn:aws:s3:::sparkle-rss-web-*/*",
       "arn:aws:s3:::sparkle-rss-site-*",
       "arn:aws:s3:::sparkle-rss-site-*/*",
+      "arn:aws:s3:::sparkle-rss-media-*",
+      "arn:aws:s3:::sparkle-rss-media-*/*",
     ]
   }
 

@@ -96,8 +96,8 @@ describe.skipIf(!databaseUrl)("ingest pipeline (docker Postgres)", () => {
     if (!databaseUrl) throw new Error("unreachable");
     pool = createLocalPool({ connectionString: databaseUrl });
     db = drizzle(pool, { schema });
-    await db.execute(sql`DROP TABLE IF EXISTS user_entries, subscriptions, feeds, categories,
-      api_tokens, user_settings, users CASCADE`);
+    await db.execute(sql`DROP TABLE IF EXISTS user_media, media_objects, user_entries,
+      subscriptions, feeds, categories, api_tokens, user_settings, users CASCADE`);
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
     await migrate(db, {
