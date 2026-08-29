@@ -27,6 +27,7 @@ import {
   loadLocalUi,
   markReadOnOpenAtom,
   shortcutsOpenAtom,
+  storyPresentationAtom,
   todayRolloverAtom,
 } from "../lib/ui-state";
 import { FullscreenLoader, useAuthGuard } from "./guard";
@@ -100,6 +101,8 @@ export function Shell(): ReactElement {
   const setShortcutsOpen = useSetAtom(shortcutsOpenAtom);
   const shortcutsOpen = useAtomValue(shortcutsOpenAtom);
   const markReadOnOpen = useAtomValue(markReadOnOpenAtom);
+  const presentation = useAtomValue(storyPresentationAtom);
+  const setPresentation = useSetAtom(storyPresentationAtom);
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
 
@@ -354,6 +357,8 @@ export function Shell(): ReactElement {
           onFilterChange={onFilterChange}
           navOpened={navOpened}
           onToggleNav={toggleNav}
+          presentation={presentation}
+          onPresentationChange={setPresentation}
         />
       </AppShell.Header>
 
@@ -393,6 +398,8 @@ export function Shell(): ReactElement {
               sort={sort}
               activeEntryId={routeEntryId}
               onSelect={openEntry}
+              presentation={presentation}
+              subscriptions={subsQ.data?.subscriptions ?? []}
             />
           )
         ) : (

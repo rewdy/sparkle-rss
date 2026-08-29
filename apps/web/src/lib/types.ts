@@ -10,6 +10,12 @@ export interface Entry {
   enclosures: Array<{ href?: string; type?: string; length?: number }>;
   isRead: boolean;
   isStarred: boolean;
+  articleImage: {
+    id: string;
+    width: number;
+    height: number;
+    alt: string;
+  } | null;
 }
 
 export interface EntryPage {

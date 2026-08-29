@@ -478,3 +478,15 @@ required and existing sessions are unaffected.
   association and redirects to a short-lived presigned S3 URL.
 - User-initiated saved-image behavior and its UI remain deferred, but the `kind` field
   and media service are intentionally shaped to support it later.
+
+## Phase 6 — swipe story presentation (2026-08-29)
+
+- Added an optional full-screen story presentation selected by a device-local header
+  toggle. The existing standard list remains the default and unchanged; the preference is
+  not stored in account settings or encoded in routes.
+- Swipe up/down and keyboard navigation move through the current stream order. `Read`
+  reuses the existing route and mark-on-open behavior; merely swiping does not mark an
+  entry read.
+- Stories use stored article hero images when present. Without one, the view uses a theme
+  background and may show the small feed favicon beside the source title; a favicon is
+  never promoted to hero imagery.

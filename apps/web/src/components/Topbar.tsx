@@ -28,6 +28,8 @@ export function Topbar({
   onFilterChange,
   navOpened,
   onToggleNav,
+  presentation,
+  onPresentationChange,
 }: {
   stream: StreamDescriptor;
   title: string;
@@ -35,6 +37,8 @@ export function Topbar({
   onFilterChange: (f: "all" | "unread") => void;
   navOpened: boolean;
   onToggleNav: () => void;
+  presentation: "list" | "swipe";
+  onPresentationChange: (value: "list" | "swipe") => void;
 }): ReactElement {
   const qc = useQueryClient();
   const markAll = useMarkAllRead(stream);
@@ -84,6 +88,22 @@ export function Topbar({
       </Group>
 
       <Group gap="xs" wrap="nowrap">
+        <Button.Group>
+          <Button
+            size="compact-xs"
+            variant={presentation === "list" ? "default" : "subtle"}
+            onClick={() => onPresentationChange("list")}
+          >
+            list
+          </Button>
+          <Button
+            size="compact-xs"
+            variant={presentation === "swipe" ? "default" : "subtle"}
+            onClick={() => onPresentationChange("swipe")}
+          >
+            swipe
+          </Button>
+        </Button.Group>
         {stream.kind !== "starred" && stream.kind !== "unread" && (
           <Button.Group visibleFrom="sm">
             <Button

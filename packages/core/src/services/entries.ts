@@ -37,6 +37,12 @@ export interface EntryDto {
   enclosures: Array<{ href?: string; type?: string; length?: number }>;
   isRead: boolean;
   isStarred: boolean;
+  articleImage: {
+    id: string;
+    width: number;
+    height: number;
+    alt: string;
+  } | null;
 }
 
 const MAX_LIMIT = 200;
@@ -62,20 +68,58 @@ export function createEntriesService({ db }: ServicesDeps) {
     return and(...conditions);
   }
 
-  function toEntryDto(row: typeof schema.userEntries.$inferSelect): EntryDto {
-    return {
-      id: row.id.toString(),
-      feedId: row.feedId.toString(),
-      title: row.title,
-      url: row.url,
-      author: row.author,
-      contentHtml: row.contentHtml,
-      publishedAtMs: row.publishedAt.getTime(),
-      crawledAtMs: row.crawledAt.getTime(),
-      enclosures: (row.enclosures as EntryDto["enclosures"]) ?? [],
-      isRead: row.isRead,
-      isStarred: row.isStarred,
-    };
+  async function toEntryDtos(
+    userId: string,
+    rows: (typeof schema.userEntries.$inferSelect)[],
+  ): Promise<EntryDto[]> {
+    const ids = rows.map((row) => row.id);
+    const mediaRows = ids.length
+      ? await db
+          .select({
+            entryId: schema.userMedia.entryId,
+            id: schema.mediaObjects.id,
+            width: schema.mediaObjects.width,
+            height: schema.mediaObjects.height,
+            alt: schema.userMedia.alt,
+          })
+          .from(schema.userMedia)
+          .innerJoin(
+            schema.mediaObjects,
+            eq(schema.mediaObjects.id, schema.userMedia.mediaObjectId),
+          )
+          .where(
+            and(
+              eq(schema.userMedia.userId, userId),
+              eq(schema.userMedia.kind, "article_splash"),
+              inArray(schema.userMedia.entryId, ids),
+            ),
+          )
+      : [];
+    const byEntry = new Map(mediaRows.map((row) => [row.entryId, row]));
+    return rows.map((row) => {
+      const image = byEntry.get(row.id);
+      return {
+        id: row.id.toString(),
+        feedId: row.feedId.toString(),
+        title: row.title,
+        url: row.url,
+        author: row.author,
+        contentHtml: row.contentHtml,
+        publishedAtMs: row.publishedAt.getTime(),
+        crawledAtMs: row.crawledAt.getTime(),
+        enclosures: (row.enclosures as EntryDto["enclosures"]) ?? [],
+        isRead: row.isRead,
+        isStarred: row.isStarred,
+        articleImage: image
+          ? {
+              id: image.id,
+              width: image.width,
+              height: image.height,
+              alt: image.alt,
+            }
+          : null,
+      };
+    });
   }
 
   return {
@@ -160,7 +204,7 @@ export function createEntriesService({ db }: ServicesDeps) {
             })
           : null;
 
-      return { items: page.map(toEntryDto), nextCursor };
+      return { items: await toEntryDtos(userId, page), nextCursor };
     },
 
     async getByIds(userId: string, ids: number[]): Promise<EntryDto[]> {
@@ -174,7 +218,7 @@ export function createEntriesService({ db }: ServicesDeps) {
             inArray(schema.userEntries.id, ids),
           ),
         );
-      return rows.map(toEntryDto);
+      return toEntryDtos(userId, rows);
     },
 
     async setReadState(

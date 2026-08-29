@@ -4,8 +4,9 @@ import type { ReactElement } from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { api } from "../lib/api";
 import { qk } from "../lib/keys";
-import type { Entry, StreamDescriptor } from "../lib/types";
+import type { Entry, StreamDescriptor, Subscription } from "../lib/types";
 import { EntryList } from "./EntryList";
+import { StoryView } from "./StoryView";
 
 export function StreamInner({
   stream,
@@ -13,12 +14,16 @@ export function StreamInner({
   sort,
   activeEntryId,
   onSelect,
+  presentation,
+  subscriptions,
 }: {
   stream: StreamDescriptor;
   filter: "all" | "unread";
   sort: "asc" | "desc";
   activeEntryId: string | null;
   onSelect: (entry: Entry) => void;
+  presentation: "list" | "swipe";
+  subscriptions: Subscription[];
 }): ReactElement {
   const query = useInfiniteQuery({
     queryKey: qk.entries(stream, filter, sort),
@@ -73,13 +78,24 @@ export function StreamInner({
       }}
       data-stream-scroll
     >
-      <EntryList
-        entries={entries}
-        loading={query.isPending}
-        activeId={activeEntryId}
-        onSelect={onSelect}
-        scrollRef={scrollRef}
-      />
+      {presentation === "swipe" ? (
+        <StoryView
+          entries={entries}
+          subscriptions={subscriptions}
+          loading={query.isPending}
+          onRead={onSelect}
+          onNext={() => void query.fetchNextPage()}
+          onPrev={() => undefined}
+        />
+      ) : (
+        <EntryList
+          entries={entries}
+          loading={query.isPending}
+          activeId={activeEntryId}
+          onSelect={onSelect}
+          scrollRef={scrollRef}
+        />
+      )}
       <div ref={sentinelRef} style={{ height: 1 }} />
       {!query.hasNextPage && entries.length > 0 && (
         <Text ta="center" c="dimmed" size="xs" py="md" ff="monospace">

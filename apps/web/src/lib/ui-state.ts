@@ -3,6 +3,7 @@ import { DEFAULT_THEME_ID, type ThemeId } from "../themes";
 import { localDateKey } from "./keys";
 
 export type ColorSchemePref = "light" | "dark" | "system";
+export type StoryPresentation = "list" | "swipe";
 
 export function loadLocalUi(): Record<string, unknown> {
   try {
@@ -36,6 +37,16 @@ function asBool(v: unknown, fallback: boolean): boolean {
 // Atoms initialize from localStorage at module load (synchronous, pre-mount)
 // so the first paint already uses saved preferences.
 const local = loadLocalUi();
+const storyPresentationBaseAtom = atom<StoryPresentation>(
+  local.storyPresentation === "swipe" ? "swipe" : "list",
+);
+export const storyPresentationAtom = atom(
+  (get) => get(storyPresentationBaseAtom),
+  (_get, set, next: StoryPresentation) => {
+    set(storyPresentationBaseAtom, next);
+    persistUiPatch({ storyPresentation: next });
+  },
+);
 
 const colorSchemeBaseAtom = atom<ColorSchemePref>(
   isColorScheme(local.colorScheme) ? local.colorScheme : "dark",

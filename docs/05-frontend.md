@@ -155,3 +155,9 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
 - `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
   font subset. PWA manifest + service-worker shell deferred to Phase 6 (installability
   without offline complexity).
+
+The stream shell also supports an optional device-local `swipe` presentation. It is
+controlled by `storyPresentationAtom` and the header toggle, and does not alter routes or
+the standard `EntryList`. Swipe stories use the entry's authorized article image when
+available, or a theme background with the small feed favicon beside the source title;
+the favicon is never used as the hero image.
