@@ -59,7 +59,6 @@ data "aws_iam_policy_document" "dsql_connect" {
 
 resource "aws_s3_bucket" "media" {
   bucket_prefix = "sparkle-rss-media-"
-  force_destroy = true
   tags          = var.tags
 }
 
