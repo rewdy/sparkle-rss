@@ -89,3 +89,4 @@ sparkle-rss/
 | [04-infrastructure.md](04-infrastructure.md) | Terraform structure, CI/CD, environments, cost model |
 | [05-frontend.md](05-frontend.md) | Web app architecture, state management, UX specification |
 | [06-roadmap.md](06-roadmap.md) | Build phases with exit criteria |
+| [08-article-images.md](08-article-images.md) | Article splash-image selection, storage, and future media API plan |
