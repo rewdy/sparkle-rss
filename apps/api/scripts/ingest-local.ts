@@ -1,10 +1,10 @@
-import 'dotenv/config';
-import { config } from 'dotenv';
+import "dotenv/config";
+import { config } from "dotenv";
 
-config({ path: '../../.env' });
+config({ path: "../../.env" });
 
-import { processFeed } from '../src/entries/worker-lambda';
-import { getServices } from '../src/services';
+import { processFeed } from "../src/entries/worker-lambda";
+import { getServices } from "../src/services";
 
 /**
  * Local replacement for the SQS pipeline: fetches every due feed right now.
@@ -17,6 +17,8 @@ let inserted = 0;
 for (const feed of due) {
   const result = await processFeed(feed.id);
   inserted += result.inserted ?? 0;
-  console.log(`  feed ${feed.id} → ${result.outcome} (+${result.inserted ?? 0})`);
+  console.log(
+    `  feed ${feed.id} → ${result.outcome} (+${result.inserted ?? 0})`,
+  );
 }
 console.log(`done: ${inserted} new entries`);

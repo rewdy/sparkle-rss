@@ -1,9 +1,9 @@
-import '@testing-library/jest-dom/vitest';
+import "@testing-library/jest-dom/vitest";
 
 // Mantine and scroll containers rely on browser-only globals that jsdom omits.
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   if (!window.matchMedia) {
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: (query: string) => ({
         matches: false,
@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
   if (!window.IntersectionObserver) {
     window.IntersectionObserver = class {
       readonly root = null;
-      readonly rootMargin = '';
+      readonly rootMargin = "";
       readonly thresholds = [];
       observe() {}
       unobserve() {}

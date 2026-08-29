@@ -1,11 +1,11 @@
-import { Button, Group, Modal, Stack, Text } from '@mantine/core';
-import type { ReactElement, ReactNode } from 'react';
+import { Button, Group, Modal, Stack, Text } from "@mantine/core";
+import type { ReactElement, ReactNode } from "react";
 
 /** Consistent destructive-action confirmation, matching the token-revoke flow. */
 export function ConfirmModal({
   opened,
   title,
-  confirmLabel = 'delete',
+  confirmLabel = "delete",
   danger = true,
   loading = false,
   onConfirm,
@@ -29,7 +29,11 @@ export function ConfirmModal({
           <Button variant="default" onClick={onClose}>
             cancel
           </Button>
-          <Button color={danger ? 'red' : undefined} loading={loading} onClick={onConfirm}>
+          <Button
+            color={danger ? "red" : undefined}
+            loading={loading}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </Button>
         </Group>

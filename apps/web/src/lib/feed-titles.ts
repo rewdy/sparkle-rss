@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { api } from './api';
-import { qk } from './keys';
-import type { Subscription } from './types';
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { api } from "./api";
+import { qk } from "./keys";
+import type { Subscription } from "./types";
 
 /**
  * Live view of the cached subscription list, memoized at the cache layer so
@@ -21,5 +21,8 @@ export function useSubscriptions(): Subscription[] {
 
 export function useFeedTitles(): Map<string, string> {
   const subs = useSubscriptions();
-  return useMemo(() => new Map(subs.map((s) => [s.feedId, s.displayTitle] as const)), [subs]);
+  return useMemo(
+    () => new Map(subs.map((s) => [s.feedId, s.displayTitle] as const)),
+    [subs],
+  );
 }

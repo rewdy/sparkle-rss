@@ -1,15 +1,15 @@
-import { Box, Group, Text } from '@mantine/core';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import type { ReactElement, RefObject } from 'react';
-import { memo, useCallback, useEffect, useMemo } from 'react';
-import { groupByDay, timeLabel } from '../lib/date-grouping';
-import { useFeedTitles } from '../lib/feed-titles';
-import type { Entry } from '../lib/types';
-import { fonts } from '../themes';
+import { Box, Group, Text } from "@mantine/core";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import type { ReactElement, RefObject } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
+import { groupByDay, timeLabel } from "../lib/date-grouping";
+import { useFeedTitles } from "../lib/feed-titles";
+import type { Entry } from "../lib/types";
+import { fonts } from "../themes";
 
 type Row =
-  | { kind: 'header'; key: string; label: string; count: number }
-  | { kind: 'entry'; key: string; entry: Entry };
+  | { kind: "header"; key: string; label: string; count: number }
+  | { kind: "entry"; key: string; entry: Entry };
 
 const HEADER_HEIGHT = 30;
 const ENTRY_HEIGHT = 68;
@@ -35,12 +35,13 @@ export function EntryList({
     const out: Row[] = [];
     for (const group of groupByDay(entries)) {
       out.push({
-        kind: 'header',
+        kind: "header",
         key: `h-${group.label}`,
         label: group.label,
         count: group.items.length,
       });
-      for (const entry of group.items) out.push({ kind: 'entry', key: entry.id, entry });
+      for (const entry of group.items)
+        out.push({ kind: "entry", key: entry.id, entry });
     }
     return out;
   }, [entries]);
@@ -48,7 +49,8 @@ export function EntryList({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => (rows[index]?.kind === 'header' ? HEADER_HEIGHT : ENTRY_HEIGHT),
+    estimateSize: (index) =>
+      rows[index]?.kind === "header" ? HEADER_HEIGHT : ENTRY_HEIGHT,
     overscan: OVERSCAN,
     // Positions of already-mounted rows are written to the DOM directly while
     // scrolling; React only re-renders when the visible range changes.
@@ -67,8 +69,8 @@ export function EntryList({
     if (activeId === null) return;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      if (row?.kind === 'entry' && row.key === activeId) {
-        virtualizer.scrollToIndex(i, { align: 'auto' });
+      if (row?.kind === "entry" && row.key === activeId) {
+        virtualizer.scrollToIndex(i, { align: "auto" });
         return;
       }
     }
@@ -88,7 +90,11 @@ export function EntryList({
     <Box pb="xl">
       <div
         ref={virtualizer.containerRef}
-        style={{ position: 'relative', width: '100%', height: virtualizer.getTotalSize() }}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: virtualizer.getTotalSize(),
+        }}
       >
         {virtualizer.getVirtualItems().map((vi) => {
           const row = rows[vi.index];
@@ -99,16 +105,26 @@ export function EntryList({
               ref={rowRef}
               data-index={vi.index}
               style={{
-                position: 'absolute',
+                position: "absolute",
                 top: 0,
                 left: 0,
-                width: '100%',
+                width: "100%",
                 transform: `translateY(${vi.start}px)`,
               }}
             >
-              {row.kind === 'header' ? (
-                <Group gap="xs" px="sm" pt={vi.index === 0 ? 'sm' : 'xs'} pb="xxs">
-                  <Text size="xs" tt="uppercase" c="dimmed" style={{ letterSpacing: 1.5 }}>
+              {row.kind === "header" ? (
+                <Group
+                  gap="xs"
+                  px="sm"
+                  pt={vi.index === 0 ? "sm" : "xs"}
+                  pb="xxs"
+                >
+                  <Text
+                    size="xs"
+                    tt="uppercase"
+                    c="dimmed"
+                    style={{ letterSpacing: 1.5 }}
+                  >
                     {row.label}
                   </Text>
                   <Text size="xs" c="dimmed" ff="monospace">
@@ -160,17 +176,24 @@ const EntryRow = memo(function EntryRow({
       onClick={() => onSelect(entry)}
       px="md"
       py="sm"
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: "pointer" }}
     >
       <Group justify="space-between" wrap="nowrap" gap="xs" mb="xxs">
         <Text size="xs" c="dimmed" truncate={true}>
-          {[entry.author, feedTitles.get(entry.feedId)].filter(Boolean).join(' • ') || '\u00a0'}
+          {[entry.author, feedTitles.get(entry.feedId)]
+            .filter(Boolean)
+            .join(" • ") || "\u00a0"}
         </Text>
         <Text size="xs" c="dimmed" ff="monospace">
           {timeLabel(entry.publishedAtMs)}
         </Text>
       </Group>
-      <Text size="md" fw={entry.isRead ? 400 : 700} lh={1.4} style={{ fontFamily: fonts.sans }}>
+      <Text
+        size="md"
+        fw={entry.isRead ? 400 : 700}
+        lh={1.4}
+        style={{ fontFamily: fonts.sans }}
+      >
         {entry.title}
       </Text>
     </Box>

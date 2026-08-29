@@ -1,6 +1,6 @@
-import * as schema from '@sparkle/db';
-import { eq } from 'drizzle-orm';
-import type { ServicesDeps } from './entries';
+import * as schema from "@sparkle/db";
+import { eq } from "drizzle-orm";
+import type { ServicesDeps } from "./entries";
 
 export type SettingsData = Record<string, unknown>;
 

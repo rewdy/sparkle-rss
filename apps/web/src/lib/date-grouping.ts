@@ -8,20 +8,23 @@ function startOfToday(d = new Date()): number {
 export function dayGroup(ms: number, now = new Date()): string {
   const start = startOfToday(now);
   const d = new Date(ms);
-  if (ms >= start) return 'today';
-  if (ms >= start - DAY_MS) return 'yesterday';
-  if (ms >= start - 7 * DAY_MS) return 'this week';
-  if (ms >= start - 30 * DAY_MS) return 'this month';
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  if (ms >= start) return "today";
+  if (ms >= start - DAY_MS) return "yesterday";
+  if (ms >= start - 7 * DAY_MS) return "this week";
+  if (ms >= start - 30 * DAY_MS) return "this month";
+  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
 /** Compact timestamp label: time-of-day for today, date otherwise. */
 export function timeLabel(ms: number, now = new Date()): string {
   const d = new Date(ms);
   if (d.toDateString() === now.toDateString()) {
-    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 /** Flatten entries into contiguous date groups, preserving order. */

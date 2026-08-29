@@ -1,27 +1,36 @@
-import { atom, getDefaultStore, useAtom } from 'jotai';
-import { DEFAULT_THEME_ID, type ThemeId } from '../themes';
-import { localDateKey } from './keys';
+import { atom, getDefaultStore, useAtom } from "jotai";
+import { DEFAULT_THEME_ID, type ThemeId } from "../themes";
+import { localDateKey } from "./keys";
 
-export type ColorSchemePref = 'light' | 'dark' | 'system';
+export type ColorSchemePref = "light" | "dark" | "system";
 
 export function loadLocalUi(): Record<string, unknown> {
   try {
-    return JSON.parse(localStorage.getItem('sparkle.ui') ?? '{}') as Record<string, unknown>;
+    return JSON.parse(localStorage.getItem("sparkle.ui") ?? "{}") as Record<
+      string,
+      unknown
+    >;
   } catch {
     return {};
   }
 }
 
 function isColorScheme(v: unknown): v is ColorSchemePref {
-  return v === 'light' || v === 'dark' || v === 'system';
+  return v === "light" || v === "dark" || v === "system";
 }
 
 function isThemeId(v: unknown): v is ThemeId {
-  return v === 'scarlet' || v === 'blue' || v === 'steel' || v === 'magenta' || v === 'purple';
+  return (
+    v === "scarlet" ||
+    v === "blue" ||
+    v === "steel" ||
+    v === "magenta" ||
+    v === "purple"
+  );
 }
 
 function asBool(v: unknown, fallback: boolean): boolean {
-  return typeof v === 'boolean' ? v : fallback;
+  return typeof v === "boolean" ? v : fallback;
 }
 
 // Atoms initialize from localStorage at module load (synchronous, pre-mount)
@@ -29,7 +38,7 @@ function asBool(v: unknown, fallback: boolean): boolean {
 const local = loadLocalUi();
 
 const colorSchemeBaseAtom = atom<ColorSchemePref>(
-  isColorScheme(local.colorScheme) ? local.colorScheme : 'dark',
+  isColorScheme(local.colorScheme) ? local.colorScheme : "dark",
 );
 export const colorSchemeAtom = atom(
   (get) => get(colorSchemeBaseAtom),
@@ -39,7 +48,9 @@ export const colorSchemeAtom = atom(
   },
 );
 
-const themeIdBaseAtom = atom<ThemeId>(isThemeId(local.themeId) ? local.themeId : DEFAULT_THEME_ID);
+const themeIdBaseAtom = atom<ThemeId>(
+  isThemeId(local.themeId) ? local.themeId : DEFAULT_THEME_ID,
+);
 export const themeIdAtom = atom(
   (get) => get(themeIdBaseAtom),
   (_get, set, next: ThemeId) => {
@@ -57,7 +68,9 @@ export const sidebarOpenAtom = atom(
   },
 );
 
-const markReadOnOpenBaseAtom = atom<boolean>(asBool(local.markReadOnOpen, true));
+const markReadOnOpenBaseAtom = atom<boolean>(
+  asBool(local.markReadOnOpen, true),
+);
 export const markReadOnOpenAtom = atom(
   (get) => get(markReadOnOpenBaseAtom),
   (_get, set, next: boolean) => {
@@ -82,20 +95,23 @@ export const shortcutsOpenAtom = atom(false);
  */
 export function applySettings(data: Record<string, unknown>): void {
   const store = getDefaultStore();
-  if (isColorScheme(data.colorScheme) && data.colorScheme !== store.get(colorSchemeBaseAtom)) {
+  if (
+    isColorScheme(data.colorScheme) &&
+    data.colorScheme !== store.get(colorSchemeBaseAtom)
+  ) {
     store.set(colorSchemeAtom, data.colorScheme);
   }
   if (isThemeId(data.themeId) && data.themeId !== store.get(themeIdBaseAtom)) {
     store.set(themeIdAtom, data.themeId);
   }
   if (
-    typeof data.markReadOnOpen === 'boolean' &&
+    typeof data.markReadOnOpen === "boolean" &&
     data.markReadOnOpen !== store.get(markReadOnOpenBaseAtom)
   ) {
     store.set(markReadOnOpenAtom, data.markReadOnOpen);
   }
   if (
-    typeof data.sidebarOpen === 'boolean' &&
+    typeof data.sidebarOpen === "boolean" &&
     data.sidebarOpen !== store.get(sidebarOpenBaseAtom)
   ) {
     store.set(sidebarOpenAtom, data.sidebarOpen);
@@ -105,13 +121,19 @@ export function applySettings(data: Record<string, unknown>): void {
 export function persistUiPatch(patch: Record<string, unknown>): void {
   try {
     const current = loadLocalUi();
-    localStorage.setItem('sparkle.ui', JSON.stringify({ ...current, ...patch }));
+    localStorage.setItem(
+      "sparkle.ui",
+      JSON.stringify({ ...current, ...patch }),
+    );
   } catch {
     /* storage unavailable */
   }
 }
 
-export function useColorSchemeValue(): [ColorSchemePref, (n: ColorSchemePref) => void] {
+export function useColorSchemeValue(): [
+  ColorSchemePref,
+  (n: ColorSchemePref) => void,
+] {
   return useAtom(colorSchemeAtom);
 }
 

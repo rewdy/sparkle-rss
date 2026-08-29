@@ -7,7 +7,7 @@ const PREFIXES = [/^\/api(?=\/)/, /^\/greader\.php(?=\/|$)/];
 export function normalizeGreaderRequestPath(pathname: string): string {
   let result = pathname;
   for (const prefix of PREFIXES) {
-    result = result.replace(prefix, '');
+    result = result.replace(prefix, "");
   }
   return result;
 }

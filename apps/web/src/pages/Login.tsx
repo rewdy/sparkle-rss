@@ -1,12 +1,16 @@
-import { Alert, Button, Center, Stack, Text } from '@mantine/core';
-import type { ReactElement } from 'react';
-import { useCallback, useState } from 'react';
-import { PageTitle } from '../components/PageTitle';
-import { FullscreenLoader, useAuthGuard } from './guard';
+import { Alert, Button, Center, Stack, Text } from "@mantine/core";
+import type { ReactElement } from "react";
+import { useCallback, useState } from "react";
+import { PageTitle } from "../components/PageTitle";
+import { FullscreenLoader, useAuthGuard } from "./guard";
 
 /** Kicks off the redirect to the Cognito hosted UI, keyed by the retry count so
  * re-mounting after a failure starts the login flow again. */
-function LoginBlade({ onFail }: { onFail: (error: Error) => void }): ReactElement {
+function LoginBlade({
+  onFail,
+}: {
+  onFail: (error: Error) => void;
+}): ReactElement {
   useAuthGuard(onFail);
   return <FullscreenLoader label="redirecting to sign-in…" />;
 }
@@ -23,8 +27,8 @@ export function Login(): ReactElement {
         <Center mih="100vh" p="md">
           <Stack align="center" gap="md">
             <Alert title="redirect to sign-in failed" color="red" w={420}>
-              {error.message}. Your browser may be blocking the redirect on auth.sparklerss.com; try
-              again or check your network connection.
+              {error.message}. Your browser may be blocking the redirect on
+              auth.sparklerss.com; try again or check your network connection.
             </Alert>
             <Button
               onClick={() => {

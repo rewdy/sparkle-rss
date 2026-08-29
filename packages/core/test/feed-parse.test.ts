@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { extractFeedIconUrl, parseFeed } from '../src/feed/parse';
-import { sanitizeEntryHtml } from '../src/feed/sanitize';
+import { describe, expect, it } from "vitest";
+import { extractFeedIconUrl, parseFeed } from "../src/feed/parse";
+import { sanitizeEntryHtml } from "../src/feed/sanitize";
 
 const RSS = `<?xml version="1.0"?>
 <rss version="2.0">
@@ -76,91 +76,97 @@ const ATOM_WITH_LOGO_AND_ICON = `<?xml version="1.0"?>
   <icon>https://both.example/icon-48.png</icon>
 </feed>`;
 
-describe('parseFeed', () => {
-  it('normalizes RSS items with content, author, enclosures', async () => {
+describe("parseFeed", () => {
+  it("normalizes RSS items with content, author, enclosures", async () => {
     const feed = await parseFeed(RSS);
-    expect(feed.title).toBe('Example Feed');
-    expect(feed.siteUrl).toBe('https://example.com/');
+    expect(feed.title).toBe("Example Feed");
+    expect(feed.siteUrl).toBe("https://example.com/");
     expect(feed.entries).toHaveLength(2);
 
     const first = feed.entries.at(0);
-    if (!first) throw new Error('expected a first entry');
-    expect(first.guid).toBe('urn:item:1');
-    expect(first.title).toBe('First Post');
-    expect(first.author).toBe('Ada');
-    expect(first.url).toBe('https://example.com/1');
-    expect(first.publishedAt.toISOString()).toBe('2026-07-22T10:00:00.000Z');
-    expect(first.contentHtml).toContain('<strong>world</strong>');
-    expect(first.contentHtml).not.toContain('script');
-    expect(first.enclosures[0]).toMatchObject({ href: 'https://example.com/ep.mp3', length: 123 });
+    if (!first) throw new Error("expected a first entry");
+    expect(first.guid).toBe("urn:item:1");
+    expect(first.title).toBe("First Post");
+    expect(first.author).toBe("Ada");
+    expect(first.url).toBe("https://example.com/1");
+    expect(first.publishedAt.toISOString()).toBe("2026-07-22T10:00:00.000Z");
+    expect(first.contentHtml).toContain("<strong>world</strong>");
+    expect(first.contentHtml).not.toContain("script");
+    expect(first.enclosures[0]).toMatchObject({
+      href: "https://example.com/ep.mp3",
+      length: 123,
+    });
 
     // missing guid falls back to link; missing date falls back to ~now
     const second = feed.entries.at(1);
-    if (!second) throw new Error('expected a second entry');
-    expect(second.guid).toBe('https://example.com/2');
+    if (!second) throw new Error("expected a second entry");
+    expect(second.guid).toBe("https://example.com/2");
   });
 
-  it('parses Atom feeds', async () => {
+  it("parses Atom feeds", async () => {
     const feed = await parseFeed(ATOM);
-    expect(feed.title).toBe('Atom Feed');
+    expect(feed.title).toBe("Atom Feed");
     const entry = feed.entries.at(0);
-    if (!entry) throw new Error('expected an entry');
+    if (!entry) throw new Error("expected an entry");
     // rss-parser may surface the Atom <id> via guid OR fall back to the link;
     // both are stable identifiers for dedupe purposes.
     expect(entry.guid).toMatch(/e1$/u);
-    expect(entry.author).toBe('Grace');
-    expect(entry.contentHtml).toContain('<p>Atom body</p>');
+    expect(entry.author).toBe("Grace");
+    expect(entry.contentHtml).toContain("<p>Atom body</p>");
   });
 
-  it('extracts the RSS 2.0 <image><url> as iconUrl', async () => {
+  it("extracts the RSS 2.0 <image><url> as iconUrl", async () => {
     const feed = await parseFeed(RSS_WITH_ICON);
-    expect(feed.title).toBe('Icon Feed');
-    expect(feed.iconUrl).toBe('https://icon.example/favicon.png');
+    expect(feed.title).toBe("Icon Feed");
+    expect(feed.iconUrl).toBe("https://icon.example/favicon.png");
   });
 
-  it('extracts Atom <logo> as iconUrl', async () => {
+  it("extracts Atom <logo> as iconUrl", async () => {
     const feed = await parseFeed(ATOM_WITH_LOGO);
-    expect(feed.iconUrl).toBe('https://logo.example/logo.svg');
+    expect(feed.iconUrl).toBe("https://logo.example/logo.svg");
   });
 
-  it('falls back to Atom <icon> when <logo> is absent', async () => {
+  it("falls back to Atom <icon> when <logo> is absent", async () => {
     const feed = await parseFeed(ATOM_WITH_ICON_ONLY);
-    expect(feed.iconUrl).toBe('https://icononly.example/icon-48.png');
+    expect(feed.iconUrl).toBe("https://icononly.example/icon-48.png");
   });
 
-  it('prefers Atom <logo> over <icon> when both are present', async () => {
+  it("prefers Atom <logo> over <icon> when both are present", async () => {
     const feed = await parseFeed(ATOM_WITH_LOGO_AND_ICON);
-    expect(feed.iconUrl).toBe('https://both.example/logo.svg');
+    expect(feed.iconUrl).toBe("https://both.example/logo.svg");
   });
 
-  it('returns an empty iconUrl when no icon is declared', async () => {
-    expect((await parseFeed(RSS)).iconUrl).toBe('');
-    expect((await parseFeed(ATOM)).iconUrl).toBe('');
+  it("returns an empty iconUrl when no icon is declared", async () => {
+    expect((await parseFeed(RSS)).iconUrl).toBe("");
+    expect((await parseFeed(ATOM)).iconUrl).toBe("");
   });
 
-  it('extractFeedIconUrl is best-effort: unparseable XML yields empty string', async () => {
-    await expect(extractFeedIconUrl('this is not xml')).resolves.toBe('');
+  it("extractFeedIconUrl is best-effort: unparseable XML yields empty string", async () => {
+    await expect(extractFeedIconUrl("this is not xml")).resolves.toBe("");
     await expect(extractFeedIconUrl(RSS_WITH_ICON)).resolves.toBe(
-      'https://icon.example/favicon.png',
+      "https://icon.example/favicon.png",
     );
   });
 
-  it('rejects garbage XML with a 422-shaped error', async () => {
-    await expect(parseFeed('this is not xml')).rejects.toMatchObject({ status: 422 });
+  it("rejects garbage XML with a 422-shaped error", async () => {
+    await expect(parseFeed("this is not xml")).rejects.toMatchObject({
+      status: 422,
+    });
   });
 });
 
-describe('sanitizeEntryHtml', () => {
-  it('strips scripts and event handlers', () => {
-    const dirty = '<p onclick="steal()">hi<script>x()</script><iframe src="evil"></iframe></p>';
+describe("sanitizeEntryHtml", () => {
+  it("strips scripts and event handlers", () => {
+    const dirty =
+      '<p onclick="steal()">hi<script>x()</script><iframe src="evil"></iframe></p>';
     const clean = sanitizeEntryHtml(dirty);
-    expect(clean).not.toContain('script');
-    expect(clean).not.toContain('onclick');
-    expect(clean).not.toContain('iframe');
-    expect(clean).toContain('hi');
+    expect(clean).not.toContain("script");
+    expect(clean).not.toContain("onclick");
+    expect(clean).not.toContain("iframe");
+    expect(clean).toContain("hi");
   });
 
-  it('keeps media and safe links while adding rel', () => {
+  it("keeps media and safe links while adding rel", () => {
     const html =
       '<a href="https://x.example/">go</a><img src="https://x.example/i.png" alt="i"><audio src="https://x.example/a.mp3"></audio>';
     const clean = sanitizeEntryHtml(html);
@@ -169,8 +175,8 @@ describe('sanitizeEntryHtml', () => {
     expect(clean).toContain('<audio src="https://x.example/a.mp3"');
   });
 
-  it('drops javascript: URLs entirely', () => {
+  it("drops javascript: URLs entirely", () => {
     const clean = sanitizeEntryHtml('<a href="javascript:alert(1)">click</a>');
-    expect(clean).not.toContain('javascript:');
+    expect(clean).not.toContain("javascript:");
   });
 });

@@ -7,22 +7,30 @@ import {
   NativeSelect,
   Stack,
   TextInput,
-} from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import type { ReactElement } from 'react';
-import { useState } from 'react';
-import { LuEllipsisVertical, LuFolderPlus, LuPencil, LuTrash2 } from 'react-icons/lu';
+} from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import type { ReactElement } from "react";
+import { useState } from "react";
+import {
+  LuEllipsisVertical,
+  LuFolderPlus,
+  LuPencil,
+  LuTrash2,
+} from "react-icons/lu";
 import {
   useFolderCreate,
   useFolderRemove,
   useFolderRename,
   useSubscriptionEdit,
   useUnsubscribe,
-} from '../lib/mutations';
-import type { Folder, Subscription } from '../lib/types';
-import { ConfirmModal } from './ConfirmModal';
+} from "../lib/mutations";
+import type { Folder, Subscription } from "../lib/types";
+import { ConfirmModal } from "./ConfirmModal";
 
-function stop(e: { stopPropagation: () => void; preventDefault: () => void }): void {
+function stop(e: {
+  stopPropagation: () => void;
+  preventDefault: () => void;
+}): void {
   e.stopPropagation();
   e.preventDefault();
 }
@@ -30,14 +38,14 @@ function stop(e: { stopPropagation: () => void; preventDefault: () => void }): v
 export function AddFolderButton(): ReactElement {
   const create = useFolderCreate();
   const [opened, { open, close }] = useDisclosure(false);
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
 
   function submit(): void {
     const trimmed = name.trim();
     if (trimmed.length === 0) return;
     create.mutate(trimmed, {
       onSuccess: () => {
-        setName('');
+        setName("");
         close();
       },
     });
@@ -54,16 +62,26 @@ export function AddFolderButton(): ReactElement {
       >
         folder
       </Button>
-      <Modal opened={opened} onClose={close} title="new folder" size="xs" centered>
+      <Modal
+        opened={opened}
+        onClose={close}
+        title="new folder"
+        size="xs"
+        centered
+      >
         <Stack gap="sm">
           <TextInput
             label="name"
             data-autofocus
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
           />
-          <Button onClick={submit} loading={create.isPending} disabled={!name.trim()}>
+          <Button
+            onClick={submit}
+            loading={create.isPending}
+            disabled={!name.trim()}
+          >
             create
           </Button>
         </Stack>
@@ -75,7 +93,8 @@ export function AddFolderButton(): ReactElement {
 export function FolderMenu({ folder }: { folder: Folder }): ReactElement {
   const rename = useFolderRename();
   const remove = useFolderRemove();
-  const [renameOpened, { open: openRename, close: closeRename }] = useDisclosure(false);
+  const [renameOpened, { open: openRename, close: closeRename }] =
+    useDisclosure(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [name, setName] = useState(folder.name);
 
@@ -123,16 +142,26 @@ export function FolderMenu({ folder }: { folder: Folder }): ReactElement {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-      <Modal opened={renameOpened} onClose={closeRename} title="rename folder" size="xs" centered>
+      <Modal
+        opened={renameOpened}
+        onClose={closeRename}
+        title="rename folder"
+        size="xs"
+        centered
+      >
         <Stack gap="sm">
           <TextInput
             label="name"
             data-autofocus
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submitRename()}
+            onKeyDown={(e) => e.key === "Enter" && submitRename()}
           />
-          <Button onClick={submitRename} loading={rename.isPending} disabled={!name.trim()}>
+          <Button
+            onClick={submitRename}
+            loading={rename.isPending}
+            disabled={!name.trim()}
+          >
             save
           </Button>
         </Stack>
@@ -147,22 +176,31 @@ export function FolderMenu({ folder }: { folder: Folder }): ReactElement {
         }}
         onClose={() => setDeleteOpen(false)}
       >
-        Delete folder &quot;{folder.name}&quot;? Its {folder.feedCount} feed(s) move to no folder.
+        Delete folder &quot;{folder.name}&quot;? Its {folder.feedCount} feed(s)
+        move to no folder.
       </ConfirmModal>
     </>
   );
 }
 
-export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[] }): ReactElement {
+export function FeedMenu({
+  sub,
+  folders,
+}: {
+  sub: Subscription;
+  folders: Folder[];
+}): ReactElement {
   const edit = useSubscriptionEdit();
   const unsub = useUnsubscribe();
   const createFolder = useFolderCreate();
-  const [renameOpened, { open: openRename, close: closeRename }] = useDisclosure(false);
-  const [moveOpened, { open: openMove, close: closeMove }] = useDisclosure(false);
+  const [renameOpened, { open: openRename, close: closeRename }] =
+    useDisclosure(false);
+  const [moveOpened, { open: openMove, close: closeMove }] =
+    useDisclosure(false);
   const [unsubOpen, setUnsubOpen] = useState(false);
   const [title, setTitle] = useState(sub.displayTitle);
-  const [folderChoice, setFolderChoice] = useState(sub.categoryId ?? '');
-  const [newFolderName, setNewFolderName] = useState('');
+  const [folderChoice, setFolderChoice] = useState(sub.categoryId ?? "");
+  const [newFolderName, setNewFolderName] = useState("");
 
   function submitRename(): void {
     const trimmed = title.trim();
@@ -170,16 +208,22 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
       closeRename();
       return;
     }
-    edit.mutate({ feedId: sub.feedId, changes: { title: trimmed } }, { onSuccess: closeRename });
+    edit.mutate(
+      { feedId: sub.feedId, changes: { title: trimmed } },
+      { onSuccess: closeRename },
+    );
   }
 
   function submitMove(): void {
-    const folderId = folderChoice === '' ? null : Number(folderChoice);
-    if ((sub.categoryId ?? '') === folderChoice) {
+    const folderId = folderChoice === "" ? null : Number(folderChoice);
+    if ((sub.categoryId ?? "") === folderChoice) {
       closeMove();
       return;
     }
-    edit.mutate({ feedId: sub.feedId, changes: { folderId } }, { onSuccess: closeMove });
+    edit.mutate(
+      { feedId: sub.feedId, changes: { folderId } },
+      { onSuccess: closeMove },
+    );
   }
 
   function createAndSelectFolder(): void {
@@ -188,13 +232,13 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
     createFolder.mutate(trimmed, {
       onSuccess: (res) => {
         setFolderChoice(res.folder.id);
-        setNewFolderName('');
+        setNewFolderName("");
       },
     });
   }
 
   const folderOptions = [
-    { value: '', label: '(no folder)' },
+    { value: "", label: "(no folder)" },
     ...folders.map((f) => ({ value: f.id, label: f.name })),
   ];
 
@@ -227,8 +271,8 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
           <Menu.Item
             leftSection={<LuFolderPlus size={14} />}
             onClick={() => {
-              setFolderChoice(sub.categoryId ?? '');
-              setNewFolderName('');
+              setFolderChoice(sub.categoryId ?? "");
+              setNewFolderName("");
               openMove();
             }}
           >
@@ -245,23 +289,44 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
         </Menu.Dropdown>
       </Menu>
 
-      <Modal opened={renameOpened} onClose={closeRename} title="edit feed" size="xs" centered>
+      <Modal
+        opened={renameOpened}
+        onClose={closeRename}
+        title="edit feed"
+        size="xs"
+        centered
+      >
         <Stack gap="sm">
           <TextInput
             label="title"
             data-autofocus
             value={title}
             onChange={(e) => setTitle(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submitRename()}
+            onKeyDown={(e) => e.key === "Enter" && submitRename()}
           />
-          <TextInput label="feed url" value={sub.url} readOnly={true} disabled={true} />
-          <Button onClick={submitRename} loading={edit.isPending} disabled={!title.trim()}>
+          <TextInput
+            label="feed url"
+            value={sub.url}
+            readOnly={true}
+            disabled={true}
+          />
+          <Button
+            onClick={submitRename}
+            loading={edit.isPending}
+            disabled={!title.trim()}
+          >
             save
           </Button>
         </Stack>
       </Modal>
 
-      <Modal opened={moveOpened} onClose={closeMove} title="move to folder" size="xs" centered>
+      <Modal
+        opened={moveOpened}
+        onClose={closeMove}
+        title="move to folder"
+        size="xs"
+        centered
+      >
         <Stack gap="sm">
           <NativeSelect
             label="folder"
@@ -276,9 +341,10 @@ export function FeedMenu({ sub, folders }: { sub: Subscription; folders: Folder[
               value={newFolderName}
               onChange={(e) => {
                 setNewFolderName(e.currentTarget.value);
-                if (folderChoice === '__new__') setFolderChoice(sub.categoryId ?? '');
+                if (folderChoice === "__new__")
+                  setFolderChoice(sub.categoryId ?? "");
               }}
-              onKeyDown={(e) => e.key === 'Enter' && createAndSelectFolder()}
+              onKeyDown={(e) => e.key === "Enter" && createAndSelectFolder()}
             />
             <Button
               variant="default"

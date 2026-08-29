@@ -1,15 +1,15 @@
-import { Kbd, Modal, Stack, Table, Text } from '@mantine/core';
-import { useAtomValue, useSetAtom } from 'jotai';
-import type { ReactElement } from 'react';
-import { shortcutsOpenAtom } from '../lib/ui-state';
+import { Kbd, Modal, Stack, Table, Text } from "@mantine/core";
+import { useAtomValue, useSetAtom } from "jotai";
+import type { ReactElement } from "react";
+import { shortcutsOpenAtom } from "../lib/ui-state";
 
 const SHORTCUTS: Array<[string, string]> = [
-  ['j / k', 'open next / previous item'],
-  ['m', 'toggle read'],
-  ['s', 'toggle star'],
-  ['Shift + A', 'mark stream read'],
-  ['Esc', 'back to list (close article)'],
-  ['?', 'toggle this help'],
+  ["j / k", "open next / previous item"],
+  ["m", "toggle read"],
+  ["s", "toggle star"],
+  ["Shift + A", "mark stream read"],
+  ["Esc", "back to list (close article)"],
+  ["?", "toggle this help"],
 ];
 
 export function ShortcutsModal(): ReactElement {

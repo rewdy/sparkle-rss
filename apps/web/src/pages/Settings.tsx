@@ -16,24 +16,27 @@ import {
   Text,
   TextInput,
   Title,
-} from '@mantine/core';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAtom } from 'jotai';
-import type { ReactElement } from 'react';
-import { useState } from 'react';
-import { api } from '../lib/api';
-import { logout } from '../lib/auth';
-import { qk } from '../lib/keys';
+} from "@mantine/core";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAtom } from "jotai";
+import type { ReactElement } from "react";
+import { useState } from "react";
+import { api } from "../lib/api";
+import { logout } from "../lib/auth";
+import { qk } from "../lib/keys";
 import {
   markReadOnOpenAtom,
   persistUiPatch,
   useColorSchemeValue,
   useThemeValue,
-} from '../lib/ui-state';
-import { THEME_DEFS } from '../themes';
+} from "../lib/ui-state";
+import { THEME_DEFS } from "../themes";
 
 export function SettingsPage(): ReactElement {
-  const settingsQ = useQuery({ queryKey: qk.settings, queryFn: api.settings.get });
+  const settingsQ = useQuery({
+    queryKey: qk.settings,
+    queryFn: api.settings.get,
+  });
   const [scheme, setScheme] = useColorSchemeValue();
   const [themeId, setThemeId] = useThemeValue();
   const [markOnOpen, setMarkOnOpen] = useMarkOnOpen();
@@ -59,14 +62,14 @@ export function SettingsPage(): ReactElement {
           <SegmentedControl
             value={scheme}
             onChange={(next) => {
-              const v = next as 'light' | 'dark' | 'system';
+              const v = next as "light" | "dark" | "system";
               setScheme(v);
               void saveSetting({ colorScheme: v });
             }}
             data={[
-              { value: 'dark', label: 'dark' },
-              { value: 'light', label: 'light' },
-              { value: 'system', label: 'system' },
+              { value: "dark", label: "dark" },
+              { value: "light", label: "light" },
+              { value: "system", label: "system" },
             ]}
             w={300}
           />
@@ -88,17 +91,17 @@ export function SettingsPage(): ReactElement {
                     void saveSetting({ themeId: next });
                   }}
                   style={{
-                    cursor: 'pointer',
-                    color: '#fff',
+                    cursor: "pointer",
+                    color: "#fff",
                     boxShadow:
                       themeId === def.id
-                        ? '0 0 0 3px var(--mantine-color-body), 0 0 0 5px var(--mantine-color-accent-5)'
+                        ? "0 0 0 3px var(--mantine-color-body), 0 0 0 5px var(--mantine-color-accent-5)"
                         : undefined,
                   }}
                 >
                   {themeId === def.id && <CheckIcon size={16} />}
                 </ColorSwatch>
-                <Text size="xs" c={themeId === def.id ? undefined : 'dimmed'}>
+                <Text size="xs" c={themeId === def.id ? undefined : "dimmed"}>
                   {def.label}
                 </Text>
               </Stack>
@@ -148,9 +151,12 @@ function ApiTokensCard(): ReactElement {
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.tokens }),
   });
 
-  const [label, setLabel] = useState('');
+  const [label, setLabel] = useState("");
   const [freshToken, setFreshToken] = useState<string | null>(null);
-  const [pendingRevoke, setPendingRevoke] = useState<{ id: string; label: string } | null>(null);
+  const [pendingRevoke, setPendingRevoke] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
 
   async function confirmRevoke(): Promise<void> {
     if (!pendingRevoke) return;
@@ -165,7 +171,8 @@ function ApiTokensCard(): ReactElement {
           API tokens
         </Text>
         <Text size="xs" c="dimmed">
-          used by native clients (NetNewsWire etc.) — password field in the client, not your login.
+          used by native clients (NetNewsWire etc.) — password field in the
+          client, not your login.
         </Text>
 
         {mintedTokenBanner(freshToken)}
@@ -182,7 +189,7 @@ function ApiTokensCard(): ReactElement {
             onClick={() =>
               void mint.mutateAsync(label.trim()).then((r) => {
                 setFreshToken(r.token);
-                setLabel('');
+                setLabel("");
               })
             }
             loading={mint.isPending}
@@ -195,10 +202,15 @@ function ApiTokensCard(): ReactElement {
           {(tokensQ.data?.tokens ?? []).map((t) => (
             <Group key={t.id} justify="space-between">
               <Group gap="xs">
-                <Badge variant="light" color="accent" radius="sm" ff="monospace">
+                <Badge
+                  variant="light"
+                  color="accent"
+                  radius="sm"
+                  ff="monospace"
+                >
                   {t.id.slice(0, 8)}
                 </Badge>
-                <Text size="sm">{t.label || '(unlabeled)'}</Text>
+                <Text size="sm">{t.label || "(unlabeled)"}</Text>
                 <Text size="xs" c="dimmed">
                   {new Date(t.createdAtMs).toLocaleDateString()}
                 </Text>
@@ -224,17 +236,25 @@ function ApiTokensCard(): ReactElement {
           {pendingRevoke && (
             <Stack gap="sm">
               <Text size="sm">
-                Revoke{' '}
+                Revoke{" "}
                 <Text component="span" ff="monospace">
-                  {pendingRevoke.label || '(unlabeled)'}
+                  {pendingRevoke.label || "(unlabeled)"}
                 </Text>
-                ? Any client using it (e.g. NetNewsWire) is disconnected immediately.
+                ? Any client using it (e.g. NetNewsWire) is disconnected
+                immediately.
               </Text>
               <Group justify="flex-end">
-                <Button variant="default" onClick={() => setPendingRevoke(null)}>
+                <Button
+                  variant="default"
+                  onClick={() => setPendingRevoke(null)}
+                >
                   cancel
                 </Button>
-                <Button color="red" loading={revoke.isPending} onClick={() => void confirmRevoke()}>
+                <Button
+                  color="red"
+                  loading={revoke.isPending}
+                  onClick={() => void confirmRevoke()}
+                >
                   revoke
                 </Button>
               </Group>
@@ -251,7 +271,7 @@ function mintedTokenBanner(token: string | null): ReactElement | null {
   return (
     <Box p="xs" bg="var(--mantine-color-accent-9)">
       <Group justify="space-between" wrap="nowrap">
-        <Code style={{ whiteSpace: 'nowrap', overflowX: 'auto' }}>{token}</Code>
+        <Code style={{ whiteSpace: "nowrap", overflowX: "auto" }}>{token}</Code>
         <CopyButton value={token}>
           {(props) => (
             <Button size="compact-xs" variant="light" {...props}>
@@ -269,20 +289,20 @@ function mintedTokenBanner(token: string | null): ReactElement | null {
 
 function OpmlCard(): ReactElement {
   const qc = useQueryClient();
-  const [status, setStatus] = useState<string>('');
+  const [status, setStatus] = useState<string>("");
 
   async function doExport(): Promise<void> {
     const blob = await api.opml.exportBlob();
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
+    const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = 'sparkle-subscriptions.opml';
+    anchor.download = "sparkle-subscriptions.opml";
     anchor.click();
     URL.revokeObjectURL(url);
   }
 
   async function doImport(file: File): Promise<void> {
-    setStatus('importing…');
+    setStatus("importing…");
     const xml = await file.text();
     try {
       const result = await api.opml.importText(xml);
@@ -307,14 +327,19 @@ function OpmlCard(): ReactElement {
           <input
             type="file"
             accept=".opml,.xml,text/xml,application/xml"
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
             id="opml-file-input"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) void doImport(file);
             }}
           />
-          <Button size="sm" variant="default" component="label" htmlFor="opml-file-input">
+          <Button
+            size="sm"
+            variant="default"
+            component="label"
+            htmlFor="opml-file-input"
+          >
             import .opml
           </Button>
           {status && (

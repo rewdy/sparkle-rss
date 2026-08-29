@@ -1,5 +1,5 @@
-export type CursorDirection = 'asc' | 'desc';
-export type CursorSortKey = 'published' | 'starred';
+export type CursorDirection = "asc" | "desc";
+export type CursorSortKey = "published" | "starred";
 
 export interface StreamCursor {
   sortKey: CursorSortKey;
@@ -16,27 +16,32 @@ interface CursorPayload {
 }
 
 function encode(payload: CursorPayload): string {
-  return Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
 }
 
 function decode(token: string): CursorPayload | null {
   try {
-    const json = Buffer.from(token, 'base64url').toString('utf8');
+    const json = Buffer.from(token, "base64url").toString("utf8");
     const parsed: unknown = JSON.parse(json);
-    if (typeof parsed !== 'object' || parsed === null) return null;
+    if (typeof parsed !== "object" || parsed === null) return null;
     const legacy = parsed as Record<string, unknown>;
     // Legacy shape (pre-sortKey): {p,i,d}
     const k =
-      typeof legacy.k === 'string' && (legacy.k === 'published' || legacy.k === 'starred')
+      typeof legacy.k === "string" &&
+      (legacy.k === "published" || legacy.k === "starred")
         ? legacy.k
-        : typeof legacy.d === 'string'
-          ? 'published'
+        : typeof legacy.d === "string"
+          ? "published"
           : null;
     const d =
-      typeof legacy.d === 'string' && (legacy.d === 'asc' || legacy.d === 'desc') ? legacy.d : null;
+      typeof legacy.d === "string" &&
+      (legacy.d === "asc" || legacy.d === "desc")
+        ? legacy.d
+        : null;
     if (!k || !d) return null;
-    if (typeof legacy.p !== 'number' || Number.isNaN(legacy.p)) return null;
-    if (typeof legacy.i !== 'string' || !/^\d{1,19}$/.test(legacy.i)) return null;
+    if (typeof legacy.p !== "number" || Number.isNaN(legacy.p)) return null;
+    if (typeof legacy.i !== "string" || !/^\d{1,19}$/.test(legacy.i))
+      return null;
     return { k, d, p: legacy.p, i: legacy.i };
   } catch {
     return null;

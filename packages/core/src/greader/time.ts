@@ -22,8 +22,13 @@ export function secToDate(seconds: number): Date {
   return new Date(seconds * Number(MS_PER_SEC));
 }
 
-export function markAllAsReadTsToDate(nanoseconds: string | number): Date | null {
-  const raw = typeof nanoseconds === 'number' ? nanoseconds.toString() : nanoseconds.trim();
+export function markAllAsReadTsToDate(
+  nanoseconds: string | number,
+): Date | null {
+  const raw =
+    typeof nanoseconds === "number"
+      ? nanoseconds.toString()
+      : nanoseconds.trim();
   if (!/^\d{1,25}$/.test(raw)) return null;
   return new Date(Number(BigInt(raw) / NSEC_PER_MS));
 }

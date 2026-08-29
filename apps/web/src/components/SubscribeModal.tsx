@@ -1,8 +1,15 @@
-import { Button, Group, Modal, NativeSelect, Stack, TextInput } from '@mantine/core';
-import type { ReactElement } from 'react';
-import { useState } from 'react';
-import { useSubscribe } from '../lib/mutations';
-import type { Folder } from '../lib/types';
+import {
+  Button,
+  Group,
+  Modal,
+  NativeSelect,
+  Stack,
+  TextInput,
+} from "@mantine/core";
+import type { ReactElement } from "react";
+import { useState } from "react";
+import { useSubscribe } from "../lib/mutations";
+import type { Folder } from "../lib/types";
 
 export function SubscribeModal({
   opened,
@@ -13,9 +20,9 @@ export function SubscribeModal({
   onClose: () => void;
   folders: Folder[];
 }): ReactElement {
-  const [url, setUrl] = useState('');
-  const [title, setTitle] = useState('');
-  const [folderId, setFolderId] = useState<string>('');
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [folderId, setFolderId] = useState<string>("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const subscribe = useSubscribe();
 
@@ -26,13 +33,13 @@ export function SubscribeModal({
       await subscribe.mutateAsync({
         url: url.trim(),
         title: title.trim() || undefined,
-        folderId: folderId === '' ? null : Number(folderId),
+        folderId: folderId === "" ? null : Number(folderId),
       });
-      setUrl('');
-      setTitle('');
+      setUrl("");
+      setTitle("");
       onClose();
     } catch {
-      setSubmitError('Could not add feed');
+      setSubmitError("Could not add feed");
     }
   }
 
@@ -49,8 +56,8 @@ export function SubscribeModal({
           }}
           data-autofocus
           error={
-            !url.startsWith('http') && url.length > 0
-              ? 'must start with http(s)://'
+            !url.startsWith("http") && url.length > 0
+              ? "must start with http(s)://"
               : (submitError ?? undefined)
           }
         />
@@ -65,7 +72,7 @@ export function SubscribeModal({
           value={folderId}
           onChange={(e) => setFolderId(e.currentTarget.value)}
           data={[
-            { value: '', label: '— none —' },
+            { value: "", label: "— none —" },
             ...folders.map((f) => ({ value: f.id, label: f.name })),
           ]}
         />

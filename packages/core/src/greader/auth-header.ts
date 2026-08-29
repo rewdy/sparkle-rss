@@ -11,7 +11,7 @@ export function parseGoogleLoginHeader(
   if (!header) return null;
   const match = HEADER_RE.exec(header.trim());
   if (!match?.[1]) return null;
-  const separator = match[1].indexOf('/');
+  const separator = match[1].indexOf("/");
   if (separator <= 0) return null;
   return {
     user: match[1].slice(0, separator),

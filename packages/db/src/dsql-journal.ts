@@ -1,4 +1,4 @@
-import type pg from 'pg';
+import type pg from "pg";
 
 /**
  * Drizzle's built-in migrations journal (`drizzle.__drizzle_migrations`) is created

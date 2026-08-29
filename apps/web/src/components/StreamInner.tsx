@@ -1,11 +1,11 @@
-import { Box, Text } from '@mantine/core';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import type { ReactElement } from 'react';
-import { useEffect, useMemo, useRef } from 'react';
-import { api } from '../lib/api';
-import { qk } from '../lib/keys';
-import type { Entry, StreamDescriptor } from '../lib/types';
-import { EntryList } from './EntryList';
+import { Box, Text } from "@mantine/core";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { api } from "../lib/api";
+import { qk } from "../lib/keys";
+import type { Entry, StreamDescriptor } from "../lib/types";
+import { EntryList } from "./EntryList";
 
 export function StreamInner({
   stream,
@@ -15,8 +15,8 @@ export function StreamInner({
   onSelect,
 }: {
   stream: StreamDescriptor;
-  filter: 'all' | 'unread';
-  sort: 'asc' | 'desc';
+  filter: "all" | "unread";
+  sort: "asc" | "desc";
   activeEntryId: string | null;
   onSelect: (entry: Entry) => void;
 }): ReactElement {
@@ -34,7 +34,10 @@ export function StreamInner({
     staleTime: 30_000,
   });
 
-  const entries = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data]);
+  const entries = useMemo(
+    () => query.data?.pages.flatMap((p) => p.items) ?? [],
+    [query.data],
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -43,14 +46,18 @@ export function StreamInner({
     if (!el) return;
     const io = new IntersectionObserver(
       (observed) => {
-        if (observed[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
+        if (
+          observed[0]?.isIntersecting &&
+          query.hasNextPage &&
+          !query.isFetchingNextPage
+        ) {
           void query.fetchNextPage();
         }
       },
       // Root is the scroll container (not the viewport): the list is a nested
       // scroller, and with virtualized content the sentinel sits at the end of
       // a tall virtual box.
-      { root: scrollRef.current, rootMargin: '600px' },
+      { root: scrollRef.current, rootMargin: "600px" },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -60,7 +67,10 @@ export function StreamInner({
     <Box
       ref={scrollRef}
       h="calc(100dvh - var(--app-shell-header-offset, 0rem))"
-      style={{ overflowY: 'auto', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      style={{
+        overflowY: "auto",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
       data-stream-scroll
     >
       <EntryList

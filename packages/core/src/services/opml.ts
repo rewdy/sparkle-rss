@@ -1,30 +1,30 @@
-import * as schema from '@sparkle/db';
-import { and, eq } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { XMLParser } from 'fast-xml-parser';
-import { AppError } from './errors';
-import { createFoldersService } from './folders';
+import * as schema from "@sparkle/db";
+import { and, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { XMLParser } from "fast-xml-parser";
+import { AppError } from "./errors";
+import { createFoldersService } from "./folders";
 
 export interface ServicesDeps {
   db: NodePgDatabase<typeof schema>;
 }
 
 interface OpmlOutline {
-  '@text'?: string;
-  '@title'?: string;
-  '@xmlUrl'?: string;
-  '@htmlUrl'?: string;
-  '@type'?: string;
+  "@text"?: string;
+  "@title"?: string;
+  "@xmlUrl"?: string;
+  "@htmlUrl"?: string;
+  "@type"?: string;
   outline?: OpmlOutline[] | OpmlOutline;
 }
 
 function xmlEscape(value: string): string {
   return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 export function createOpmlService({ db }: ServicesDeps) {
@@ -62,22 +62,24 @@ export function createOpmlService({ db }: ServicesDeps) {
       const lines: string[] = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<opml version="2.0">',
-        '  <head>',
-        '    <title>sparkle-rss subscriptions</title>',
+        "  <head>",
+        "    <title>sparkle-rss subscriptions</title>",
         `    <dateCreated>${new Date().toUTCString()}</dateCreated>`,
-        '  </head>',
-        '  <body>',
+        "  </head>",
+        "  <body>",
       ];
       for (const [, subs] of byFolder) {
-        const name = subs[0]?.categoryName ?? '';
-        lines.push(`    <outline text="${xmlEscape(name)}" title="${xmlEscape(name)}">`);
+        const name = subs[0]?.categoryName ?? "";
+        lines.push(
+          `    <outline text="${xmlEscape(name)}" title="${xmlEscape(name)}">`,
+        );
         for (const sub of subs) lines.push(feedOutline(sub));
-        lines.push('    </outline>');
+        lines.push("    </outline>");
       }
       for (const sub of loose) lines.push(feedOutline(sub));
-      lines.push('  </body>');
-      lines.push('</opml>');
-      return `${lines.join('\n')}\n`;
+      lines.push("  </body>");
+      lines.push("</opml>");
+      return `${lines.join("\n")}\n`;
     },
 
     async parseImport(xml: string): Promise<
@@ -88,19 +90,21 @@ export function createOpmlService({ db }: ServicesDeps) {
         siteUrl: string | null;
       }>
     > {
-      let parsed: { opml?: { body?: { outline?: OpmlOutline[] | OpmlOutline } } };
+      let parsed: {
+        opml?: { body?: { outline?: OpmlOutline[] | OpmlOutline } };
+      };
       try {
         const parser = new XMLParser({
           ignoreAttributes: false,
-          attributeNamePrefix: '@',
-          isArray: (name) => name === 'outline',
+          attributeNamePrefix: "@",
+          isArray: (name) => name === "outline",
         });
         parsed = parser.parse(xml);
       } catch {
-        throw new AppError(400, 'invalid OPML: not parseable XML');
+        throw new AppError(400, "invalid OPML: not parseable XML");
       }
       const root = parsed.opml?.body?.outline;
-      if (!root) throw new AppError(400, 'invalid OPML: no outlines found');
+      if (!root) throw new AppError(400, "invalid OPML: no outlines found");
       const topLevel = Array.isArray(root) ? root : [root];
 
       const result: Array<{
@@ -110,15 +114,18 @@ export function createOpmlService({ db }: ServicesDeps) {
         siteUrl: string | null;
       }> = [];
 
-      const walk = (outlines: OpmlOutline[], folderName: string | null): void => {
+      const walk = (
+        outlines: OpmlOutline[],
+        folderName: string | null,
+      ): void => {
         for (const node of outlines) {
-          const xmlUrl = node['@xmlUrl'];
-          if (typeof xmlUrl === 'string' && xmlUrl.length > 0) {
+          const xmlUrl = node["@xmlUrl"];
+          if (typeof xmlUrl === "string" && xmlUrl.length > 0) {
             result.push({
               folderName,
               feedUrl: xmlUrl,
-              title: node['@title'] ?? node['@text'] ?? null,
-              siteUrl: node['@htmlUrl'] ?? null,
+              title: node["@title"] ?? node["@text"] ?? null,
+              siteUrl: node["@htmlUrl"] ?? null,
             });
             continue;
           }
@@ -127,7 +134,7 @@ export function createOpmlService({ db }: ServicesDeps) {
               ? node.outline
               : [node.outline]
             : [];
-          const name = node['@text'] ?? node['@title'] ?? null;
+          const name = node["@text"] ?? node["@title"] ?? null;
           if (children.length > 0) walk(children, name);
         }
       };
@@ -136,13 +143,21 @@ export function createOpmlService({ db }: ServicesDeps) {
     },
 
     async ensureFolderByName(userId: string, name: string): Promise<number> {
-      await db.insert(schema.categories).values({ userId, name }).onConflictDoNothing();
+      await db
+        .insert(schema.categories)
+        .values({ userId, name })
+        .onConflictDoNothing();
       const rows = await db
         .select()
         .from(schema.categories)
-        .where(and(eq(schema.categories.userId, userId), eq(schema.categories.name, name)));
+        .where(
+          and(
+            eq(schema.categories.userId, userId),
+            eq(schema.categories.name, name),
+          ),
+        );
       const row = rows[0];
-      if (!row) throw new AppError(500, 'folder missing after upsert');
+      if (!row) throw new AppError(500, "folder missing after upsert");
       return row.id;
     },
   };

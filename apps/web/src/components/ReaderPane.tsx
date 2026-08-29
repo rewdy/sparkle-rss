@@ -9,13 +9,13 @@ import {
   Text,
   Title,
   Tooltip,
-} from '@mantine/core';
-import type { ReactElement } from 'react';
-import { useEffect, useRef } from 'react';
-import { LuArrowLeft, LuExternalLink, LuStar } from 'react-icons/lu';
-import { useFeedTitles } from '../lib/feed-titles';
-import { useMarkRead, useToggleStar } from '../lib/mutations';
-import type { Entry } from '../lib/types';
+} from "@mantine/core";
+import type { ReactElement } from "react";
+import { useEffect, useRef } from "react";
+import { LuArrowLeft, LuExternalLink, LuStar } from "react-icons/lu";
+import { useFeedTitles } from "../lib/feed-titles";
+import { useMarkRead, useToggleStar } from "../lib/mutations";
+import type { Entry } from "../lib/types";
 
 export function ReaderPane({
   entry,
@@ -43,9 +43,9 @@ export function ReaderPane({
   // Defer off-screen article images; ingested HTML won't always set lazy.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based DOM post-processing keyed on entry change
   useEffect(() => {
-    contentRef.current?.querySelectorAll('img').forEach((img) => {
-      img.loading = 'lazy';
-      img.decoding = 'async';
+    contentRef.current?.querySelectorAll("img").forEach((img) => {
+      img.loading = "lazy";
+      img.decoding = "async";
     });
   }, [entry.id]);
 
@@ -53,7 +53,7 @@ export function ReaderPane({
     <Box
       data-reading-pane="true"
       h="calc(100dvh - var(--app-shell-header-offset, 0rem))"
-      style={{ display: 'flex', flexDirection: 'column' }}
+      style={{ display: "flex", flexDirection: "column" }}
     >
       <Group justify="space-between" px="sm" pt="xs" pb="xxs" wrap="nowrap">
         <Group gap="sm" wrap="nowrap" miw={0}>
@@ -65,14 +65,20 @@ export function ReaderPane({
           >
             back
           </Button>
-          <Text size="xs" c="dimmed" ff="monospace" truncate={true} hiddenFrom="md">
+          <Text
+            size="xs"
+            c="dimmed"
+            ff="monospace"
+            truncate={true}
+            hiddenFrom="md"
+          >
             {[
               new Date(entry.publishedAtMs).toLocaleString(),
               entry.author,
               feedTitles.get(entry.feedId),
             ]
               .filter(Boolean)
-              .join(' • ')}
+              .join(" • ")}
           </Text>
         </Group>
         <Group gap="xs">
@@ -80,9 +86,14 @@ export function ReaderPane({
             variant="subtle"
             title="toggle read (m)"
             aria-label="toggle read"
-            onClick={() => void markRead.mutateAsync({ ids: [entry.id], read: !entry.isRead })}
+            onClick={() =>
+              void markRead.mutateAsync({
+                ids: [entry.id],
+                read: !entry.isRead,
+              })
+            }
           >
-            {entry.isRead ? '●' : '○'}
+            {entry.isRead ? "●" : "○"}
           </ActionIcon>
           {entry.url && (
             <Tooltip label="open original">
@@ -101,7 +112,11 @@ export function ReaderPane({
         </Group>
       </Group>
 
-      <ScrollArea offsetScrollbars viewportRef={viewportRef} style={{ flex: 1 }}>
+      <ScrollArea
+        offsetScrollbars
+        viewportRef={viewportRef}
+        style={{ flex: 1 }}
+      >
         <Stack
           className="reading-pane-stack"
           gap="md"
@@ -109,21 +124,29 @@ export function ReaderPane({
           mx="auto"
           style={{
             padding:
-              'var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-lg)',
-            paddingBottom: 'calc(var(--mantine-spacing-lg) + env(safe-area-inset-bottom))',
+              "var(--mantine-spacing-sm) var(--mantine-spacing-lg) var(--mantine-spacing-lg)",
+            paddingBottom:
+              "calc(var(--mantine-spacing-lg) + env(safe-area-inset-bottom))",
           }}
         >
           <Title order={1} lh={1.25} mt="xl">
             {entry.title}
           </Title>
 
-          {entry.enclosures.filter((e) => e.href && e.type?.startsWith('audio/')).length > 0 && (
+          {entry.enclosures.filter(
+            (e) => e.href && e.type?.startsWith("audio/"),
+          ).length > 0 && (
             <Stack gap="xs">
               <Divider label="attachments" c="dimmed" />
               {entry.enclosures
-                .filter((e) => e.href && e.type?.startsWith('audio/'))
+                .filter((e) => e.href && e.type?.startsWith("audio/"))
                 .map((enc) => (
-                  <audio key={enc.href} controls src={enc.href} style={{ width: '100%' }}>
+                  <audio
+                    key={enc.href}
+                    controls
+                    src={enc.href}
+                    style={{ width: "100%" }}
+                  >
                     <track kind="captions" />
                   </audio>
                 ))}
@@ -146,16 +169,22 @@ export function ReaderPane({
             </Button>
             <Divider orientation="vertical" c="dimmed" />
             <ActionIcon
-              variant={entry.isStarred ? 'light' : 'subtle'}
+              variant={entry.isStarred ? "light" : "subtle"}
               color="yellow"
               size="lg"
               title="star (s)"
-              aria-label={entry.isStarred ? 'unstar' : 'star'}
+              aria-label={entry.isStarred ? "unstar" : "star"}
               onClick={() =>
-                void toggleStar.mutateAsync({ ids: [entry.id], starred: !entry.isStarred })
+                void toggleStar.mutateAsync({
+                  ids: [entry.id],
+                  starred: !entry.isStarred,
+                })
               }
             >
-              <LuStar size={18} style={entry.isStarred ? { fill: 'currentColor' } : undefined} />
+              <LuStar
+                size={18}
+                style={entry.isStarred ? { fill: "currentColor" } : undefined}
+              />
             </ActionIcon>
           </Group>
         </Stack>

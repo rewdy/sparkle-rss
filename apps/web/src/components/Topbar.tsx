@@ -1,11 +1,25 @@
-import { ActionIcon, Burger, Button, Divider, Group, Text, Tooltip } from '@mantine/core';
-import { useQueryClient } from '@tanstack/react-query';
-import type { ReactElement } from 'react';
-import { LuMoon, LuRefreshCw, LuSparkles, LuSun, LuSunMoon } from 'react-icons/lu';
-import { Link } from 'wouter';
-import { useMarkAllRead } from '../lib/mutations';
-import type { StreamDescriptor } from '../lib/types';
-import { useColorSchemeValue } from '../lib/ui-state';
+import {
+  ActionIcon,
+  Burger,
+  Button,
+  Divider,
+  Group,
+  Text,
+  Tooltip,
+} from "@mantine/core";
+import { useQueryClient } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+import {
+  LuMoon,
+  LuRefreshCw,
+  LuSparkles,
+  LuSun,
+  LuSunMoon,
+} from "react-icons/lu";
+import { Link } from "wouter";
+import { useMarkAllRead } from "../lib/mutations";
+import type { StreamDescriptor } from "../lib/types";
+import { useColorSchemeValue } from "../lib/ui-state";
 
 export function Topbar({
   stream,
@@ -17,8 +31,8 @@ export function Topbar({
 }: {
   stream: StreamDescriptor;
   title: string;
-  filter: 'all' | 'unread';
-  onFilterChange: (f: 'all' | 'unread') => void;
+  filter: "all" | "unread";
+  onFilterChange: (f: "all" | "unread") => void;
   navOpened: boolean;
   onToggleNav: () => void;
 }): ReactElement {
@@ -27,7 +41,9 @@ export function Topbar({
   const [scheme, setScheme] = useColorSchemeValue();
 
   function cycleScheme(): void {
-    setScheme(scheme === 'dark' ? 'light' : scheme === 'light' ? 'system' : 'dark');
+    setScheme(
+      scheme === "dark" ? "light" : scheme === "light" ? "system" : "dark",
+    );
   }
 
   return (
@@ -45,7 +61,12 @@ export function Topbar({
           fw={700}
           component={Link}
           href="/today"
-          style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+          style={{
+            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
           className="site-title"
         >
           <LuSparkles size={15} />
@@ -55,7 +76,7 @@ export function Topbar({
           orientation="vertical"
           c="dimmed"
           visibleFrom="sm"
-          style={{ alignSelf: 'center', height: 14 }}
+          style={{ alignSelf: "center", height: 14 }}
         />
         <Text size="sm" truncate={true} maw={320} visibleFrom="sm">
           {title}
@@ -63,27 +84,27 @@ export function Topbar({
       </Group>
 
       <Group gap="xs" wrap="nowrap">
-        {stream.kind !== 'starred' && stream.kind !== 'unread' && (
+        {stream.kind !== "starred" && stream.kind !== "unread" && (
           <Button.Group visibleFrom="sm">
             <Button
               size="compact-xs"
-              variant={filter === 'all' ? 'default' : 'subtle'}
+              variant={filter === "all" ? "default" : "subtle"}
               color="dimmed"
-              onClick={() => onFilterChange('all')}
+              onClick={() => onFilterChange("all")}
             >
               all
             </Button>
             <Button
               size="compact-xs"
-              variant={filter === 'unread' ? 'default' : 'subtle'}
+              variant={filter === "unread" ? "default" : "subtle"}
               color="dimmed"
-              onClick={() => onFilterChange('unread')}
+              onClick={() => onFilterChange("unread")}
             >
               unread
             </Button>
           </Button.Group>
         )}
-        {stream.kind !== 'starred' && stream.kind !== 'today' && (
+        {stream.kind !== "starred" && stream.kind !== "today" && (
           <Tooltip label="mark everything read (Shift+A)">
             <Button
               size="compact-xs"
@@ -110,10 +131,14 @@ export function Topbar({
         </Tooltip>
 
         <Tooltip label="toggle theme">
-          <ActionIcon variant="subtle" aria-label="toggle theme" onClick={cycleScheme}>
-            {scheme === 'dark' ? (
+          <ActionIcon
+            variant="subtle"
+            aria-label="toggle theme"
+            onClick={cycleScheme}
+          >
+            {scheme === "dark" ? (
               <LuMoon size={15} />
-            ) : scheme === 'light' ? (
+            ) : scheme === "light" ? (
               <LuSun size={15} />
             ) : (
               <LuSunMoon size={15} />

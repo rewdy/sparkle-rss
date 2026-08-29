@@ -1,10 +1,10 @@
-import { type User, UserManager, WebStorageStateStore } from 'oidc-client-ts';
+import { type User, UserManager, WebStorageStateStore } from "oidc-client-ts";
 
 const ISSUER = import.meta.env.VITE_COGNITO_ISSUER as string | undefined;
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID as string | undefined;
 
 /** Local-development escape hatch: no Cognito, requests use X-Dev-User. */
-export const devAuthBypassed = import.meta.env.VITE_AUTH_DISABLED === 'true';
+export const devAuthBypassed = import.meta.env.VITE_AUTH_DISABLED === "true";
 
 export const authConfigured = devAuthBypassed || Boolean(ISSUER && CLIENT_ID);
 
@@ -12,14 +12,14 @@ let userManager: UserManager | null = null;
 
 function um(): UserManager {
   if (!userManager) {
-    if (!ISSUER || !CLIENT_ID) throw new Error('auth not configured');
+    if (!ISSUER || !CLIENT_ID) throw new Error("auth not configured");
     userManager = new UserManager({
       authority: ISSUER,
       client_id: CLIENT_ID,
       redirect_uri: `${window.location.origin}/auth/callback`,
       post_logout_redirect_uri: `${window.location.origin}/`,
-      scope: 'openid profile email',
-      response_type: 'code',
+      scope: "openid profile email",
+      response_type: "code",
       // Renewal happens on demand (through accessToken / the API client's 401
       // retry) rather than in the background, so a single code path owns token
       // freshness and there is no renewal to race against.
@@ -31,14 +31,14 @@ function um(): UserManager {
 }
 
 const DEV_USER: User = {
-  profile: { sub: 'dev-user' },
-  access_token: 'dev-token',
+  profile: { sub: "dev-user" },
+  access_token: "dev-token",
   expired: false,
 } as unknown as User;
 
 export async function login(): Promise<void> {
   if (devAuthBypassed) {
-    window.history.replaceState({}, '', '/');
+    window.history.replaceState({}, "", "/");
     return;
   }
   await um().signinRedirect();
@@ -50,7 +50,7 @@ export async function handleCallback(): Promise<User> {
 
 export async function logout(): Promise<void> {
   if (devAuthBypassed) {
-    window.location.href = '/';
+    window.location.href = "/";
     return;
   }
   await um().signoutRedirect();
@@ -62,7 +62,7 @@ export async function getUser(): Promise<User | null> {
 }
 
 export async function accessToken(): Promise<string> {
-  if (devAuthBypassed) return 'dev-token';
+  if (devAuthBypassed) return "dev-token";
   const user = await um().getUser();
   if (!user || user.expired) {
     return renewToken();
@@ -74,8 +74,8 @@ export async function accessToken(): Promise<string> {
  * session is genuinely over and the app must send the user back to /login. */
 export class SessionExpiredError extends Error {
   constructor(cause?: unknown) {
-    super('session expired');
-    this.name = 'SessionExpiredError';
+    super("session expired");
+    this.name = "SessionExpiredError";
     if (cause !== undefined) {
       // Standard Error cause so debugging keeps the original failure around.
       (this as Error & { cause?: unknown }).cause = cause;
@@ -85,7 +85,7 @@ export class SessionExpiredError extends Error {
 
 /** Hard redirect the app to /login (used on confirmed session expiry). */
 export function redirectToLogin(): void {
-  window.location.assign('/login');
+  window.location.assign("/login");
 }
 
 /** Force a token renewal. Distinguishes a genuinely dead refresh token (the
@@ -93,7 +93,7 @@ export function redirectToLogin(): void {
  * network/timeout failure — only the former is allowed to destroy the session.
  * Used by the API client to retry a 401 with fresh credentials. */
 export async function renewToken(): Promise<string> {
-  if (devAuthBypassed) return 'dev-token';
+  if (devAuthBypassed) return "dev-token";
   let renewed: User | null;
   try {
     renewed = await um().signinSilent();

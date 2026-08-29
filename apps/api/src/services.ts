@@ -7,11 +7,11 @@ import {
   createSettingsService,
   createSubscriptionsService,
   createUsersService,
-} from '@sparkle/core';
-import * as schema from '@sparkle/db';
-import { createPoolFromEnv } from '@sparkle/db';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { requestRefreshSafe } from './refresh';
+} from "@sparkle/core";
+import * as schema from "@sparkle/db";
+import { createPoolFromEnv } from "@sparkle/db";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { requestRefreshSafe } from "./refresh";
 
 export interface Services {
   users: ReturnType<typeof createUsersService>;

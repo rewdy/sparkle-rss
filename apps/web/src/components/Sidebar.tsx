@@ -9,10 +9,10 @@ import {
   Stack,
   Text,
   UnstyledButton,
-} from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
-import type { ReactElement } from 'react';
-import { lazy, Suspense, useState } from 'react';
+} from "@mantine/core";
+import { useQuery } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   LuCalendarDays,
   LuInbox,
@@ -22,43 +22,61 @@ import {
   LuRss,
   LuSettings,
   LuStar,
-} from 'react-icons/lu';
-import { Link, useLocation } from 'wouter';
-import { api } from '../lib/api';
-import { logout } from '../lib/auth';
-import { parseRoute, qk, streamPath } from '../lib/keys';
-import type { Folder, StreamDescriptor, Subscription } from '../lib/types';
-import { AddFolderButton, FeedMenu, FolderMenu } from './ManageMenus';
+} from "react-icons/lu";
+import { Link, useLocation } from "wouter";
+import { api } from "../lib/api";
+import { logout } from "../lib/auth";
+import { parseRoute, qk, streamPath } from "../lib/keys";
+import type { Folder, StreamDescriptor, Subscription } from "../lib/types";
+import { AddFolderButton, FeedMenu, FolderMenu } from "./ManageMenus";
 
 // The subscribe dialog drags Modal + form components; load it on first open.
 const SubscribeModal = lazy(() =>
-  import('./SubscribeModal').then((m) => ({ default: m.SubscribeModal })),
+  import("./SubscribeModal").then((m) => ({ default: m.SubscribeModal })),
 );
 
 function unreadBadge(count: number): ReactElement | null {
   if (count <= 0) return null;
   return (
     <Badge size="sm" variant="light" color="accent" ff="monospace" radius="sm">
-      {count > 999 ? '999+' : count}
+      {count > 999 ? "999+" : count}
     </Badge>
   );
 }
 
-function isActive(stream: StreamDescriptor | undefined, test: (s: StreamDescriptor) => boolean) {
+function isActive(
+  stream: StreamDescriptor | undefined,
+  test: (s: StreamDescriptor) => boolean,
+) {
   return stream !== undefined && test(stream);
 }
 
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactElement {
+export function Sidebar({
+  onNavigate,
+}: {
+  onNavigate?: () => void;
+}): ReactElement {
   const [location] = useLocation();
-  const foldersQ = useQuery({ queryKey: qk.folders, queryFn: api.folders.list });
-  const subsQ = useQuery({ queryKey: qk.subscriptions, queryFn: api.subscriptions.list });
-  const countsQ = useQuery({ queryKey: qk.unreadCounts, queryFn: api.unreadCounts });
+  const foldersQ = useQuery({
+    queryKey: qk.folders,
+    queryFn: api.folders.list,
+  });
+  const subsQ = useQuery({
+    queryKey: qk.subscriptions,
+    queryFn: api.subscriptions.list,
+  });
+  const countsQ = useQuery({
+    queryKey: qk.unreadCounts,
+    queryFn: api.unreadCounts,
+  });
 
   const [subscribeOpen, setSubscribeOpen] = useState(false);
 
   const folders = foldersQ.data?.folders ?? [];
   const subs = subsQ.data?.subscriptions ?? [];
-  const feedUnread = new Map((countsQ.data?.feeds ?? []).map((f) => [f.feedId, f.count]));
+  const feedUnread = new Map(
+    (countsQ.data?.feeds ?? []).map((f) => [f.feedId, f.count]),
+  );
 
   const totalUnread = countsQ.data?.total ?? 0;
 
@@ -83,7 +101,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
   }
 
   return (
-    <Box p="xs" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
+    <Box p="xs" h="100%" style={{ display: "flex", flexDirection: "column" }}>
       <Group justify="space-between" mb="xs" px={4} flex="none">
         <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
           streams
@@ -102,19 +120,19 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
       <NavLink
         component={Link}
         href="/today"
-        active={isActive(activeStream, (s) => s.kind === 'today')}
+        active={isActive(activeStream, (s) => s.kind === "today")}
         label={
           <Group gap="xs" wrap="nowrap">
             <LuCalendarDays size={15} style={{ flexShrink: 0 }} />
             <Text size="sm">Today</Text>
           </Group>
         }
-        onClick={() => nav('/today')}
+        onClick={() => nav("/today")}
       />
       <NavLink
         component={Link}
         href="/unread"
-        active={isActive(activeStream, (s) => s.kind === 'unread')}
+        active={isActive(activeStream, (s) => s.kind === "unread")}
         label={
           <Group justify="space-between" w="100%">
             <Group gap="xs" wrap="nowrap">
@@ -124,24 +142,24 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
             {unreadBadge(totalUnread)}
           </Group>
         }
-        onClick={() => nav('/unread')}
+        onClick={() => nav("/unread")}
       />
       <NavLink
         component={Link}
         href="/starred"
-        active={isActive(activeStream, (s) => s.kind === 'starred')}
+        active={isActive(activeStream, (s) => s.kind === "starred")}
         label={
           <Group gap="xs" wrap="nowrap">
             <LuStar size={15} style={{ flexShrink: 0 }} />
             <Text size="sm">Starred</Text>
           </Group>
         }
-        onClick={() => nav('/starred')}
+        onClick={() => nav("/starred")}
       />
       <NavLink
         component={Link}
         href="/all"
-        active={isActive(activeStream, (s) => s.kind === 'all')}
+        active={isActive(activeStream, (s) => s.kind === "all")}
         label={
           <Group justify="space-between" w="100%">
             <Group gap="xs" wrap="nowrap">
@@ -151,12 +169,17 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
             {unreadBadge(totalUnread)}
           </Group>
         }
-        onClick={() => nav('/all')}
+        onClick={() => nav("/all")}
       />
 
       <Box my="xs" flex="none">
         <Group gap="xs" wrap="nowrap">
-          <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
+          <Text
+            size="xs"
+            c="dimmed"
+            tt="uppercase"
+            style={{ letterSpacing: 2 }}
+          >
             folders
           </Text>
           <Divider c="dimmed" style={{ flex: 1 }} />
@@ -173,7 +196,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                 <NavLink
                   component={Link}
                   href={`/folder/${folder.id}`}
-                  active={isActive(activeStream, (s) => s.kind === 'folder' && s.id === folder.id)}
+                  active={isActive(
+                    activeStream,
+                    (s) => s.kind === "folder" && s.id === folder.id,
+                  )}
                   label={
                     <Group justify="space-between" w="100%">
                       <Text size="sm" fw={700}>
@@ -192,7 +218,10 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
                     key={sub.feedId}
                     sub={sub}
                     unread={feedUnread.get(sub.feedId) ?? 0}
-                    active={isActive(activeStream, (s) => s.kind === 'feed' && s.id === sub.feedId)}
+                    active={isActive(
+                      activeStream,
+                      (s) => s.kind === "feed" && s.id === sub.feedId,
+                    )}
                     onNavigate={onNavigate}
                     folders={folders}
                     indent
@@ -201,14 +230,19 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
               </div>
             );
           })}
-          {folders.length > 0 && loose.length > 0 && <Divider my="xs" c="dimmed" />}
+          {folders.length > 0 && loose.length > 0 && (
+            <Divider my="xs" c="dimmed" />
+          )}
           {loose.length > 0 &&
             loose.map((sub) => (
               <FeedRow
                 key={sub.feedId}
                 sub={sub}
                 unread={feedUnread.get(sub.feedId) ?? 0}
-                active={isActive(activeStream, (s) => s.kind === 'feed' && s.id === sub.feedId)}
+                active={isActive(
+                  activeStream,
+                  (s) => s.kind === "feed" && s.id === sub.feedId,
+                )}
                 onNavigate={onNavigate}
                 folders={folders}
               />
@@ -226,7 +260,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }): ReactEleme
         <UnstyledButton
           component={Link}
           href="/settings"
-          onClick={() => nav('/settings')}
+          onClick={() => nav("/settings")}
           px="xs"
           py="xs"
           display="block"
@@ -280,9 +314,9 @@ function FeedIcon({ sub }: { sub: Subscription }): ReactElement {
       width={14}
       height={14}
       loading="lazy"
-      style={{ flexShrink: 0, borderRadius: 2, objectFit: 'contain' }}
+      style={{ flexShrink: 0, borderRadius: 2, objectFit: "contain" }}
       onError={(e) => {
-        e.currentTarget.style.display = 'none';
+        e.currentTarget.style.display = "none";
       }}
     />
   );
@@ -303,7 +337,7 @@ function FeedRow({
   onNavigate?: () => void;
   folders: Folder[];
 }) {
-  const target = streamPath({ kind: 'feed', id: sub.feedId });
+  const target = streamPath({ kind: "feed", id: sub.feedId });
   return (
     <NavLink
       component={Link}
@@ -311,7 +345,12 @@ function FeedRow({
       active={active}
       label={
         <Group justify="space-between" w="100%" wrap="nowrap" gap={4}>
-          <Group gap="xs" wrap="nowrap" miw={0} style={indent ? { paddingLeft: 14 } : undefined}>
+          <Group
+            gap="xs"
+            wrap="nowrap"
+            miw={0}
+            style={indent ? { paddingLeft: 14 } : undefined}
+          >
             <FeedIcon sub={sub} />
             <Text size="sm" truncate={true}>
               {sub.displayTitle}

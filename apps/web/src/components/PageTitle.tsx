@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import type { ReactElement } from "react";
 
 /**
  * Sets the document title via React 19's native metadata hoisting:

@@ -1,5 +1,5 @@
-import { readMigrationFiles } from 'drizzle-orm/migrator';
-import type { Client } from 'pg';
+import { readMigrationFiles } from "drizzle-orm/migrator";
+import type { Client } from "pg";
 
 const ALREADY_EXISTS_RE = /relation "([^"]+)" already exists/u;
 const CREATE_RE = /^\s*CREATE (TABLE|UNIQUE INDEX|INDEX|SCHEMA)\b/u;
@@ -12,7 +12,10 @@ const CREATE_RE = /^\s*CREATE (TABLE|UNIQUE INDEX|INDEX|SCHEMA)\b/u;
  * than in the generated migration files.
  */
 function toDsqlStatement(statement: string): string {
-  return statement.replace(/^(\s*CREATE\s)(UNIQUE\sINDEX|INDEX)(\s)/u, '$1$2 ASYNC$3');
+  return statement.replace(
+    /^(\s*CREATE\s)(UNIQUE\sINDEX|INDEX)(\s)/u,
+    "$1$2 ASYNC$3",
+  );
 }
 
 /**
@@ -43,7 +46,10 @@ async function tolerateAlreadyExists(
  * Trade-off accepted (docs/03-data-model.md): a failed migration may leave
  * partially-applied objects behind; the error surfaces the exact statement.
  */
-export async function migrateDsql(client: Client, migrationsFolder: string): Promise<void> {
+export async function migrateDsql(
+  client: Client,
+  migrationsFolder: string,
+): Promise<void> {
   const migrations = readMigrationFiles({ migrationsFolder });
 
   for (const migration of migrations) {
@@ -63,11 +69,15 @@ export async function migrateDsql(client: Client, migrationsFolder: string): Pro
         await client.query(statement);
         console.log(
           `[migrate] ${migration.hash.slice(0, 8)}#${index} ok (${Date.now() - started}ms):`,
-          statement.replace(/\s+/g, ' ').slice(0, 72),
+          statement.replace(/\s+/g, " ").slice(0, 72),
         );
       } catch (error) {
         const message = (error as Error).message;
-        const tolerated = await tolerateAlreadyExists(client, statement, message);
+        const tolerated = await tolerateAlreadyExists(
+          client,
+          statement,
+          message,
+        );
         if (!tolerated) {
           throw new Error(
             `migration ${migration.hash} statement ${index} failed after ${Date.now() - started}ms: ${message}\nstatement: ${statement}`,
@@ -76,7 +86,7 @@ export async function migrateDsql(client: Client, migrationsFolder: string): Pro
         }
         console.log(
           `[migrate] ${migration.hash.slice(0, 8)}#${index} already applied (verified):`,
-          statement.replace(/\s+/g, ' ').slice(0, 72),
+          statement.replace(/\s+/g, " ").slice(0, 72),
         );
       }
     }

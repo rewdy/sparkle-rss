@@ -1,5 +1,5 @@
-import type { MiddlewareHandler } from 'hono';
-import { env } from '../env';
+import type { MiddlewareHandler } from "hono";
+import { env } from "../env";
 
 const allowedOrigins = new Set(env.webOrigins);
 
@@ -10,15 +10,24 @@ const allowedOrigins = new Set(env.webOrigins);
  */
 export function corsMiddleware(): MiddlewareHandler {
   return async (c, next) => {
-    const origin = c.req.header('Origin');
-    c.header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Dev-User');
-    c.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-    c.header('Access-Control-Max-Age', '600');
+    const origin = c.req.header("Origin");
+    c.header(
+      "Access-Control-Allow-Headers",
+      "Authorization, Content-Type, X-Dev-User",
+    );
+    c.header(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PATCH, DELETE, OPTIONS",
+    );
+    c.header("Access-Control-Max-Age", "600");
     if (origin) {
-      c.header('Access-Control-Allow-Origin', allowedOrigins.has(origin) ? origin : '*');
-      c.header('Vary', 'Origin');
+      c.header(
+        "Access-Control-Allow-Origin",
+        allowedOrigins.has(origin) ? origin : "*",
+      );
+      c.header("Vary", "Origin");
     }
-    if (c.req.method === 'OPTIONS') {
+    if (c.req.method === "OPTIONS") {
       return c.body(null, 204);
     }
     await next();

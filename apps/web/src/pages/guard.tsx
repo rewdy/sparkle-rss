@@ -1,17 +1,17 @@
-import { Center, Loader, Stack, Text } from '@mantine/core';
-import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
-import { useLocation } from 'wouter';
-import { accessToken, devAuthBypassed, getUser, login } from '../lib/auth';
+import { Center, Loader, Stack, Text } from "@mantine/core";
+import type { ReactElement } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
+import { accessToken, devAuthBypassed, getUser, login } from "../lib/auth";
 
 /** Guards the app: redirects to Cognito when no session, renders children when authed. */
 export function useAuthGuard(
   onLoginError?: (error: Error) => void,
-): 'checking' | 'authed' | 'anon' {
+): "checking" | "authed" | "anon" {
   // Dev bypass: auth is structurally disabled, so the shell renders on the
   // first paint (no loader flash / layout shift).
-  const [state, setState] = useState<'checking' | 'authed' | 'anon'>(
-    devAuthBypassed ? 'authed' : 'checking',
+  const [state, setState] = useState<"checking" | "authed" | "anon">(
+    devAuthBypassed ? "authed" : "checking",
   );
   const [, navigate] = useLocation();
 
@@ -28,12 +28,14 @@ export function useAuthGuard(
         const token = await accessToken().catch(() => null);
         if (cancelled) return;
         if (token) {
-          setState('authed');
+          setState("authed");
           return;
         }
       }
-      if (!cancelled) setState('anon');
-      login().catch((e) => onLoginError?.(e instanceof Error ? e : new Error(String(e))));
+      if (!cancelled) setState("anon");
+      login().catch((e) =>
+        onLoginError?.(e instanceof Error ? e : new Error(String(e))),
+      );
     })();
     return () => {
       cancelled = true;
@@ -41,13 +43,17 @@ export function useAuthGuard(
   }, [onLoginError]);
 
   useEffect(() => {
-    if (state === 'anon') navigate('/login', { replace: true });
+    if (state === "anon") navigate("/login", { replace: true });
   }, [state, navigate]);
 
   return state;
 }
 
-export function FullscreenLoader({ label = 'loading…' }: { label?: string }): ReactElement {
+export function FullscreenLoader({
+  label = "loading…",
+}: {
+  label?: string;
+}): ReactElement {
   return (
     <Center mih="100vh">
       <Stack align="center" gap="xs">

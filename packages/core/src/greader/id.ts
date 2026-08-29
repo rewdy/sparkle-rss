@@ -1,10 +1,10 @@
-export const LONG_ITEM_ID_PREFIX = 'tag:google.com,2005:reader/item/';
+export const LONG_ITEM_ID_PREFIX = "tag:google.com,2005:reader/item/";
 const HEX_RE = /^[0-9a-fA-F]{16}$/;
 const DECIMAL_RE = /^\d{1,19}$/;
 
 export function toLongItemId(id: bigint): string {
-  if (id < 0n) throw new RangeError('item ids are non-negative');
-  return `${LONG_ITEM_ID_PREFIX}${id.toString(16).padStart(16, '0')}`;
+  if (id < 0n) throw new RangeError("item ids are non-negative");
+  return `${LONG_ITEM_ID_PREFIX}${id.toString(16).padStart(16, "0")}`;
 }
 
 export function toShortItemId(id: bigint): string {

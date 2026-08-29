@@ -1,10 +1,10 @@
-import { AppError } from '../services/errors';
-import { extractFeedIconUrl } from './parse';
+import { AppError } from "../services/errors";
+import { extractFeedIconUrl } from "./parse";
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
 
 const DEFAULT_TIMEOUT_MS = 10_000;
-export const USER_AGENT = 'sparkle-rss/0.1 (+https://app.sparklerss.com)';
+export const USER_AGENT = "sparkle-rss/0.1 (+https://app.sparklerss.com)";
 
 export interface DiscoveredFeed {
   feedUrl: string;
@@ -14,12 +14,16 @@ export interface DiscoveredFeed {
 }
 
 function extractTitle(xml: string): string | null {
-  const match = /<title[^>]*>(?:<!\[CDATA\[)?([^<]+)(?:\]\]>)?<\/title>/i.exec(xml);
+  const match = /<title[^>]*>(?:<!\[CDATA\[)?([^<]+)(?:\]\]>)?<\/title>/i.exec(
+    xml,
+  );
   return match?.[1]?.trim() || null;
 }
 
 export function looksLikeFeed(body: string): boolean {
-  return /<rss[\s>]|<feed[\s\S]*?xmlns|<rdf:rdf[\s>]/i.test(body.slice(0, 4096));
+  return /<rss[\s>]|<feed[\s\S]*?xmlns|<rdf:rdf[\s>]/i.test(
+    body.slice(0, 4096),
+  );
 }
 
 function extractAlternateLinks(html: string): string[] {
@@ -45,8 +49,8 @@ export async function discoverFeed(
     fetch(u, {
       ...i,
       signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
-      headers: { 'User-Agent': USER_AGENT, ...(i?.headers ?? {}) },
-      redirect: 'follow',
+      headers: { "User-Agent": USER_AGENT, ...(i?.headers ?? {}) },
+      redirect: "follow",
     }),
 ): Promise<DiscoveredFeed> {
   let parsed: URL;
@@ -55,8 +59,8 @@ export async function discoverFeed(
   } catch {
     throw new AppError(400, `not a valid URL: ${inputUrl}`);
   }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new AppError(400, 'only http(s) URLs are supported');
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new AppError(400, "only http(s) URLs are supported");
   }
 
   const first = await fetchImpl(parsed.toString()).catch(() => {
@@ -84,7 +88,9 @@ export async function discoverFeed(
     } catch {
       continue;
     }
-    const feedResponse = await fetchImpl(candidate.toString()).catch(() => null);
+    const feedResponse = await fetchImpl(candidate.toString()).catch(
+      () => null,
+    );
     if (!feedResponse?.ok) continue;
     const feedBody = await feedResponse.text();
     if (looksLikeFeed(feedBody)) {

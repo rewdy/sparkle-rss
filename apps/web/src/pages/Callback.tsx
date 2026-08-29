@@ -1,8 +1,8 @@
-import { Alert, Center, Loader } from '@mantine/core';
-import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
-import { useLocation } from 'wouter';
-import { handleCallback } from '../lib/auth';
+import { Alert, Center, Loader } from "@mantine/core";
+import type { ReactElement } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
+import { handleCallback } from "../lib/auth";
 
 export function Callback(): ReactElement {
   const [, navigate] = useLocation();
@@ -10,7 +10,7 @@ export function Callback(): ReactElement {
 
   useEffect(() => {
     handleCallback()
-      .then(() => navigate('/', { replace: true }))
+      .then(() => navigate("/", { replace: true }))
       .catch((e: Error) => setError(e.message));
   }, [navigate]);
 

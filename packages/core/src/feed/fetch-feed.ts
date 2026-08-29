@@ -1,6 +1,6 @@
-import { AppError } from '../services/errors';
+import { AppError } from "../services/errors";
 
-const USER_AGENT = 'sparkle-rss/0.1 (+https://app.sparklerss.com)';
+const USER_AGENT = "sparkle-rss/0.1 (+https://app.sparklerss.com)";
 const TIMEOUT_MS = 20_000;
 const MAX_REDIRECTS = 5;
 
@@ -13,7 +13,7 @@ export interface FetchFeedOptions {
 }
 
 export interface FetchFeedResult {
-  status: 'ok' | 'not-modified';
+  status: "ok" | "not-modified";
   body?: string;
   etag: string | null;
   lastModified: string | null;
@@ -26,8 +26,8 @@ function defaultFetch(url: string, init?: RequestInit): Promise<Response> {
   return fetch(url, {
     ...init,
     signal: AbortSignal.timeout(TIMEOUT_MS),
-    headers: { 'User-Agent': USER_AGENT, ...(init?.headers ?? {}) },
-    redirect: 'manual',
+    headers: { "User-Agent": USER_AGENT, ...(init?.headers ?? {}) },
+    redirect: "manual",
   });
 }
 
@@ -45,22 +45,25 @@ export async function fetchFeed(
   let allPermanent = true;
 
   const headers: Record<string, string> = {
-    Accept: 'application/rss+xml, application/xml, text/xml, */*',
+    Accept: "application/rss+xml, application/xml, text/xml, */*",
   };
-  if (options.etag) headers['If-None-Match'] = options.etag;
-  if (options.lastModified) headers['If-Modified-Since'] = options.lastModified;
+  if (options.etag) headers["If-None-Match"] = options.etag;
+  if (options.lastModified) headers["If-Modified-Since"] = options.lastModified;
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     let response: Response;
     try {
       response = await doFetch(current, { headers });
     } catch (error) {
-      throw new AppError(504, `fetch failed for ${current}: ${(error as Error).message}`);
+      throw new AppError(
+        504,
+        `fetch failed for ${current}: ${(error as Error).message}`,
+      );
     }
 
     if (response.status === 304) {
       return {
-        status: 'not-modified',
+        status: "not-modified",
         etag: options.etag ?? null,
         lastModified: options.lastModified ?? null,
         finalUrl: current,
@@ -68,8 +71,9 @@ export async function fetchFeed(
     }
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
-      const location = response.headers.get('location');
-      if (!location) throw new AppError(502, `redirect without location at ${current}`);
+      const location = response.headers.get("location");
+      if (!location)
+        throw new AppError(502, `redirect without location at ${current}`);
       if (![301, 308].includes(response.status)) allPermanent = false;
       current = new URL(location, current).toString();
       continue;
@@ -81,10 +85,10 @@ export async function fetchFeed(
 
     const body = await response.text();
     const result: FetchFeedResult = {
-      status: 'ok',
+      status: "ok",
       body,
-      etag: response.headers.get('etag'),
-      lastModified: response.headers.get('last-modified'),
+      etag: response.headers.get("etag"),
+      lastModified: response.headers.get("last-modified"),
       finalUrl: current,
     };
     if (allPermanent && current !== url && hop > 0) {

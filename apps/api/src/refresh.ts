@@ -1,5 +1,5 @@
-import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { processFeed } from './entries/worker-lambda';
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { processFeed } from "./entries/worker-lambda";
 
 /**
  * Enqueues an immediate fetch for a feed (same { feedId } message shape the
@@ -7,7 +7,7 @@ import { processFeed } from './entries/worker-lambda';
  * the feed is fetched in-process.
  */
 export async function requestRefresh(feedId: number): Promise<void> {
-  if (process.env.NODE_ENV === 'test') return;
+  if (process.env.NODE_ENV === "test") return;
   const queueUrl = process.env.QUEUE_URL;
   if (queueUrl) {
     const client = new SQSClient({});
@@ -30,8 +30,8 @@ export function requestRefreshSafe(feedId: number): void {
   void requestRefresh(feedId).catch((error) => {
     console.error(
       JSON.stringify({
-        level: 'warn',
-        msg: 'immediate refresh failed',
+        level: "warn",
+        msg: "immediate refresh failed",
         feedId,
         error: (error as Error).message,
       }),

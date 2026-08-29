@@ -1,10 +1,10 @@
-import * as schema from '@sparkle/db';
-import { and, eq, inArray, lte, sql } from 'drizzle-orm';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { FetchFeedResult } from '../feed/fetch-feed';
-import type { ParsedEntry } from '../feed/parse';
-import { parseFeed } from '../feed/parse';
-import { insertEntriesForUser } from './subscriptions';
+import * as schema from "@sparkle/db";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { FetchFeedResult } from "../feed/fetch-feed";
+import type { ParsedEntry } from "../feed/parse";
+import { parseFeed } from "../feed/parse";
+import { insertEntriesForUser } from "./subscriptions";
 
 export interface ServicesDeps {
   db: NodePgDatabase<typeof schema>;
@@ -62,7 +62,9 @@ export function createIngestService({ db }: ServicesDeps) {
       if (ids.length === 0) return;
       await db
         .update(schema.feeds)
-        .set({ nextFetchAfter: sql`now() + (${schema.feeds.ttlMinutes} * interval '1 minute')` })
+        .set({
+          nextFetchAfter: sql`now() + (${schema.feeds.ttlMinutes} * interval '1 minute')`,
+        })
         .where(inArray(schema.feeds.id, ids));
     },
 
@@ -98,7 +100,7 @@ export function createIngestService({ db }: ServicesDeps) {
 
     async recordSuccess(
       feedId: number,
-      result: Pick<FetchFeedResult, 'etag' | 'lastModified'> & {
+      result: Pick<FetchFeedResult, "etag" | "lastModified"> & {
         ttlMinutes: number;
         parsedTitle?: string;
         parsedSiteUrl?: string;
@@ -127,7 +129,10 @@ export function createIngestService({ db }: ServicesDeps) {
           patch.url = result.permanentRedirectTo;
         }
       }
-      await db.update(schema.feeds).set(patch).where(eq(schema.feeds.id, feedId));
+      await db
+        .update(schema.feeds)
+        .set(patch)
+        .where(eq(schema.feeds.id, feedId));
     },
 
     async recordFailure(
@@ -155,7 +160,10 @@ export function createIngestService({ db }: ServicesDeps) {
       return rows.map((r) => r.userId);
     },
 
-    async fanoutEntries(feedId: number, entries: ParsedEntry[]): Promise<number> {
+    async fanoutEntries(
+      feedId: number,
+      entries: ParsedEntry[],
+    ): Promise<number> {
       const subscribers = await this.subscriberIds(feedId);
       let inserted = 0;
       for (const userId of subscribers) {

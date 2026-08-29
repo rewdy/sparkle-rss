@@ -1,5 +1,5 @@
-import { DsqlSigner } from '@aws-sdk/dsql-signer';
-import pg from 'pg';
+import { DsqlSigner } from "@aws-sdk/dsql-signer";
+import pg from "pg";
 
 export interface LocalPoolOptions {
   connectionString: string;
@@ -25,13 +25,18 @@ export interface DsqlClusterOptions {
  * Single serialized connection for DDL work (migrations). DSQL catalog changes
  * need one-connection serialization; see packages/db/src/dsql-migrator.ts.
  */
-export async function createDsqlClient(options: DsqlClusterOptions): Promise<pg.Client> {
-  const signer = new DsqlSigner({ hostname: options.endpoint, region: options.region });
+export async function createDsqlClient(
+  options: DsqlClusterOptions,
+): Promise<pg.Client> {
+  const signer = new DsqlSigner({
+    hostname: options.endpoint,
+    region: options.region,
+  });
   const token = await signer.getDbConnectAdminAuthToken();
   const client = new pg.Client({
     host: options.endpoint,
-    user: options.adminUser ?? 'admin',
-    database: options.database ?? 'postgres',
+    user: options.adminUser ?? "admin",
+    database: options.database ?? "postgres",
     password: token,
     ssl: { rejectUnauthorized: true },
   });
@@ -58,18 +63,21 @@ export class DsqlPoolManager implements AsyncDisposable {
       return this.pool;
     }
     const previous = this.pool;
-    const signer = new DsqlSigner({ hostname: this.options.endpoint, region: this.options.region });
+    const signer = new DsqlSigner({
+      hostname: this.options.endpoint,
+      region: this.options.region,
+    });
     const token = await signer.getDbConnectAdminAuthToken();
     this.pool = new pg.Pool({
       host: this.options.endpoint,
-      user: this.options.adminUser ?? 'admin',
-      database: this.options.database ?? 'postgres',
+      user: this.options.adminUser ?? "admin",
+      database: this.options.database ?? "postgres",
       password: token,
       ssl: { rejectUnauthorized: true },
       max: this.options.maxConnections ?? 5,
       idleTimeoutMillis: 10_000,
     });
-    this.pool.on('error', () => {});
+    this.pool.on("error", () => {});
     this.createdAt = Date.now();
     if (previous) {
       void previous.end();
