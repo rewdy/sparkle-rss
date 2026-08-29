@@ -415,17 +415,19 @@ automatically, and light/dark compatibility is free because they already use `li
 
 ## Fix: token expiry / silent-renew root cause (2026-08-29)
 
-Users repeatedly stalled on `/login` and hit errors on `auth.sparklerss.com`. The root
-cause: **the SPA never received a refresh token**, so every "silent renew" fell back to a
-cross-origin `prompt=none` iframe into the hosted UI, which browsers increasingly block
-(ITP / third-party-cookie phase-out). When renew failed, `renewToken()` fired a fire-and-
-forget full `logout()`, and `/login` had no error path — hence the stuck spinner.
+Users repeatedly stalled on `/login` and hit errors on `auth.sparklerss.com`. The app client
+requested scopes `openid profile email` on an `authorization_code` (PKCE) grant and renewal
+failed during the boot guard's warm-up and the API client's 401 retry; when renew failed,
+`renewToken()` fired a fire-and-forget full `logout()`, and `/login` had no error path —
+hence the stuck spinner.
 
-- **Add `offline_access`** to the Cognito SPA client scopes (`tf/modules/auth/main.tf`),
-  so a real refresh token is issued. Refresh grants then renew via a CORS `POST` to the
-  token endpoint (no hidden iframe, no third-party cookies); Cognito's token endpoint
-  returns `Access-Control-Allow-Origin: *`, so no origin whitelist is needed on the app
-  client, and the Terraform provider does not expose one anyway.
+- **Renewal needs no new scope.** Cognito returns a refresh token automatically for the
+  `authorization_code` grant (its token endpoint issues one only for that grant type), so
+  the client already had a refresh token. `offline_access` is **not** a supported Cognito
+  scope (a Terraform apply adding it was rejected with `ScopeDoesNotExistException`) and is
+  not required. Refresh grants renew via a CORS `POST` to the token endpoint (no hidden
+  iframe, no third-party cookies); the token endpoint returns
+  `Access-Control-Allow-Origin: *`, and the Terraform provider exposes no origin field.
 - **On-demand renewal**: `automaticSilentRenew` disabled; `accessToken()` and the API
   client's 401-retry are the single code path that owns token freshness (was three racing
   triggers across tabs).
@@ -436,5 +438,6 @@ forget full `logout()`, and `/login` had no error path — hence the stuck spinn
 - **Boot guard re-checks expiry** after the warm-up renewal instead of mounting authed on
   a dead token, and **`/login` now surfaces redirect errors with a retry action**.
 
-Deploy note: `offline_access` + `web_origins` take effect on the next `terraform apply`;
-sessions minted before that lack a refresh token and may need one fresh sign-in.
+Deploy note: only the frontend changed behavior (the Cognito client keeps its existing
+scopes), so the fix takes effect on the next web bundle release — no Terraform apply is
+required and existing sessions are unaffected.

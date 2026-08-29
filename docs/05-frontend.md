@@ -121,9 +121,10 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
 
 ## Auth flow details
 
-- PKCE + authorization code, scopes `openid profile email offline_access`
-  (`offline_access` opts the client into a refresh token — required for the
-  silent renew to use a real refresh grant instead of a cross-origin iframe).
+- PKCE + authorization code, scopes `openid profile email`. Cognito issues a
+  refresh token automatically for an `authorization_code` grant (no
+  `offline_access` scope needed or supported), so the silent renew can use a
+  real refresh grant instead of a cross-origin iframe.
 - Callback route swaps code → tokens; stores user in memory + sessionStorage.
 - Token renewal is **on-demand**: `accessToken()` refreshes when the stored
   token is expired, and the API client refreshes once after a 401. Renewal does

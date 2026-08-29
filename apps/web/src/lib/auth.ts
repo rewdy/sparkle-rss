@@ -18,7 +18,7 @@ function um(): UserManager {
       client_id: CLIENT_ID,
       redirect_uri: `${window.location.origin}/auth/callback`,
       post_logout_redirect_uri: `${window.location.origin}/`,
-      scope: 'openid profile email offline_access',
+      scope: 'openid profile email',
       response_type: 'code',
       // Renewal happens on demand (through accessToken / the API client's 401
       // retry) rather than in the background, so a single code path owns token
