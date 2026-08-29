@@ -14,10 +14,7 @@ const CREATE_RE = /^\s*CREATE (TABLE|UNIQUE INDEX|INDEX|SCHEMA)\b/u;
 function toDsqlStatement(statement: string): string {
   return statement
     .replace(/\s+USING\s+btree/iu, "")
-    .replace(
-      /^(\s*CREATE\s)(UNIQUE\sINDEX|INDEX)(\s)/u,
-      "$1$2 ASYNC$3",
-    );
+    .replace(/^(\s*CREATE\s)(UNIQUE\sINDEX|INDEX)(\s)/u, "$1$2 ASYNC$3");
 }
 
 /**
