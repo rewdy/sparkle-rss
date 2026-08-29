@@ -14,12 +14,6 @@ variable "logout_urls" {
   default     = []
 }
 
-variable "web_origins" {
-  description = "Allowed OAuth2 origins for the SPA client (required so the browser can POST refresh-token grants to the token endpoint)"
-  type        = list(string)
-  default     = []
-}
-
 variable "allow_signups" {
   description = "Allow self-service sign-up. When false (default) the pool is invite-only (admin creates users)."
   type        = bool

@@ -423,10 +423,9 @@ forget full `logout()`, and `/login` had no error path — hence the stuck spinn
 
 - **Add `offline_access`** to the Cognito SPA client scopes (`tf/modules/auth/main.tf`),
   so a real refresh token is issued. Refresh grants then renew via a CORS `POST` to the
-  token endpoint (no hidden iframe, no third-party cookies).
-- **Add `web_origins`** to the same client, wired from the shared `local.web_origins` —
-  required or the browser blocks that refresh `POST`. (The local was previously only fed
-  to the API module's CORS, not to Cognito.)
+  token endpoint (no hidden iframe, no third-party cookies); Cognito's token endpoint
+  returns `Access-Control-Allow-Origin: *`, so no origin whitelist is needed on the app
+  client, and the Terraform provider does not expose one anyway.
 - **On-demand renewal**: `automaticSilentRenew` disabled; `accessToken()` and the API
   client's 401-retry are the single code path that owns token freshness (was three racing
   triggers across tabs).

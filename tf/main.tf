@@ -73,7 +73,6 @@ module "auth" {
   custom_domain_fqdn            = local.auth_fqdn
   custom_domain_certificate_arn = module.dns.auth_certificate_arn
   route53_zone_id               = module.dns.zone_id
-  web_origins                   = local.web_origins
   branding_settings             = local.managed_login_settings
 }
 

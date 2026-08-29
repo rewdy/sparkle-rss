@@ -92,11 +92,6 @@ resource "aws_cognito_user_pool_client" "spa" {
   allowed_oauth_scopes                 = ["openid", "email", "profile", "offline_access"]
   supported_identity_providers         = ["COGNITO"]
 
-  # Required for refresh-token flow: oidc-client-ts renews by doing a CORS
-  # POST to auth.<root>/oauth2/token, which is blocked unless the app origin
-  # is whitelisted here.
-  web_origins = var.web_origins
-
   callback_urls = var.callback_urls
   logout_urls   = var.logout_urls
 

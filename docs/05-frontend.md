@@ -128,8 +128,9 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
 - Token renewal is **on-demand**: `accessToken()` refreshes when the stored
   token is expired, and the API client refreshes once after a 401. Renewal does
   a CORS `POST` of the refresh token to the token endpoint (no hidden iframe),
-  so it does not depend on third-party cookies. This means the app client must
-  list the app origin in `web_origins`.
+  so it does not depend on third-party cookies. Cognito's token endpoint
+  returns `Access-Control-Allow-Origin: *`, so no origin whitelist is required
+  on the app client for this to work.
 - Renewal failure distinguishes a **dead session** (provider rejects the refresh
   token with an OAuth error) from a **transient failure** (network/timeout). Only
   a dead session clears local credentials and redirects the app to `/login`;
