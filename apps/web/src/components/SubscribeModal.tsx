@@ -16,18 +16,24 @@ export function SubscribeModal({
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [folderId, setFolderId] = useState<string>('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const subscribe = useSubscribe();
 
   async function submit(): Promise<void> {
     if (!url.trim()) return;
-    await subscribe.mutateAsync({
-      url: url.trim(),
-      title: title.trim() || undefined,
-      folderId: folderId === '' ? null : Number(folderId),
-    });
-    setUrl('');
-    setTitle('');
-    onClose();
+    setSubmitError(null);
+    try {
+      await subscribe.mutateAsync({
+        url: url.trim(),
+        title: title.trim() || undefined,
+        folderId: folderId === '' ? null : Number(folderId),
+      });
+      setUrl('');
+      setTitle('');
+      onClose();
+    } catch {
+      setSubmitError('Could not add feed');
+    }
   }
 
   return (
@@ -37,10 +43,15 @@ export function SubscribeModal({
           label="feed or site URL"
           placeholder="https://example.com/blog"
           value={url}
-          onChange={(e) => setUrl(e.currentTarget.value)}
+          onChange={(e) => {
+            setUrl(e.currentTarget.value);
+            setSubmitError(null);
+          }}
           data-autofocus
           error={
-            !url.startsWith('http') && url.length > 0 ? 'must start with http(s)://' : undefined
+            !url.startsWith('http') && url.length > 0
+              ? 'must start with http(s)://'
+              : (submitError ?? undefined)
           }
         />
         <TextInput

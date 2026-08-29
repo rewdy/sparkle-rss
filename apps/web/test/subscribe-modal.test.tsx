@@ -75,6 +75,33 @@ describe('SubscribeModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('shows a generic error and keeps the dialog open when adding fails', async () => {
+    const onClose = vi.fn();
+    vi.mocked(mockApi.subscriptions.subscribe).mockRejectedValueOnce(new Error('no feed'));
+    renderModal(onClose);
+    await user.type(screen.getByLabelText('feed or site URL'), 'https://example.com/not-a-feed');
+    await user.click(screen.getByRole('button', { name: 'subscribe' }));
+
+    expect(await screen.findByText('Could not add feed')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('https://example.com/not-a-feed')).toBeInTheDocument();
+  });
+
+  it('clears the error and closes after a successful retry', async () => {
+    const onClose = vi.fn();
+    vi.mocked(mockApi.subscriptions.subscribe)
+      .mockRejectedValueOnce(new Error('no feed'))
+      .mockResolvedValueOnce({ subscription: { feedId: 'x', url: 'https://example.com/feed' } });
+    renderModal(onClose);
+    await user.type(screen.getByLabelText('feed or site URL'), 'https://example.com/feed');
+    await user.click(screen.getByRole('button', { name: 'subscribe' }));
+    expect(await screen.findByText('Could not add feed')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'subscribe' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(screen.queryByText('Could not add feed')).not.toBeInTheDocument();
+  });
+
   it('sends the custom title when provided', async () => {
     renderModal();
     await user.type(screen.getByLabelText('feed or site URL'), 'https://example.com/blog');
