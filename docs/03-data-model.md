@@ -54,7 +54,7 @@ Tables: `users`, `api_tokens`, `categories`, `feeds`, `subscriptions`, `user_ent
 `user_settings`. Key points where reality differs from a vanilla-PG design:
 
 - `user_settings` is a single `data` jsonb blob keyed by `user_id`; per-user preferences
-  (currently `colorScheme`, `themeId`, `markReadOnOpen`, `sidebarOpen`) are
+  (currently `colorScheme` (`light`, `dark`, or `system`), `themeId`, `markReadOnOpen`, `sidebarOpen`) are
   plain keys merged by `packages/core/src/services/settings.ts`. Adding a preference is a
   new key, never a migration.
 

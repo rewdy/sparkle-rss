@@ -54,20 +54,21 @@ export function SettingsPage(): ReactElement {
             appearance
           </Text>
           <Text size="sm" fw={600}>
-            light / dark
+            color scheme
           </Text>
           <SegmentedControl
             value={scheme}
             onChange={(next) => {
-              const v = next as 'light' | 'dark';
+              const v = next as 'light' | 'dark' | 'system';
               setScheme(v);
               void saveSetting({ colorScheme: v });
             }}
             data={[
               { value: 'dark', label: 'dark' },
               { value: 'light', label: 'light' },
+              { value: 'system', label: 'system' },
             ]}
-            w={220}
+            w={300}
           />
           <Text size="sm" fw={600}>
             theme

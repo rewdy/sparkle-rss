@@ -5,7 +5,7 @@
 | Concern | Choice |
 | --- | --- |
 | Build | Vite (React, TypeScript strict) |
-| UI kit | **Mantine** (v9) — components + hooks (`@mantine/hooks`), dark/light/system color scheme built in |
+| UI kit | **Mantine** (v9) — components + hooks (`@mantine/hooks`), light/dark/system color scheme built in |
 | Routing | **wouter** — tiny, hook-first; matches our shallow route tree |
 | Server state | TanStack Query v5 — all API data lives here, never in atoms |
 | Client/UI state | jotai — view preferences, selection, sidebar, modals |
@@ -100,7 +100,7 @@ carries the same params so they survive opening and closing an article.
 - Mutations: `markRead`, `toggleStar` (optimistic set, rollback on error),
   `markAllRead(stream, ts)`, subscription CRUD. Any entry mutation invalidates
   `['unread-counts']`.
-- **jotai owns ephemeral UI**: `colorSchemeAtom`, `themeIdAtom`, `sidebarOpenAtom`,
+- **jotai owns ephemeral UI**: `colorSchemeAtom` (`light` / `dark` / `system`), `themeIdAtom`, `sidebarOpenAtom`,
   `markReadOnOpenAtom` (reading prefs also mirrored into
   `user_settings.data` via `/api/v1/me/settings` — server = source of truth across
   devices; local `sparkle.ui` localStorage is the pre-mount first-paint fallback), plus

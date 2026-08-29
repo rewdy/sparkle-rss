@@ -136,7 +136,7 @@ gate before calling the milestone fully done.
 
 - [x] Minimal-reader layout: collapsible sidebar (folders/feeds + unread badges),
       date-grouped infinite entry list, focused reading pane overlay,
-      dark/light schemes, Space Mono chrome + sans reading surface
+      light/dark/system schemes, Space Mono chrome + sans reading surface
       (terminal-inspired theme from hn-tok).
 - [x] Settings page: color scheme, density, mark-on-open, API token mint/revoke
       (shown once + copy), OPML import/export, sign out.

@@ -2,7 +2,7 @@ import { atom, getDefaultStore, useAtom } from 'jotai';
 import { DEFAULT_THEME_ID, type ThemeId } from '../themes';
 import { localDateKey } from './keys';
 
-export type ColorSchemePref = 'light' | 'dark';
+export type ColorSchemePref = 'light' | 'dark' | 'system';
 
 export function loadLocalUi(): Record<string, unknown> {
   try {
@@ -13,7 +13,7 @@ export function loadLocalUi(): Record<string, unknown> {
 }
 
 function isColorScheme(v: unknown): v is ColorSchemePref {
-  return v === 'light' || v === 'dark';
+  return v === 'light' || v === 'dark' || v === 'system';
 }
 
 function isThemeId(v: unknown): v is ThemeId {

@@ -1,7 +1,7 @@
 import { ActionIcon, Burger, Button, Divider, Group, Text, Tooltip } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
-import { LuMoon, LuRefreshCw, LuSparkles, LuSun } from 'react-icons/lu';
+import { LuMoon, LuRefreshCw, LuSparkles, LuSun, LuSunMoon } from 'react-icons/lu';
 import { Link } from 'wouter';
 import { useMarkAllRead } from '../lib/mutations';
 import type { StreamDescriptor } from '../lib/types';
@@ -25,6 +25,10 @@ export function Topbar({
   const qc = useQueryClient();
   const markAll = useMarkAllRead(stream);
   const [scheme, setScheme] = useColorSchemeValue();
+
+  function cycleScheme(): void {
+    setScheme(scheme === 'dark' ? 'light' : scheme === 'light' ? 'system' : 'dark');
+  }
 
   return (
     <Group justify="space-between" h="100%" px="md" wrap="nowrap" miw={0}>
@@ -106,12 +110,14 @@ export function Topbar({
         </Tooltip>
 
         <Tooltip label="toggle theme">
-          <ActionIcon
-            variant="subtle"
-            aria-label="toggle theme"
-            onClick={() => setScheme(scheme === 'dark' ? 'light' : 'dark')}
-          >
-            {scheme === 'dark' ? <LuMoon size={15} /> : <LuSun size={15} />}
+          <ActionIcon variant="subtle" aria-label="toggle theme" onClick={cycleScheme}>
+            {scheme === 'dark' ? (
+              <LuMoon size={15} />
+            ) : scheme === 'light' ? (
+              <LuSun size={15} />
+            ) : (
+              <LuSunMoon size={15} />
+            )}
           </ActionIcon>
         </Tooltip>
       </Group>

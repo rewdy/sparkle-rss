@@ -413,6 +413,14 @@ automatically, and light/dark compatibility is free because they already use `li
 - Three CSS accent-shade usages (entry-row hover/active, shadow) kept shared with shade
   indexes 0/1/6/9 per theme; user approved refining per-theme values later if needed.
 
+## Feature: system color scheme preference (2026-08-29)
+
+The web appearance preference now supports `light`, `dark`, and `system`. The stored
+preference remains separate from the resolved scheme: when `system` is selected, the
+frontend follows `prefers-color-scheme` and passes the resolved light/dark value to
+Mantine, including browser `theme-color` metadata. The top-bar control cycles through
+all three preferences and uses the sun-moon icon for `system`.
+
 ## Fix: token expiry / silent-renew root cause (2026-08-29)
 
 Users repeatedly stalled on `/login` and hit errors on `auth.sparklerss.com`. The app client

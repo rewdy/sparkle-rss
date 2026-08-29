@@ -20,9 +20,9 @@ describe('applySettings', () => {
   });
 
   it('applies recognized server settings over the current values', () => {
-    applySettings({ colorScheme: 'light', themeId: 'steel', markReadOnOpen: false });
+    applySettings({ colorScheme: 'system', themeId: 'steel', markReadOnOpen: false });
     const store = getDefaultStore();
-    expect(store.get(colorSchemeAtom)).toBe('light');
+    expect(store.get(colorSchemeAtom)).toBe('system');
     expect(store.get(themeIdAtom)).toBe('steel');
     expect(store.get(markReadOnOpenAtom)).toBe(false);
   });
