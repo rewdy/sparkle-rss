@@ -8,6 +8,25 @@ services:
     volumes:
       - ./.floci-data:/app/data
 
+  media-init:
+    image: amazon/aws-cli:2
+    depends_on:
+      floci:
+        condition: service_started
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until aws s3api head-bucket --bucket sparkle-rss-media-local
+        --endpoint-url http://floci:4566 >/dev/null 2>&1; do
+          aws s3api create-bucket --bucket sparkle-rss-media-local
+          --endpoint-url http://floci:4566 >/dev/null 2>&1 || true;
+          sleep 1;
+        done
+
   db:
     image: postgres:16-alpine
     environment:

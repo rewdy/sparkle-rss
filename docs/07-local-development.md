@@ -53,13 +53,10 @@ a lightweight open-source AWS emulator with an S3-compatible endpoint. This keep
 ingestion and `/api/v1/media/:id` testable without AWS credentials or access to the
 production bucket.
 
-Start the database and emulator:
+Start the database, emulator, and automatic bucket initializer:
 
 ```sh
-docker compose up -d db floci
-AWS_ENDPOINT_URL=http://localhost:4566 \
-AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test \
-aws s3 mb s3://sparkle-rss-media-local --endpoint-url "$AWS_ENDPOINT_URL"
+docker compose up -d
 ```
 
 Set these values in the root `.env`:
@@ -71,9 +68,10 @@ AWS_ACCESS_KEY_ID=test
 AWS_SECRET_ACCESS_KEY=test
 ```
 
-The bucket command only needs to run once while `.floci-data` is retained. The API and
-ingest worker use the same S3 client configuration, including path-style addressing,
-so locally persisted images can be fetched through the normal media endpoint.
+The `media-init` Compose service creates the bucket idempotently and exits. The API and
+ingest worker use the same S3 client configuration, including path-style addressing, so
+locally persisted images can be fetched through the normal media endpoint. Removing
+`.floci-data` clears the bucket; the next `docker compose up -d` recreates it.
 
 ### Pointing the local UI at the deployed API
 
