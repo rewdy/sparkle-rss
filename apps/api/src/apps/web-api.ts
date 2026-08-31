@@ -1,8 +1,9 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AppError, type StreamSelector } from "@sparkle/core";
 import { Hono } from "hono";
 import { z } from "zod";
+import { createS3Client } from "../s3";
 import { getServices, type Services } from "../services";
 
 type Env = { Variables: { cognitoSub: string; username?: string } };
@@ -215,7 +216,7 @@ export function createWebApiApp(): Hono<Env> {
     const media = await s.media.getForUser(await userIdOf(s, c), mediaId);
     if (!media) throw new AppError(404, "media not found");
     const url = await getSignedUrl(
-      new S3Client({}),
+      createS3Client(),
       new GetObjectCommand({ Bucket: bucket, Key: media.objectKey }),
       { expiresIn: 300 },
     );

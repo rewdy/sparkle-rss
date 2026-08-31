@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import {
   createApiTokensService,
   createEntriesService,
@@ -14,6 +14,7 @@ import * as schema from "@sparkle/db";
 import { createPoolFromEnv } from "@sparkle/db";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { requestRefreshSafe } from "./refresh";
+import { createS3Client } from "./s3";
 
 export interface Services {
   users: ReturnType<typeof createUsersService>;
@@ -59,7 +60,7 @@ async function buildHandle(): Promise<Handle> {
 
 function createServices(db: NodePgDatabase<typeof schema>): Services {
   const deps = { db };
-  const s3 = new S3Client({});
+  const s3 = createS3Client();
   const bucket = process.env.MEDIA_BUCKET;
   const media = createMediaService({
     db,

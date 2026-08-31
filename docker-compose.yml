@@ -1,4 +1,13 @@
 services:
+  floci:
+    image: floci/floci:latest
+    ports:
+      - "4566:4566"
+    environment:
+      FLOCI_STORAGE_MODE: persistent
+    volumes:
+      - ./.floci-data:/app/data
+
   db:
     image: postgres:16-alpine
     environment:

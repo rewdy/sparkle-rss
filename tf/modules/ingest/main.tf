@@ -153,6 +153,7 @@ resource "aws_lambda_function" "worker" {
   environment {
     variables = {
       DSQL_ENDPOINT = var.dsql_endpoint
+      MEDIA_BUCKET  = aws_s3_bucket.media.bucket
       NODE_ENV      = "production"
     }
   }

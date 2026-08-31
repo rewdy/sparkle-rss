@@ -46,6 +46,35 @@ schedules them, so after subscribing to a feed, run:
 pnpm --filter @sparkle/api ingest    # fetch every due feed now
 ```
 
+### Local article-image storage
+
+Local ingestion can persist article images through [Floci](https://github.com/floci-io/floci),
+a lightweight open-source AWS emulator with an S3-compatible endpoint. This keeps image
+ingestion and `/api/v1/media/:id` testable without AWS credentials or access to the
+production bucket.
+
+Start the database and emulator:
+
+```sh
+docker compose up -d db floci
+AWS_ENDPOINT_URL=http://localhost:4566 \
+AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test \
+aws s3 mb s3://sparkle-rss-media-local --endpoint-url "$AWS_ENDPOINT_URL"
+```
+
+Set these values in the root `.env`:
+
+```dotenv
+MEDIA_BUCKET=sparkle-rss-media-local
+S3_ENDPOINT=http://localhost:4566
+AWS_ACCESS_KEY_ID=test
+AWS_SECRET_ACCESS_KEY=test
+```
+
+The bucket command only needs to run once while `.floci-data` is retained. The API and
+ingest worker use the same S3 client configuration, including path-style addressing,
+so locally persisted images can be fetched through the normal media endpoint.
+
 ### Pointing the local UI at the deployed API
 
 ```sh
@@ -105,3 +134,6 @@ list.
 | `API_TARGET` | Vite dev server | Proxy target override (default `http://localhost:8787`) |
 | `WEB_ORIGINS` | API | CORS allowlist for the dev origin |
 | `DSQL_ENDPOINT`, `AWS_REGION` | db spike scripts | DSQL spikes only |
+| `MEDIA_BUCKET` | API/ingest | S3 bucket for article media; set to a local Floci bucket for image testing |
+| `S3_ENDPOINT` | API/ingest | Optional S3-compatible endpoint, e.g. `http://localhost:4566` |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | API/ingest | Local emulator credentials when `S3_ENDPOINT` is set |
