@@ -27,6 +27,18 @@ services:
           sleep 1;
         done
 
+  db-migrate:
+    build:
+      context: .
+      dockerfile: docker/local/db-migrate.Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/sparkle_dev
+    command: ["pnpm", "--filter", "@sparkle/db", "migrate:local"]
+    restart: "no"
+
   db:
     image: postgres:16-alpine
     environment:

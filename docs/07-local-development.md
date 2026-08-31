@@ -12,8 +12,7 @@ Prereqs: Node 22, Docker, pnpm 10 via corepack.
 corepack enable
 pnpm install
 cp .env.example .env
-docker compose up -d db      # Postgres 16; DB `sparkle_dev` is created on first boot
-pnpm db:migrate:local        # apply drizzle migrations to the local DB
+docker compose up -d         # DB, migrations, Floci, and media bucket initialization
 ```
 
 All local configuration lives in the repo-root `.env` — the API and Vite both read it
@@ -53,7 +52,7 @@ a lightweight open-source AWS emulator with an S3-compatible endpoint. This keep
 ingestion and `/api/v1/media/:id` testable without AWS credentials or access to the
 production bucket.
 
-Start the database, emulator, and automatic bucket initializer:
+Start the database, automatic migrations, emulator, and bucket initializer:
 
 ```sh
 docker compose up -d
@@ -68,7 +67,8 @@ AWS_ACCESS_KEY_ID=test
 AWS_SECRET_ACCESS_KEY=test
 ```
 
-The `media-init` Compose service creates the bucket idempotently and exits. The API and
+The `db-migrate` and `media-init` Compose services run once and exit successfully after
+applying migrations and creating the bucket idempotently. The API and
 ingest worker use the same S3 client configuration, including path-style addressing, so
 locally persisted images can be fetched through the normal media endpoint. Removing
 `.floci-data` clears the bucket; the next `docker compose up -d` recreates it.
@@ -101,7 +101,8 @@ the client refuses plain HTTP, tunnel it (SSH reverse tunnel or Tailscale).
 
 ## Database
 
-- `pnpm db:migrate:local` — drizzle's stock migrator against Docker Postgres.
+- `pnpm db:migrate:local` — manually run drizzle's stock migrator against Docker Postgres
+  when needed; normal `docker compose up -d` runs it automatically.
 - `pnpm db:migrate` — DSQL only (IAM auth, requires `DSQL_ENDPOINT`); used by CI
   against the real cluster. Do not run it locally.
 - Reset: `docker compose down -v && docker compose up -d db && pnpm db:migrate:local`.

@@ -1,0 +1,8 @@
+node_modules
+.git
+.pnpm-store
+.floci-data
+dist
+coverage
+apps/*/dist
+*.log
