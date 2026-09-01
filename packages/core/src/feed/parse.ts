@@ -7,6 +7,8 @@ export interface ParsedEntry {
   guid: string;
   title: string;
   contentHtml: string;
+  /** Unsanitized feed HTML used only for best-effort image discovery. */
+  rawContentHtml: string;
   url: string;
   author: string;
   publishedAt: Date;
@@ -125,6 +127,7 @@ export async function parseFeed(
       guid: (item.guid ?? link ?? `${item.title ?? ""}#${index}`).trim(),
       title: (item.title ?? "").trim() || "(untitled)",
       contentHtml: sanitizeEntryHtml(String(rawContent)),
+      rawContentHtml: String(rawContent),
       url: link,
       author: (typeof item.author === "object"
         ? (item.author.name ?? "")

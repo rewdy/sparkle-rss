@@ -3,7 +3,7 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-08-29)
+## Current state (updated 2026-09-01)
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
@@ -224,6 +224,12 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       256×256, copy accepted images into private reusable media storage, expose
       user-scoped metadata to the first-party API. Future user-initiated image saving
       remains out of scope. Design and phased implementation plan: [08-article-images.md](08-article-images.md). ✅
+- [ ] **Compose-owned local runtime configuration** — move stable local API and ingest
+      settings (including Floci endpoint, bucket, and credentials) into the Docker Compose
+      runtime. Keep the root `.env` limited to true machine-specific overrides and secrets;
+      `pnpm dev` and local ingestion must continue to receive the Compose configuration.
+      *Exit: restarting the local stack provisions the runtime and image ingestion works
+      without copying stable media settings into `.env`.*
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
       image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse
       PWA criteria met; first-view images lazy-load.*

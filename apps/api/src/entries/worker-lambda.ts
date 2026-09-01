@@ -1,4 +1,4 @@
-import { fetchFeed, findArticleImage } from "@sparkle/core";
+import { fetchFeed, findArticleImage, imageCandidates } from "@sparkle/core";
 import type { SQSBatchResponse, SQSEvent } from "aws-lambda";
 import { getServices } from "../services";
 
@@ -38,12 +38,25 @@ export async function processFeed(feedId: number): Promise<{
       response.body ?? "",
       feed.siteUrl,
     );
+    let imageCandidatesSeen = 0;
+    let imagesSelected = 0;
     for (const entry of parsed.entries) {
+      const mediaUrls = entry.enclosures
+        .filter((enclosure) => enclosure.type?.startsWith("image/"))
+        .map((enclosure) => enclosure.href);
+      imageCandidatesSeen += imageCandidates(
+        entry.rawContentHtml,
+        entry.url || feed.siteUrl || feed.url,
+        mediaUrls,
+      ).length;
       entry.articleImage =
         (await findArticleImage(
-          entry.contentHtml,
+          entry.rawContentHtml,
           entry.url || feed.siteUrl || feed.url,
+          fetch,
+          mediaUrls,
         )) ?? undefined;
+      if (entry.articleImage) imagesSelected += 1;
     }
     const inserted = await services.ingest.fanoutEntries(
       feed.id,
@@ -58,7 +71,15 @@ export async function processFeed(feedId: number): Promise<{
       parsedIconUrl: parsed.iconUrl || undefined,
       permanentRedirectTo: response.permanentRedirectTo,
     });
-    log({ feedId, outcome: "ok", inserted, entries: parsed.entries.length });
+    log({
+      feedId,
+      outcome: "ok",
+      inserted,
+      entries: parsed.entries.length,
+      mediaEnabled: Boolean(process.env.MEDIA_BUCKET),
+      imageCandidates: imageCandidatesSeen,
+      imagesSelected,
+    });
     return { outcome: "ok", inserted };
   } catch (error) {
     const message = (error as Error).message;

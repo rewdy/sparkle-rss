@@ -92,9 +92,8 @@ selected presentation.
 
 ## Entry and feed data contract
 
-The current server stores hero media, but the web `Entry` DTO does not yet expose the
-associated media ID. Before the swipe UI can render real images, extend the first-party
-entry payload with nullable metadata such as:
+The server stores hero media, and the web `Entry` DTO exposes the associated media ID as
+nullable metadata:
 
 ```ts
 articleImage: {
@@ -107,6 +106,10 @@ articleImage: {
 
 The browser should render `/api/v1/media/{id}` as the image URL. That endpoint already
 owns authorization and redirects to private S3 through a short-lived presigned URL.
+
+The swipe surface keeps the full entry result in the React Query cache but mounts only
+through the active story plus the next two stories. The active and immediately next
+hero images receive high fetch priority; other mounted images remain browser-lazy.
 
 The source title and favicon should come from the existing subscription query, keyed by
 `feedId`. Do not duplicate feed metadata into the entry row or account settings.

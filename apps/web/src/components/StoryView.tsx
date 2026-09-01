@@ -64,6 +64,13 @@ export function StoryView({
 
   if (loading) return <Center h="100%">loading…</Center>;
   if (!entries.length) return <Center h="100%">nothing here yet.</Center>;
+  // Keep the active story and the next two stories mounted. Previously every
+  // entry in the React Query cache rendered here, which allowed the browser to
+  // defer image requests unpredictably and made large feeds expensive.
+  const renderedEntries = entries.slice(
+    0,
+    Math.min(entries.length, Math.max(3, activeIndex + 3)),
+  );
   return (
     <Box
       ref={scrollRef}
@@ -78,7 +85,7 @@ export function StoryView({
       }}
       data-story-view
     >
-      {entries.map((entry, index) => {
+      {renderedEntries.map((entry, index) => {
         const sub = subscriptions.find((item) => item.feedId === entry.feedId);
         return (
           <Box
@@ -97,6 +104,8 @@ export function StoryView({
                 alt={entry.articleImage.alt}
                 fit="cover"
                 h="100%"
+                loading={index <= activeIndex + 2 ? "eager" : "lazy"}
+                fetchPriority={index <= activeIndex + 1 ? "high" : "auto"}
               />
             ) : null}
             <Stack

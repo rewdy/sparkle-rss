@@ -38,4 +38,27 @@ describe("article image selection", () => {
     expect(selected?.candidate.url).toBe("https://example.com/hero.png");
     expect(selected).toMatchObject({ width: 512, height: 300 });
   });
+
+  it("understands lazy-loading and srcset image markup", () => {
+    expect(
+      imageCandidates(
+        '<img data-src="small.jpg" data-srcset="hero-small.jpg 640w, hero-large.jpg 1280w">',
+        "https://example.com/",
+      )[0]?.url,
+    ).toBe("https://example.com/hero-large.jpg");
+  });
+
+  it("follows image redirects", async () => {
+    let redirectMode: string | undefined;
+    const fetcher = async (_url: string, init?: RequestInit) => {
+      redirectMode = init?.redirect;
+      return response(png512x300);
+    };
+    await findArticleImage(
+      '<img src="https://example.com/redirected.png">',
+      "https://example.com/",
+      fetcher as typeof fetch,
+    );
+    expect(redirectMode).toBe("follow");
+  });
 });

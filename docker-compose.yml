@@ -9,12 +9,12 @@ services:
       - ./.floci-data:/app/data
 
   media-init:
-    image: amazon/aws-cli:2
+    image: amazon/aws-cli:2.36.35
     depends_on:
       floci:
         condition: service_started
     environment:
-      AWS_ACCESS_KEY_ID: test
+      AWS_ACCESS_KEY_ID: "000000000000"
       AWS_SECRET_ACCESS_KEY: test
       AWS_DEFAULT_REGION: us-east-1
     entrypoint: ["/bin/sh", "-c"]

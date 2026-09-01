@@ -236,7 +236,7 @@ path unchanged and use lazy loading for the image.
 
 ## Security, reliability, and cost guardrails
 
-- Restrict image URLs to `http`/`https`; resolve redirects manually and cap redirect
+- Restrict image URLs to `http`/`https`; follow redirects with the fetch implementation and cap
   count. Reject localhost, loopback, link-local, private, and other non-public targets
   after DNS resolution if the runtime makes that practical.
 - Cap response bytes, dimensions, decode time, and per-entry candidate attempts. A
@@ -283,7 +283,7 @@ path unchanged and use lazy loading for the image.
 ## Resolved design direction
 
 - Always copy accepted images into private S3; do not fall back to remote URLs.
-- Start with conservative JPEG, PNG, WebP, and GIF support; reject SVG initially.
+- Support JPEG, PNG, WebP, GIF, and AVIF; reject SVG initially.
 - Use the documented byte, pixel, candidate-count, timeout, and redirect limits, tuning
   them from metrics.
 - Expose stable authenticated `/api/v1/media/{id}` URLs backed by short-lived S3

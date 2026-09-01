@@ -5,6 +5,13 @@ const MAX_CANDIDATES = 5;
 const MIN_DIMENSION = 256;
 const BAD_TOKENS =
   /(?:avatar|profile|userpic|gravatar|favicon|icon|logo|emoji)/i;
+const IMAGE_TYPES = [
+  "image/avif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
 
 export interface ImageCandidate {
   url: string;
@@ -53,19 +60,33 @@ export function imageCandidates(
     if (url)
       result.push({ url, alt: "", order: result.length, source: "media" });
   }
-  for (const match of html.matchAll(/<img\b([^>]*)>/gis)) {
+  for (const match of html.matchAll(/<(?:img|source)\b([^>]*)>/gis)) {
     const a = attrs(match[1] ?? "");
-    const rawUrl = a.src ?? a["data-src"];
+    const rawSrcset = a.srcset ?? a["data-srcset"];
+    const srcsetUrls = rawSrcset ? parseSrcset(rawSrcset) : [];
+    const rawUrl =
+      srcsetUrls.at(-1) ??
+      a["data-src"] ??
+      a["data-original"] ??
+      a["data-lazy-src"] ??
+      a.src;
     const url = rawUrl ? absoluteUrl(rawUrl, baseUrl) : null;
     if (url)
       result.push({
         url,
-        alt: a.alt ?? "",
+        alt: a.alt ?? a.title ?? "",
         order: result.length,
         source: "content",
       });
   }
   return result;
+}
+
+function parseSrcset(value: string): string[] {
+  return value
+    .split(",")
+    .map((candidate) => candidate.trim().split(/\s+/u)[0] ?? "")
+    .filter(Boolean);
 }
 
 function obviousNonArticleImage(candidate: ImageCandidate): boolean {
@@ -85,7 +106,7 @@ export async function findArticleImage(
     try {
       const response = await fetchImpl(candidate.url, {
         signal: AbortSignal.timeout(10_000),
-        redirect: "manual",
+        redirect: "follow",
         headers: {
           Accept: "image/avif,image/webp,image/jpeg,image/png,image/gif",
         },
@@ -98,12 +119,7 @@ export async function findArticleImage(
       const mimeType = (
         (response.headers.get("content-type") ?? "").split(";")[0] ?? ""
       ).toLowerCase();
-      if (
-        !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(
-          mimeType,
-        )
-      )
-        continue;
+      if (!IMAGE_TYPES.includes(mimeType)) continue;
       const dimensions = imageSize(Buffer.from(bytes));
       const { width, height } = dimensions;
       if (

@@ -63,7 +63,7 @@ Set these values in the root `.env`:
 ```dotenv
 MEDIA_BUCKET=sparkle-rss-media-local
 S3_ENDPOINT=http://localhost:4566
-AWS_ACCESS_KEY_ID=test
+AWS_ACCESS_KEY_ID=000000000000
 AWS_SECRET_ACCESS_KEY=test
 ```
 

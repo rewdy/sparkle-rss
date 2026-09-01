@@ -479,6 +479,19 @@ required and existing sessions are unaffected.
 - User-initiated saved-image behavior and its UI remain deferred, but the `kind` field
   and media service are intentionally shaped to support it later.
 
+## Phase 6 — article-image ingestion follow-up (2026-09-01)
+
+- Image discovery runs against the raw feed HTML, while sanitized HTML remains the stored
+  article content. This preserves lazy-loading attributes and `srcset` data without
+  weakening the content-safety boundary.
+- Candidate discovery accepts `img`/`source` markup, common lazy-loading attributes,
+  `srcset`, image enclosures, and HTTP redirects. AVIF is accepted alongside JPEG, PNG,
+  WebP, and GIF; the existing public-image, byte, dimension, timeout, and candidate-count
+  limits remain in force.
+- Worker logs now report whether media persistence is configured and how many image
+  candidates were seen and selected. Image download or validation failures remain
+  best-effort and do not fail feed ingestion.
+
 ## Phase 6 — swipe story presentation (2026-08-29)
 
 - Added an optional full-screen story presentation selected by a device-local header
@@ -500,3 +513,12 @@ required and existing sessions are unaffected.
   wheel input.
 - Read stories remain actionable but use a gray Read button with a Lucide check icon and
   a slightly muted headline, while unread stories retain the normal emphasis.
+
+## Phase 6 — local runtime configuration follow-up (2026-09-01)
+
+- Stable local media settings should not be copied into the developer's `.env`; that file
+  is reserved for true overrides, machine-specific values, and secrets.
+- The current API and local ingest commands run as host processes, so Docker Compose
+  environment variables cannot reach them. The next local-development change will move
+  those runtimes into Compose (or an equivalent Compose-owned wrapper) so the Floci
+  endpoint, bucket, and credentials have one local source of truth.

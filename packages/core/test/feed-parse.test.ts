@@ -115,6 +115,19 @@ describe("parseFeed", () => {
     expect(entry.contentHtml).toContain("<p>Atom body</p>");
   });
 
+  it("keeps raw entry HTML available for image discovery", async () => {
+    const feed = await parseFeed(
+      RSS.replace(
+        "<description><![CDATA[<p>Hello <strong>world</strong></p><script>alert(1)</script>]]></description>",
+        '<description><![CDATA[<img data-src="https://example.com/hero.jpg" src="placeholder.gif">]]></description>',
+      ),
+    );
+    const entry = feed.entries.at(0);
+    if (!entry) throw new Error("expected an entry");
+    expect(entry.rawContentHtml).toContain("data-src");
+    expect(entry.contentHtml).not.toContain("data-src");
+  });
+
   it("extracts the RSS 2.0 <image><url> as iconUrl", async () => {
     const feed = await parseFeed(RSS_WITH_ICON);
     expect(feed.title).toBe("Icon Feed");
