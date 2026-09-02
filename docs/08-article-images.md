@@ -219,7 +219,8 @@ for example:
 ```ts
 articleImage: {
   id: string;
-  url: string; // short-lived authenticated delivery URL, or an API image URL
+  url: string; // short-lived presigned delivery URL
+  urlExpiresAtMs: number; // absolute expiry used to refresh active web queries
   width: number;
   height: number;
   alt: string;

@@ -1,6 +1,6 @@
 import { Box, Button, Center, Group, Image, Stack, Text } from "@mantine/core";
 import type { ReactElement } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LuCheck } from "react-icons/lu";
 import { timeLabel } from "../lib/date-grouping";
 import type { Entry, Subscription } from "../lib/types";
@@ -23,6 +23,9 @@ export function StoryView({
   onActiveIndexChange: (index: number) => void;
 }): ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(
+    () => new Set(),
+  );
   const activeIndexRef = useRef(activeIndex);
   const routeUpdateIndexRef = useRef<number | null>(null);
   activeIndexRef.current = activeIndex;
@@ -87,6 +90,8 @@ export function StoryView({
     >
       {renderedEntries.map((entry, index) => {
         const sub = subscriptions.find((item) => item.feedId === entry.feedId);
+        const image = entry.articleImage;
+        const hasImage = Boolean(image?.url);
         return (
           <Box
             key={entry.id}
@@ -98,14 +103,21 @@ export function StoryView({
               scrollSnapStop: "always",
             }}
           >
-            {entry.articleImage ? (
+            {image?.url && !failedImageUrls.has(image.url) ? (
               <Image
-                src={`/api/v1/media/${entry.articleImage.id}`}
-                alt={entry.articleImage.alt}
+                src={image.url}
+                alt={image.alt}
                 fit="cover"
                 h="100%"
                 loading={index <= activeIndex + 2 ? "eager" : "lazy"}
                 fetchPriority={index <= activeIndex + 1 ? "high" : "auto"}
+                onError={() => {
+                  setFailedImageUrls((failed) => {
+                    const next = new Set(failed);
+                    next.add(image.url);
+                    return next;
+                  });
+                }}
               />
             ) : null}
             <Stack
@@ -117,18 +129,18 @@ export function StoryView({
               style={{
                 position: "absolute",
                 inset: 0,
-                background: entry.articleImage
+                background: hasImage
                   ? "linear-gradient(transparent 25%, rgba(0,0,0,.78))"
                   : "var(--mantine-color-body)",
               }}
             >
-              <Group gap="xs" c={entry.articleImage ? "white" : undefined}>
+              <Group gap="xs" c={hasImage ? "white" : undefined}>
                 {sub?.iconUrl ? (
                   <Image src={sub.iconUrl} alt="" w={24} h={24} radius="sm" />
                 ) : null}
                 <Text size="sm">{sub?.displayTitle ?? ""}</Text>
               </Group>
-              <Text size="sm" c={entry.articleImage ? "gray.3" : "dimmed"}>
+              <Text size="sm" c={hasImage ? "gray.3" : "dimmed"}>
                 {entry.author} · {timeLabel(entry.publishedAtMs)}
               </Text>
               <Text
@@ -137,7 +149,7 @@ export function StoryView({
                 fw={700}
                 maw={680}
                 c={
-                  entry.articleImage
+                  hasImage
                     ? entry.isRead
                       ? "gray.3"
                       : "white"

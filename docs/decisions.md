@@ -522,3 +522,12 @@ required and existing sessions are unaffected.
   environment variables cannot reach them. The next local-development change will move
   those runtimes into Compose (or an equivalent Compose-owned wrapper) so the Floci
   endpoint, bucket, and credentials have one local source of truth.
+## 2026-09-02 — Deliver private article images through entry payloads
+
+The web API now adds a five-minute presigned S3 URL and its absolute expiry timestamp
+to each authorized `articleImage` in entry list and single-entry responses. The browser
+renders that URL directly because an `<img>` request cannot carry the SPA's Cognito
+`Authorization` header; the existing protected `/api/v1/media/:id` redirect remains as
+a compatibility/fallback path. Entry queries garbage-collect inactive pages after four
+minutes and refresh active pages 30 seconds before their earliest image URL expires.
+The bucket remains private with worker write and API read IAM permissions only.

@@ -101,11 +101,15 @@ articleImage: {
   width: number;
   height: number;
   alt: string;
+  url: string;
+  urlExpiresAtMs: number;
 } | null;
 ```
 
-The browser should render `/api/v1/media/{id}` as the image URL. That endpoint already
-owns authorization and redirects to private S3 through a short-lived presigned URL.
+The authenticated entries response supplies a short-lived presigned `url`, so the browser
+can load the image without trying to attach an Authorization header to an `<img>` request.
+`urlExpiresAtMs` is used by the entry query to refresh active pages before the URL expires;
+inactive entry pages are garbage-collected before the five-minute signing window ends.
 
 The swipe surface keeps the full entry result in the React Query cache but mounts only
 through the active story plus the next two stories. The active and immediately next

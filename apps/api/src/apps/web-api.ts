@@ -1,12 +1,75 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { AppError, type StreamSelector } from "@sparkle/core";
+import { AppError, type EntryDto, type StreamSelector } from "@sparkle/core";
 import { Hono } from "hono";
 import { z } from "zod";
 import { createS3Client } from "../s3";
 import { getServices, type Services } from "../services";
 
 type Env = { Variables: { cognitoSub: string; username?: string } };
+
+const MEDIA_URL_EXPIRES_SECONDS = 300;
+
+type MediaEntry = EntryDto & {
+  articleImage: NonNullable<EntryDto["articleImage"]> & {
+    url: string;
+    urlExpiresAtMs: number;
+  };
+};
+
+async function withSignedMediaUrls(
+  s: Services,
+  userId: string,
+  entries: EntryDto[],
+  bucket: string,
+): Promise<EntryDto[]> {
+  const mediaIds = [
+    ...new Set(
+      entries.flatMap((entry) =>
+        entry.articleImage ? [entry.articleImage.id] : [],
+      ),
+    ),
+  ];
+  if (mediaIds.length === 0) return entries;
+
+  const mediaRows = await s.media.getManyForUser(userId, mediaIds);
+  const uniqueMediaRows = [
+    ...new Map(mediaRows.map((media) => [media.id, media])).values(),
+  ];
+  const byId = new Map(uniqueMediaRows.map((media) => [media.id, media]));
+  const urlExpiresAtMs = Date.now() + MEDIA_URL_EXPIRES_SECONDS * 1000;
+  const s3 = createS3Client();
+  const urlById = new Map(
+    await Promise.all(
+      uniqueMediaRows.map(
+        async (media) =>
+          [
+            media.id,
+            await getSignedUrl(
+              s3,
+              new GetObjectCommand({ Bucket: bucket, Key: media.objectKey }),
+              { expiresIn: MEDIA_URL_EXPIRES_SECONDS },
+            ),
+          ] as const,
+      ),
+    ),
+  );
+
+  return entries.map((entry) => {
+    if (!entry.articleImage) return entry;
+    const media = byId.get(entry.articleImage.id);
+    const url = urlById.get(entry.articleImage.id);
+    if (!media || !url) return { ...entry, articleImage: null };
+    return {
+      ...entry,
+      articleImage: {
+        ...entry.articleImage,
+        url,
+        urlExpiresAtMs,
+      },
+    } as MediaEntry;
+  });
+}
 
 const streamSchema = z.string().transform((value): StreamSelector => {
   if (value === "all" || value === "") return { type: "all" };
@@ -183,7 +246,8 @@ export function createWebApiApp(): Hono<Env> {
       });
 
     const s = await getServices();
-    const page = await s.entries.list(await userIdOf(s, c), {
+    const userId = await userIdOf(s, c);
+    const page = await s.entries.list(userId, {
       stream: parsed.stream,
       unreadOnly: parsed.filter === "unread",
       order: parsed.sort,
@@ -193,7 +257,12 @@ export function createWebApiApp(): Hono<Env> {
       crawledBefore: parsed.nt,
       publishedFrom: parsed.pubFrom,
     });
-    return c.json(page);
+    const bucket = process.env.MEDIA_BUCKET;
+    if (!bucket) return c.json(page);
+    return c.json({
+      ...page,
+      items: await withSignedMediaUrls(s, userId, page.items, bucket),
+    });
   });
 
   app.get("/entries/:id", async (c) => {
@@ -201,9 +270,13 @@ export function createWebApiApp(): Hono<Env> {
     if (!Number.isInteger(id) || id <= 0)
       throw new AppError(400, "invalid entry id");
     const s = await getServices();
-    const [entry] = await s.entries.getByIds(await userIdOf(s, c), [id]);
+    const userId = await userIdOf(s, c);
+    const [entry] = await s.entries.getByIds(userId, [id]);
     if (!entry) throw new AppError(404, "entry not found");
-    return c.json({ entry });
+    const bucket = process.env.MEDIA_BUCKET;
+    if (!bucket) return c.json({ entry });
+    const [decorated] = await withSignedMediaUrls(s, userId, [entry], bucket);
+    return c.json({ entry: decorated });
   });
 
   app.get("/media/:id", async (c) => {
@@ -218,7 +291,7 @@ export function createWebApiApp(): Hono<Env> {
     const url = await getSignedUrl(
       createS3Client(),
       new GetObjectCommand({ Bucket: bucket, Key: media.objectKey }),
-      { expiresIn: 300 },
+      { expiresIn: MEDIA_URL_EXPIRES_SECONDS },
     );
     return c.redirect(url, 302);
   });

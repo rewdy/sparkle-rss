@@ -15,6 +15,8 @@ export interface Entry {
     width: number;
     height: number;
     alt: string;
+    url: string;
+    urlExpiresAtMs: number;
   } | null;
 }
 

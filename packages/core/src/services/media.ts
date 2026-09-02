@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import * as schema from "@sparkle/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { SelectedArticleImage } from "../feed/article-image";
 
@@ -15,28 +15,36 @@ export function createMediaService({
   db: NodePgDatabase<typeof schema>;
   store: MediaStore;
 }) {
+  async function findForUser(userId: string, mediaIds: string[]) {
+    if (mediaIds.length === 0) return [];
+    return db
+      .select({
+        id: schema.mediaObjects.id,
+        objectKey: schema.mediaObjects.objectKey,
+        mimeType: schema.mediaObjects.mimeType,
+        width: schema.mediaObjects.width,
+        height: schema.mediaObjects.height,
+      })
+      .from(schema.userMedia)
+      .innerJoin(
+        schema.mediaObjects,
+        eq(schema.mediaObjects.id, schema.userMedia.mediaObjectId),
+      )
+      .where(
+        and(
+          eq(schema.userMedia.userId, userId),
+          inArray(schema.userMedia.mediaObjectId, mediaIds),
+        ),
+      );
+  }
+
   return {
     async getForUser(userId: string, mediaId: string) {
-      const rows = await db
-        .select({
-          id: schema.mediaObjects.id,
-          objectKey: schema.mediaObjects.objectKey,
-          mimeType: schema.mediaObjects.mimeType,
-          width: schema.mediaObjects.width,
-          height: schema.mediaObjects.height,
-        })
-        .from(schema.userMedia)
-        .innerJoin(
-          schema.mediaObjects,
-          eq(schema.mediaObjects.id, schema.userMedia.mediaObjectId),
-        )
-        .where(
-          and(
-            eq(schema.userMedia.userId, userId),
-            eq(schema.userMedia.mediaObjectId, mediaId),
-          ),
-        );
+      const rows = await findForUser(userId, [mediaId]);
       return rows.at(0) ?? null;
+    },
+    async getManyForUser(userId: string, mediaIds: string[]) {
+      return findForUser(userId, mediaIds);
     },
     async attachSplash(
       userId: string,

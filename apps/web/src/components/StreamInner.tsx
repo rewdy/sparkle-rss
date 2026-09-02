@@ -41,12 +41,41 @@ export function StreamInner({
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     staleTime: 30_000,
+    // Media URLs expire after five minutes. Remove inactive entry pages before
+    // that point, and the expiry-aware timer below refreshes active pages.
+    gcTime: 240_000,
   });
 
   const entries = useMemo(
     () => query.data?.pages.flatMap((p) => p.items) ?? [],
     [query.data],
   );
+
+  const earliestMediaExpiryMs = useMemo(() => {
+    let earliest: number | null = null;
+    for (const entry of entries) {
+      const expiresAt = entry.articleImage?.urlExpiresAtMs;
+      if (
+        expiresAt !== undefined &&
+        (earliest === null || expiresAt < earliest)
+      )
+        earliest = expiresAt;
+    }
+    return earliest;
+  }, [entries]);
+
+  useEffect(() => {
+    if (earliestMediaExpiryMs === null) return;
+    const refreshLeadMs = 30_000;
+    const delay = Math.max(
+      1_000,
+      earliestMediaExpiryMs - Date.now() - refreshLeadMs,
+    );
+    const timer = window.setTimeout(() => {
+      void query.refetch();
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [earliestMediaExpiryMs, query.refetch]);
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
 
   const scrollRef = useRef<HTMLDivElement>(null);
