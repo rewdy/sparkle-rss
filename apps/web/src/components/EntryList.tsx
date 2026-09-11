@@ -3,9 +3,10 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ReactElement, RefObject } from "react";
 import { memo, useCallback, useEffect, useMemo } from "react";
 import { groupByDay, timeLabel } from "../lib/date-grouping";
-import { useFeedTitles } from "../lib/feed-titles";
+import { useSubscriptionMap } from "../lib/feed-titles";
 import type { Entry } from "../lib/types";
 import { fonts } from "../themes";
+import { EntryMeta } from "./EntryMeta";
 
 type Row =
   | { kind: "header"; key: string; label: string; count: number }
@@ -167,7 +168,8 @@ const EntryRow = memo(function EntryRow({
   active: boolean;
   onSelect: (entry: Entry) => void;
 }): ReactElement {
-  const feedTitles = useFeedTitles();
+  const feedMeta = useSubscriptionMap();
+  const sub = feedMeta.get(entry.feedId);
   return (
     <Box
       className="entry-row"
@@ -179,11 +181,13 @@ const EntryRow = memo(function EntryRow({
       style={{ cursor: "pointer" }}
     >
       <Group justify="space-between" wrap="nowrap" gap="xs" mb="xxs">
-        <Text size="xs" c="dimmed" truncate={true}>
-          {[entry.author, feedTitles.get(entry.feedId)]
-            .filter(Boolean)
-            .join(" • ") || "\u00a0"}
-        </Text>
+        <EntryMeta
+          iconUrl={sub?.iconUrl}
+          site={sub?.displayTitle}
+          author={entry.author}
+          truncate={true}
+          size="xs"
+        />
         <Text size="xs" c="dimmed" ff="monospace">
           {timeLabel(entry.publishedAtMs)}
         </Text>

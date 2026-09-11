@@ -35,9 +35,14 @@ function stop(e: {
   e.preventDefault();
 }
 
-export function AddFolderButton(): ReactElement {
+export function FolderCreateModal({
+  opened,
+  onClose,
+}: {
+  opened: boolean;
+  onClose: () => void;
+}): ReactElement {
   const create = useFolderCreate();
-  const [opened, { open, close }] = useDisclosure(false);
   const [name, setName] = useState("");
 
   function submit(): void {
@@ -46,47 +51,36 @@ export function AddFolderButton(): ReactElement {
     create.mutate(trimmed, {
       onSuccess: () => {
         setName("");
-        close();
+        onClose();
       },
     });
   }
 
   return (
-    <>
-      <Button
-        size="compact-xs"
-        variant="subtle"
-        leftSection={<LuFolderPlus size={13} />}
-        onClick={open}
-        title="add folder"
-      >
-        folder
-      </Button>
-      <Modal
-        opened={opened}
-        onClose={close}
-        title="new folder"
-        size="xs"
-        centered
-      >
-        <Stack gap="sm">
-          <TextInput
-            label="name"
-            data-autofocus
-            value={name}
-            onChange={(e) => setName(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
-          />
-          <Button
-            onClick={submit}
-            loading={create.isPending}
-            disabled={!name.trim()}
-          >
-            create
-          </Button>
-        </Stack>
-      </Modal>
-    </>
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="new folder"
+      size="xs"
+      centered
+    >
+      <Stack gap="sm">
+        <TextInput
+          label="name"
+          data-autofocus
+          value={name}
+          onChange={(e) => setName(e.currentTarget.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+        />
+        <Button
+          onClick={submit}
+          loading={create.isPending}
+          disabled={!name.trim()}
+        >
+          create
+        </Button>
+      </Stack>
+    </Modal>
   );
 }
 

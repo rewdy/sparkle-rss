@@ -27,6 +27,7 @@ import { qk } from "../lib/keys";
 import {
   markReadOnOpenAtom,
   persistUiPatch,
+  sidebarUnreadOnlyAtom,
   useColorSchemeValue,
   useThemeValue,
 } from "../lib/ui-state";
@@ -40,6 +41,7 @@ export function SettingsPage(): ReactElement {
   const [scheme, setScheme] = useColorSchemeValue();
   const [themeId, setThemeId] = useThemeValue();
   const [markOnOpen, setMarkOnOpen] = useMarkOnOpen();
+  const [unreadOnly, setUnreadOnly] = useAtom(sidebarUnreadOnlyAtom);
 
   async function saveSetting(patch: Record<string, unknown>): Promise<void> {
     persistUiPatch(patch);
@@ -113,6 +115,14 @@ export function SettingsPage(): ReactElement {
             onChange={(e) => {
               setMarkOnOpen(e.currentTarget.checked);
               void saveSetting({ markReadOnOpen: e.currentTarget.checked });
+            }}
+          />
+          <Switch
+            label="sidebar: show only feeds with unread items"
+            checked={unreadOnly}
+            onChange={(e) => {
+              setUnreadOnly(e.currentTarget.checked);
+              void saveSetting({ sidebarUnreadOnly: e.currentTarget.checked });
             }}
           />
         </Stack>

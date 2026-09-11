@@ -1,20 +1,28 @@
 import {
+  ActionIcon,
   Badge,
   Box,
   Button,
   Divider,
   Group,
+  Menu,
   NavLink,
   ScrollArea,
   Stack,
+  Switch,
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAtom } from "jotai";
 import type { ReactElement } from "react";
 import { lazy, Suspense, useState } from "react";
 import {
   LuCalendarDays,
+  LuEllipsisVertical,
+  LuFolder,
+  LuFolderOpen,
+  LuFolderPlus,
   LuInbox,
   LuLogOut,
   LuMailOpen,
@@ -28,7 +36,9 @@ import { api } from "../lib/api";
 import { logout } from "../lib/auth";
 import { parseRoute, qk, streamPath } from "../lib/keys";
 import type { Folder, StreamDescriptor, Subscription } from "../lib/types";
-import { AddFolderButton, FeedMenu, FolderMenu } from "./ManageMenus";
+import { collapsedFoldersAtom, sidebarUnreadOnlyAtom } from "../lib/ui-state";
+import { FeedIcon } from "./FeedIcon";
+import { FeedMenu, FolderCreateModal, FolderMenu } from "./ManageMenus";
 
 // The subscribe dialog drags Modal + form components; load it on first open.
 const SubscribeModal = lazy(() =>
@@ -71,12 +81,39 @@ export function Sidebar({
   });
 
   const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const qc = useQueryClient();
+  const [unreadOnly, setUnreadOnly] = useAtom(sidebarUnreadOnlyAtom);
+  const [collapsedFolders, setCollapsedFolders] = useAtom(collapsedFoldersAtom);
 
   const folders = foldersQ.data?.folders ?? [];
   const subs = subsQ.data?.subscriptions ?? [];
   const feedUnread = new Map(
     (countsQ.data?.feeds ?? []).map((f) => [f.feedId, f.count]),
   );
+
+  const unreadFor = (feedId: string): number => feedUnread.get(feedId) ?? 0;
+  const visibleSubs = unreadOnly
+    ? subs.filter((sub) => unreadFor(sub.feedId) > 0)
+    : subs;
+  const visibleFolders = unreadOnly
+    ? folders.filter((folder) => folder.unreadCount > 0)
+    : folders;
+
+  function updateUnreadOnly(next: boolean): void {
+    setUnreadOnly(next);
+    void api.settings
+      .put({ sidebarUnreadOnly: next })
+      .then(() => qc.invalidateQueries({ queryKey: qk.settings }));
+  }
+
+  function toggleFolder(id: string): void {
+    setCollapsedFolders(
+      collapsedFolders.includes(id)
+        ? collapsedFolders.filter((folderId) => folderId !== id)
+        : [...collapsedFolders, id],
+    );
+  }
 
   const totalUnread = countsQ.data?.total ?? 0;
 
@@ -85,7 +122,7 @@ export function Sidebar({
 
   const byFolder = new Map<string, Subscription[]>();
   const loose: Subscription[] = [];
-  for (const sub of subs) {
+  for (const sub of visibleSubs) {
     if (sub.categoryId) {
       const list = byFolder.get(sub.categoryId) ?? [];
       list.push(sub);
@@ -102,19 +139,10 @@ export function Sidebar({
 
   return (
     <Box p="xs" h="100%" style={{ display: "flex", flexDirection: "column" }}>
-      <Group justify="space-between" mb="xs" px={4} flex="none">
+      <Group mb="xs" px={4} flex="none">
         <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
           streams
         </Text>
-        <Button
-          size="compact-xs"
-          variant="subtle"
-          leftSection={<LuPlus size={13} />}
-          onClick={() => setSubscribeOpen(true)}
-          title="subscribe to a feed"
-        >
-          add
-        </Button>
       </Group>
 
       <NavLink
@@ -172,25 +200,79 @@ export function Sidebar({
         onClick={() => nav("/all")}
       />
 
-      <Box my="xs" flex="none">
-        <Group gap="xs" wrap="nowrap">
-          <Text
-            size="xs"
-            c="dimmed"
-            tt="uppercase"
-            style={{ letterSpacing: 2 }}
-          >
-            folders
-          </Text>
-          <Divider c="dimmed" style={{ flex: 1 }} />
-          <AddFolderButton />
+      <Divider my="xs" c="dimmed" flex="none" />
+
+      <Group justify="space-between" mb="xs" px={4} flex="none">
+        <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
+          feeds
+        </Text>
+        <Group gap={2} wrap="nowrap">
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                leftSection={<LuPlus size={13} />}
+                title="add feed or folder"
+              >
+                add
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<LuRss size={14} />}
+                onClick={() => setSubscribeOpen(true)}
+              >
+                add feed…
+              </Menu.Item>
+              <Menu.Item
+                leftSection={<LuFolderPlus size={14} />}
+                onClick={() => setFolderModalOpen(true)}
+              >
+                add folder…
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <ActionIcon
+                variant="subtle"
+                color="dimmed"
+                size="compact-xs"
+                aria-label="feed list options"
+                title="feed list options"
+              >
+                <LuEllipsisVertical size={14} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Group
+                gap="lg"
+                px="sm"
+                py="xs"
+                wrap="nowrap"
+                justify="space-between"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Text size="sm">unread only</Text>
+                <Switch
+                  size="xs"
+                  aria-label="unread only"
+                  checked={unreadOnly}
+                  onChange={(e) => updateUnreadOnly(e.currentTarget.checked)}
+                />
+              </Group>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
-      </Box>
+      </Group>
 
       <ScrollArea type="hover" style={{ flex: 1, minHeight: 0 }}>
         <Stack gap={2}>
-          {folders.map((folder: Folder) => {
+          {visibleFolders.map((folder: Folder) => {
             const folderSubs = byFolder.get(folder.id) ?? [];
+            const collapsed = collapsedFolders.includes(folder.id);
             return (
               <div key={folder.id}>
                 <NavLink
@@ -200,9 +282,34 @@ export function Sidebar({
                     activeStream,
                     (s) => s.kind === "folder" && s.id === folder.id,
                   )}
+                  leftSection={
+                    <ActionIcon
+                      variant="subtle"
+                      color="dimmed"
+                      size="compact-sm"
+                      aria-label={
+                        collapsed
+                          ? `expand folder ${folder.name}`
+                          : `collapse folder ${folder.name}`
+                      }
+                      title={collapsed ? "expand folder" : "collapse folder"}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleFolder(folder.id);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      {collapsed ? (
+                        <LuFolder size={14} />
+                      ) : (
+                        <LuFolderOpen size={14} />
+                      )}
+                    </ActionIcon>
+                  }
                   label={
                     <Group justify="space-between" w="100%">
-                      <Text size="sm" fw={700}>
+                      <Text size="sm" fw={700} truncate={true}>
                         {folder.name}
                       </Text>
                       <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
@@ -213,24 +320,25 @@ export function Sidebar({
                   }
                   onClick={() => nav(`/folder/${folder.id}`)}
                 />
-                {folderSubs.map((sub) => (
-                  <FeedRow
-                    key={sub.feedId}
-                    sub={sub}
-                    unread={feedUnread.get(sub.feedId) ?? 0}
-                    active={isActive(
-                      activeStream,
-                      (s) => s.kind === "feed" && s.id === sub.feedId,
-                    )}
-                    onNavigate={onNavigate}
-                    folders={folders}
-                    indent
-                  />
-                ))}
+                {!collapsed &&
+                  folderSubs.map((sub) => (
+                    <FeedRow
+                      key={sub.feedId}
+                      sub={sub}
+                      unread={feedUnread.get(sub.feedId) ?? 0}
+                      active={isActive(
+                        activeStream,
+                        (s) => s.kind === "feed" && s.id === sub.feedId,
+                      )}
+                      onNavigate={onNavigate}
+                      folders={folders}
+                      indent
+                    />
+                  ))}
               </div>
             );
           })}
-          {folders.length > 0 && loose.length > 0 && (
+          {visibleFolders.length > 0 && loose.length > 0 && (
             <Divider my="xs" c="dimmed" />
           )}
           {loose.length > 0 &&
@@ -250,6 +358,11 @@ export function Sidebar({
           {subs.length === 0 && (
             <Text size="xs" c="dimmed" ta="center" py="md">
               no subscriptions yet — add one above or import OPML in settings.
+            </Text>
+          )}
+          {subs.length > 0 && unreadOnly && visibleSubs.length === 0 && (
+            <Text size="xs" c="dimmed" ta="center" py="md">
+              no unread items.
             </Text>
           )}
         </Stack>
@@ -298,27 +411,12 @@ export function Sidebar({
           />
         </Suspense>
       )}
-    </Box>
-  );
-}
 
-function FeedIcon({ sub }: { sub: Subscription }): ReactElement {
-  const src = sub.iconUrl;
-  if (!src) {
-    return <LuRss size={14} style={{ flexShrink: 0, opacity: 0.6 }} />;
-  }
-  return (
-    <img
-      src={src}
-      alt=""
-      width={14}
-      height={14}
-      loading="lazy"
-      style={{ flexShrink: 0, borderRadius: 2, objectFit: "contain" }}
-      onError={(e) => {
-        e.currentTarget.style.display = "none";
-      }}
-    />
+      <FolderCreateModal
+        opened={folderModalOpen}
+        onClose={() => setFolderModalOpen(false)}
+      />
+    </Box>
   );
 }
 
@@ -351,7 +449,7 @@ function FeedRow({
             miw={0}
             style={indent ? { paddingLeft: 14 } : undefined}
           >
-            <FeedIcon sub={sub} />
+            <FeedIcon iconUrl={sub.iconUrl} />
             <Text size="sm" truncate={true}>
               {sub.displayTitle}
             </Text>

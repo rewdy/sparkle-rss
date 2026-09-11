@@ -34,6 +34,12 @@ function asBool(v: unknown, fallback: boolean): boolean {
   return typeof v === "boolean" ? v : fallback;
 }
 
+function asStringArray(v: unknown): string[] {
+  return Array.isArray(v)
+    ? v.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 // Atoms initialize from localStorage at module load (synchronous, pre-mount)
 // so the first paint already uses saved preferences.
 const local = loadLocalUi();
@@ -90,6 +96,29 @@ export const markReadOnOpenAtom = atom(
   },
 );
 
+const sidebarUnreadOnlyBaseAtom = atom<boolean>(
+  asBool(local.sidebarUnreadOnly, false),
+);
+export const sidebarUnreadOnlyAtom = atom(
+  (get) => get(sidebarUnreadOnlyBaseAtom),
+  (_get, set, next: boolean) => {
+    set(sidebarUnreadOnlyBaseAtom, next);
+    persistUiPatch({ sidebarUnreadOnly: next });
+  },
+);
+
+// Folder ids the user has collapsed in the sidebar. Absence means expanded.
+const collapsedFoldersBaseAtom = atom<string[]>(
+  asStringArray(local.collapsedFolders),
+);
+export const collapsedFoldersAtom = atom(
+  (get) => get(collapsedFoldersBaseAtom),
+  (_get, set, next: string[]) => {
+    set(collapsedFoldersBaseAtom, next);
+    persistUiPatch({ collapsedFolders: next });
+  },
+);
+
 /**
  * Ticks to the next local calendar date at midnight so stream views keyed on
  * "today" roll over and refetch without requiring a navigation.
@@ -126,6 +155,12 @@ export function applySettings(data: Record<string, unknown>): void {
     data.sidebarOpen !== store.get(sidebarOpenBaseAtom)
   ) {
     store.set(sidebarOpenAtom, data.sidebarOpen);
+  }
+  if (
+    typeof data.sidebarUnreadOnly === "boolean" &&
+    data.sidebarUnreadOnly !== store.get(sidebarUnreadOnlyBaseAtom)
+  ) {
+    store.set(sidebarUnreadOnlyAtom, data.sidebarUnreadOnly);
   }
 }
 

@@ -5,6 +5,7 @@ import {
   colorSchemeAtom,
   markReadOnOpenAtom,
   sidebarOpenAtom,
+  sidebarUnreadOnlyAtom,
   themeIdAtom,
 } from "../src/lib/ui-state";
 
@@ -17,6 +18,7 @@ describe("applySettings", () => {
     store.set(themeIdAtom, "blue");
     store.set(markReadOnOpenAtom, true);
     store.set(sidebarOpenAtom, true);
+    store.set(sidebarUnreadOnlyAtom, false);
   });
 
   it("applies recognized server settings over the current values", () => {
@@ -50,5 +52,15 @@ describe("applySettings", () => {
     applySettings({ colorScheme: "dark", themeId: "blue" });
     const store = getDefaultStore();
     expect(store.get(colorSchemeAtom)).toBe("dark");
+  });
+
+  it("applies the sidebar unread-only preference", () => {
+    applySettings({ sidebarUnreadOnly: true });
+    expect(getDefaultStore().get(sidebarUnreadOnlyAtom)).toBe(true);
+  });
+
+  it("ignores a non-boolean sidebar unread-only value", () => {
+    applySettings({ sidebarUnreadOnly: "yes" });
+    expect(getDefaultStore().get(sidebarUnreadOnlyAtom)).toBe(false);
   });
 });
