@@ -26,3 +26,12 @@ export function useFeedTitles(): Map<string, string> {
     [subs],
   );
 }
+
+/** Lookup of subscriptions keyed by feed id, for row-level icon/title metadata. */
+export function useSubscriptionMap(): Map<string, Subscription> {
+  const subs = useSubscriptions();
+  return useMemo(
+    () => new Map(subs.map((s) => [s.feedId, s] as const)),
+    [subs],
+  );
+}

@@ -7,10 +7,12 @@ import {
   NavLink,
   ScrollArea,
   Stack,
+  Switch,
   Text,
   UnstyledButton,
 } from "@mantine/core";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAtom } from "jotai";
 import type { ReactElement } from "react";
 import { lazy, Suspense, useState } from "react";
 import {
@@ -19,7 +21,6 @@ import {
   LuLogOut,
   LuMailOpen,
   LuPlus,
-  LuRss,
   LuSettings,
   LuStar,
 } from "react-icons/lu";
@@ -28,6 +29,8 @@ import { api } from "../lib/api";
 import { logout } from "../lib/auth";
 import { parseRoute, qk, streamPath } from "../lib/keys";
 import type { Folder, StreamDescriptor, Subscription } from "../lib/types";
+import { sidebarUnreadOnlyAtom } from "../lib/ui-state";
+import { FeedIcon } from "./FeedIcon";
 import { AddFolderButton, FeedMenu, FolderMenu } from "./ManageMenus";
 
 // The subscribe dialog drags Modal + form components; load it on first open.
@@ -71,12 +74,29 @@ export function Sidebar({
   });
 
   const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const qc = useQueryClient();
+  const [unreadOnly, setUnreadOnly] = useAtom(sidebarUnreadOnlyAtom);
 
   const folders = foldersQ.data?.folders ?? [];
   const subs = subsQ.data?.subscriptions ?? [];
   const feedUnread = new Map(
     (countsQ.data?.feeds ?? []).map((f) => [f.feedId, f.count]),
   );
+
+  const unreadFor = (feedId: string): number => feedUnread.get(feedId) ?? 0;
+  const visibleSubs = unreadOnly
+    ? subs.filter((sub) => unreadFor(sub.feedId) > 0)
+    : subs;
+  const visibleFolders = unreadOnly
+    ? folders.filter((folder) => folder.unreadCount > 0)
+    : folders;
+
+  function updateUnreadOnly(next: boolean): void {
+    setUnreadOnly(next);
+    void api.settings
+      .put({ sidebarUnreadOnly: next })
+      .then(() => qc.invalidateQueries({ queryKey: qk.settings }));
+  }
 
   const totalUnread = countsQ.data?.total ?? 0;
 
@@ -85,7 +105,7 @@ export function Sidebar({
 
   const byFolder = new Map<string, Subscription[]>();
   const loose: Subscription[] = [];
-  for (const sub of subs) {
+  for (const sub of visibleSubs) {
     if (sub.categoryId) {
       const list = byFolder.get(sub.categoryId) ?? [];
       list.push(sub);
@@ -116,6 +136,16 @@ export function Sidebar({
           add
         </Button>
       </Group>
+
+      <Switch
+        size="xs"
+        label="unread only"
+        checked={unreadOnly}
+        onChange={(e) => updateUnreadOnly(e.currentTarget.checked)}
+        px={4}
+        mb="xs"
+        flex="none"
+      />
 
       <NavLink
         component={Link}
@@ -189,7 +219,7 @@ export function Sidebar({
 
       <ScrollArea type="hover" style={{ flex: 1, minHeight: 0 }}>
         <Stack gap={2}>
-          {folders.map((folder: Folder) => {
+          {visibleFolders.map((folder: Folder) => {
             const folderSubs = byFolder.get(folder.id) ?? [];
             return (
               <div key={folder.id}>
@@ -230,7 +260,7 @@ export function Sidebar({
               </div>
             );
           })}
-          {folders.length > 0 && loose.length > 0 && (
+          {visibleFolders.length > 0 && loose.length > 0 && (
             <Divider my="xs" c="dimmed" />
           )}
           {loose.length > 0 &&
@@ -250,6 +280,11 @@ export function Sidebar({
           {subs.length === 0 && (
             <Text size="xs" c="dimmed" ta="center" py="md">
               no subscriptions yet — add one above or import OPML in settings.
+            </Text>
+          )}
+          {subs.length > 0 && unreadOnly && visibleSubs.length === 0 && (
+            <Text size="xs" c="dimmed" ta="center" py="md">
+              no unread items.
             </Text>
           )}
         </Stack>
@@ -302,26 +337,6 @@ export function Sidebar({
   );
 }
 
-function FeedIcon({ sub }: { sub: Subscription }): ReactElement {
-  const src = sub.iconUrl;
-  if (!src) {
-    return <LuRss size={14} style={{ flexShrink: 0, opacity: 0.6 }} />;
-  }
-  return (
-    <img
-      src={src}
-      alt=""
-      width={14}
-      height={14}
-      loading="lazy"
-      style={{ flexShrink: 0, borderRadius: 2, objectFit: "contain" }}
-      onError={(e) => {
-        e.currentTarget.style.display = "none";
-      }}
-    />
-  );
-}
-
 function FeedRow({
   sub,
   unread,
@@ -351,7 +366,7 @@ function FeedRow({
             miw={0}
             style={indent ? { paddingLeft: 14 } : undefined}
           >
-            <FeedIcon sub={sub} />
+            <FeedIcon iconUrl={sub.iconUrl} />
             <Text size="sm" truncate={true}>
               {sub.displayTitle}
             </Text>

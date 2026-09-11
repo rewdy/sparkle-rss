@@ -65,8 +65,14 @@ carries the same params so they survive opening and closing an article.
 
 - Sidebar: fixed stream rows (Today, All unread, Starred, All items), scrollable
   folder/feed list, fixed footer (settings, sign out); unread badges per feed/folder.
-  At `< sm` the sidebar becomes a full-screen drawer toggled by a Burger in the top bar,
-  auto-closing on navigation. A desktop icon rail is deferred (`sidebarOpenAtom` reserved).
+  An "unread only" toggle above the list hides feeds and folders with no unread items;
+  it is persisted per user like the other reading prefs. At `< sm` the sidebar becomes a
+  full-screen drawer toggled by a Burger in the top bar, auto-closing on navigation. A
+  desktop icon rail is deferred (`sidebarOpenAtom` reserved).
+- Entry metadata is one shared `EntryMeta` component ([feed icon] Site • Author • Date),
+  with `Date` passed only where it fits the context: the list rows leave it off because
+  the time sits right-aligned, while the reading-pane byline includes the full timestamp.
+  `FeedIcon` (with an RSS fallback) is shared by the sidebar rows, list rows, and byline.
 - Article opens as a focused single-column reading pane (in-place overlay on desktop,
   full-screen full-bleed on mobile) at `<stream>/e/:id`. Back/Esc returns to the list
   preserving scroll position.
@@ -102,7 +108,7 @@ carries the same params so they survive opening and closing an article.
   `markAllRead(stream, ts)`, subscription CRUD. Any entry mutation invalidates
   `['unread-counts']`.
 - **jotai owns ephemeral UI**: `colorSchemeAtom` (`light` / `dark` / `system`), `themeIdAtom`, `sidebarOpenAtom`,
-  `markReadOnOpenAtom` (reading prefs also mirrored into
+  `markReadOnOpenAtom`, `sidebarUnreadOnlyAtom` (reading prefs also mirrored into
   `user_settings.data` via `/api/v1/me/settings` — server = source of truth across
   devices; local `sparkle.ui` localStorage is the pre-mount first-paint fallback), plus
   `todayRolloverAtom` (a midnight tick). The **open entry is not UI state**: it is derived

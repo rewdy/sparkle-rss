@@ -90,6 +90,17 @@ export const markReadOnOpenAtom = atom(
   },
 );
 
+const sidebarUnreadOnlyBaseAtom = atom<boolean>(
+  asBool(local.sidebarUnreadOnly, false),
+);
+export const sidebarUnreadOnlyAtom = atom(
+  (get) => get(sidebarUnreadOnlyBaseAtom),
+  (_get, set, next: boolean) => {
+    set(sidebarUnreadOnlyBaseAtom, next);
+    persistUiPatch({ sidebarUnreadOnly: next });
+  },
+);
+
 /**
  * Ticks to the next local calendar date at midnight so stream views keyed on
  * "today" roll over and refetch without requiring a navigation.
@@ -126,6 +137,12 @@ export function applySettings(data: Record<string, unknown>): void {
     data.sidebarOpen !== store.get(sidebarOpenBaseAtom)
   ) {
     store.set(sidebarOpenAtom, data.sidebarOpen);
+  }
+  if (
+    typeof data.sidebarUnreadOnly === "boolean" &&
+    data.sidebarUnreadOnly !== store.get(sidebarUnreadOnlyBaseAtom)
+  ) {
+    store.set(sidebarUnreadOnlyAtom, data.sidebarUnreadOnly);
   }
 }
 

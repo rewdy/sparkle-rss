@@ -12,7 +12,23 @@ import type { Entry } from "../src/lib/types";
 vi.mock("../src/lib/api", () => ({
   api: {
     subscriptions: {
-      list: vi.fn(async () => ({ subscriptions: [] })),
+      list: vi.fn(async () => ({
+        subscriptions: [
+          {
+            feedId: "f1",
+            url: "https://example.com/feed",
+            siteUrl: "https://example.com",
+            iconUrl: "https://example.com/icon.png",
+            customTitle: null,
+            feedTitle: "Example Feed",
+            displayTitle: "Example Feed",
+            categoryId: null,
+            categoryName: null,
+            entryCount: 1,
+            newestEntryAtMs: null,
+          },
+        ],
+      })),
     },
     entries: {
       setRead: vi.fn(async () => ({ updated: 0 })),
@@ -36,6 +52,7 @@ const ENTRY: Entry = {
   enclosures: [],
   isRead: false,
   isStarred: false,
+  articleImage: null,
 };
 
 let client: QueryClient;
@@ -81,6 +98,11 @@ describe("ReaderPane", () => {
     expect(document.querySelector(".reading-content")).toHaveTextContent(
       "hello",
     );
+  });
+
+  it("shows a byline with the feed, author, and date", async () => {
+    renderPane();
+    expect(await screen.findByText(/Example Feed • Ada/)).toBeInTheDocument();
   });
 
   it("marks content images lazy and async after mount", () => {

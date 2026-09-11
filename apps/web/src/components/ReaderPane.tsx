@@ -6,16 +6,16 @@ import {
   Group,
   ScrollArea,
   Stack,
-  Text,
   Title,
   Tooltip,
 } from "@mantine/core";
 import type { ReactElement } from "react";
 import { useEffect, useRef } from "react";
 import { LuArrowLeft, LuExternalLink, LuStar } from "react-icons/lu";
-import { useFeedTitles } from "../lib/feed-titles";
+import { useSubscriptionMap } from "../lib/feed-titles";
 import { useMarkRead, useToggleStar } from "../lib/mutations";
 import type { Entry } from "../lib/types";
+import { EntryMeta } from "./EntryMeta";
 
 export function ReaderPane({
   entry,
@@ -30,7 +30,8 @@ export function ReaderPane({
 }): ReactElement {
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
-  const feedTitles = useFeedTitles();
+  const feedMeta = useSubscriptionMap();
+  const sub = feedMeta.get(entry.feedId);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -65,21 +66,6 @@ export function ReaderPane({
           >
             back
           </Button>
-          <Text
-            size="xs"
-            c="dimmed"
-            ff="monospace"
-            truncate={true}
-            hiddenFrom="md"
-          >
-            {[
-              new Date(entry.publishedAtMs).toLocaleString(),
-              entry.author,
-              feedTitles.get(entry.feedId),
-            ]
-              .filter(Boolean)
-              .join(" • ")}
-          </Text>
         </Group>
         <Group gap="xs">
           <ActionIcon
@@ -129,7 +115,15 @@ export function ReaderPane({
               "calc(var(--mantine-spacing-lg) + env(safe-area-inset-bottom))",
           }}
         >
-          <Title order={1} lh={1.25} mt="xl">
+          <EntryMeta
+            iconUrl={sub?.iconUrl}
+            site={sub?.displayTitle}
+            author={entry.author}
+            date={new Date(entry.publishedAtMs).toLocaleString()}
+            size="sm"
+          />
+
+          <Title order={1} lh={1.25}>
             {entry.title}
           </Title>
 
