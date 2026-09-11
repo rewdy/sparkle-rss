@@ -7,9 +7,16 @@ import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Router } from "wouter";
 import { Sidebar } from "../src/components/Sidebar";
-import { sidebarUnreadOnlyAtom } from "../src/lib/ui-state";
+import {
+  collapsedFoldersAtom,
+  sidebarUnreadOnlyAtom,
+} from "../src/lib/ui-state";
 
-const SUB = (feedId: string, displayTitle: string) => ({
+const SUB = (
+  feedId: string,
+  displayTitle: string,
+  categoryId: string | null = null,
+) => ({
   feedId,
   url: `https://example.com/${feedId}`,
   siteUrl: "https://example.com",
@@ -17,7 +24,7 @@ const SUB = (feedId: string, displayTitle: string) => ({
   customTitle: null,
   feedTitle: displayTitle,
   displayTitle,
-  categoryId: null,
+  categoryId,
   categoryName: null,
   entryCount: 1,
   newestEntryAtMs: null,
@@ -25,10 +32,14 @@ const SUB = (feedId: string, displayTitle: string) => ({
 
 vi.mock("../src/lib/api", () => ({
   api: {
-    folders: { list: vi.fn(async () => ({ folders: [] })) },
+    folders: {
+      list: vi.fn(async () => ({
+        folders: [{ id: "c1", name: "Tech", feedCount: 1, unreadCount: 1 }],
+      })),
+    },
     subscriptions: {
       list: vi.fn(async () => ({
-        subscriptions: [SUB("f1", "Unread Feed"), SUB("f2", "Read Feed")],
+        subscriptions: [SUB("f1", "Unread Feed", "c1"), SUB("f2", "Read Feed")],
       })),
     },
     unreadCounts: vi.fn(async () => ({
@@ -39,6 +50,8 @@ vi.mock("../src/lib/api", () => ({
     settings: { put: vi.fn(async () => ({ data: {} })) },
   },
 }));
+
+import userEvent from "@testing-library/user-event";
 
 let client: QueryClient;
 
@@ -56,6 +69,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   getDefaultStore().set(sidebarUnreadOnlyAtom, false);
+  getDefaultStore().set(collapsedFoldersAtom, []);
 });
 
 beforeEach(() => {
@@ -84,5 +98,61 @@ describe("Sidebar unread-only filter", () => {
     await waitFor(() =>
       expect(screen.queryByText("Read Feed")).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe("Sidebar sections", () => {
+  it("renders Streams and Feeds headings", async () => {
+    render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    expect(await screen.findByText("feeds")).toBeInTheDocument();
+    expect(screen.getByText("streams")).toBeInTheDocument();
+  });
+
+  it("opens an add menu with feed and folder actions", async () => {
+    const user = userEvent.setup();
+    render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    await user.click(await screen.findByRole("button", { name: "add" }));
+    expect(await screen.findByText("add feed…")).toBeInTheDocument();
+    expect(screen.getByText("add folder…")).toBeInTheDocument();
+  });
+
+  it("toggles unread-only from the feed list options menu", async () => {
+    const user = userEvent.setup();
+    render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    expect(await screen.findByText("Read Feed")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "feed list options" }));
+    await user.click(await screen.findByLabelText("unread only"));
+    await waitFor(() =>
+      expect(screen.queryByText("Read Feed")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("collapses and expands a folder via its icon", async () => {
+    const user = userEvent.setup();
+    render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    expect(await screen.findByText("Unread Feed")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "collapse folder Tech" }),
+    );
+    expect(screen.queryByText("Unread Feed")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "expand folder Tech" }),
+    ).toBeInTheDocument();
   });
 });

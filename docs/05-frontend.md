@@ -63,10 +63,16 @@ carries the same params so they survive opening and closing an article.
 └──────┴────────────────────────────────────────────────┘
 ```
 
-- Sidebar: fixed stream rows (Today, All unread, Starred, All items), scrollable
-  folder/feed list, fixed footer (settings, sign out); unread badges per feed/folder.
-  An "unread only" toggle above the list hides feeds and folders with no unread items;
-  it is persisted per user like the other reading prefs. At `< sm` the sidebar becomes a
+- Sidebar is split into two sections with matching uppercase headers: **Streams** (the
+  smart groupings Today / All unread / Starred / All items) and **Feeds** (the subscription
+  tree), whose `+ add` button opens a menu with "add feed…" / "add folder…" (each opening
+  its dialog), beside a feed-list options menu (ellipsis) that holds the "unread only"
+  toggle. That toggle is persisted per user like the
+  other reading prefs and hides feeds and folders with no unread items. Folders sit at the
+  top of the feed list, each bold with an open/closed folder glyph that collapses its feeds
+  (state is device-local in `collapsedFoldersAtom`, default open). Selecting a folder
+  navigates to its stream and selecting a feed opens the feed stream; unread badges show
+  per feed/folder. Fixed footer (settings, sign out). At `< sm` the sidebar becomes a
   full-screen drawer toggled by a Burger in the top bar, auto-closing on navigation. A
   desktop icon rail is deferred (`sidebarOpenAtom` reserved).
 - Entry metadata is one shared `EntryMeta` component ([feed icon] Site • Author • Date),
@@ -108,7 +114,7 @@ carries the same params so they survive opening and closing an article.
   `markAllRead(stream, ts)`, subscription CRUD. Any entry mutation invalidates
   `['unread-counts']`.
 - **jotai owns ephemeral UI**: `colorSchemeAtom` (`light` / `dark` / `system`), `themeIdAtom`, `sidebarOpenAtom`,
-  `markReadOnOpenAtom`, `sidebarUnreadOnlyAtom` (reading prefs also mirrored into
+  `markReadOnOpenAtom`, `sidebarUnreadOnlyAtom`, `collapsedFoldersAtom` (reading prefs also mirrored into
   `user_settings.data` via `/api/v1/me/settings` — server = source of truth across
   devices; local `sparkle.ui` localStorage is the pre-mount first-paint fallback), plus
   `todayRolloverAtom` (a midnight tick). The **open entry is not UI state**: it is derived
