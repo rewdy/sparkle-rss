@@ -19,7 +19,7 @@
 | --- | --- |
 | `/login` | Redirect to Cognito hosted UI (+ callback handler route) |
 | `/all` | Reading list (all subscriptions) |
-| `/starred` | Starred items |
+| `/starred` | Saved items |
 | `/today` | Items published since local midnight |
 | `/unread` | All unread items (API stream `all`, filter forced to unread) |
 | `/folder/:id` | Folder stream |
@@ -64,7 +64,7 @@ carries the same params so they survive opening and closing an article.
 ```
 
 - Sidebar is split into two sections with matching uppercase headers: **Streams** (the
-  smart groupings Today / All unread / Starred / All items) and **Feeds** (the subscription
+  smart groupings Today / All unread / Saved / All items) and **Feeds** (the subscription
   tree), whose `+ add` button opens a menu with "add feed…" / "add folder…" (each opening
   its dialog), beside a feed-list options menu (ellipsis) that holds the "unread only"
   toggle. That toggle is persisted per user like the
@@ -89,12 +89,12 @@ carries the same params so they survive opening and closing an article.
   scrolling, React re-renders only when the visible range changes. j/k steps and
   deep links scroll the active entry into view (`scrollToIndex`, align auto).
 - Keyboard (implemented): `j/k` open next/previous (each step is a history entry),
-  `m` toggle read, `s` star, `Shift+A` mark stream read, `Esc` back to list, `?`
+  `m` toggle read, `s` save, `Shift+A` mark stream read, `Esc` back to list, `?`
   shortcut sheet. Planned, not yet built: `Enter/o` open original, `/` search focus,
-  `g a / g s` go all/starred.
+  `g a / g s` go all/saved.
 - Mark-read-on-open (implemented): global toggle in Settings, persisted like the other
   reading prefs. The originally-planned per-stream mark-as-read-on-scroll is deferred.
-- Empty states with subscribe hint and optimistic read/star toggles (implemented).
+- Empty states with subscribe hint and optimistic read/save toggles (implemented).
   Skeletons on first load (implemented): 12 fixed-height placeholder rows matching the
   real row footprint replace the old "loading…" row (no list-replacement layout shift).
 - Code-split routes (implemented): `/settings`, the subscribe dialog, and the `?`

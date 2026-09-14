@@ -6,7 +6,7 @@ import { shortcutsOpenAtom } from "../lib/ui-state";
 const SHORTCUTS: Array<[string, string]> = [
   ["j / k", "open next / previous item"],
   ["m", "toggle read"],
-  ["s", "toggle star"],
+  ["s", "toggle save"],
   ["Shift + A", "mark stream read"],
   ["Esc", "back to list (close article)"],
   ["?", "toggle this help"],

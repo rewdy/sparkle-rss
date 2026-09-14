@@ -53,7 +53,7 @@ function streamTitle(
     case "all":
       return "All items";
     case "starred":
-      return "Starred";
+      return "Saved";
     case "today":
       return "Today";
     case "unread":

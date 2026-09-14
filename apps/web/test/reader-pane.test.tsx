@@ -128,9 +128,9 @@ describe("ReaderPane", () => {
     expect(mockApi.entries.setRead).toHaveBeenCalledWith(["42"], true);
   });
 
-  it("stars an entry via the star action", async () => {
+  it("saves an entry via the save action", async () => {
     renderPane();
-    await user.click(screen.getByRole("button", { name: "star" }));
+    await user.click(screen.getByRole("button", { name: "save" }));
     expect(mockApi.entries.setStarred).toHaveBeenCalledWith(["42"], true);
   });
 

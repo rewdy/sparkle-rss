@@ -18,6 +18,7 @@ import { useAtom } from "jotai";
 import type { ReactElement } from "react";
 import { lazy, Suspense, useState } from "react";
 import {
+  LuBookmark,
   LuCalendarDays,
   LuEllipsisVertical,
   LuFolder,
@@ -29,7 +30,6 @@ import {
   LuPlus,
   LuRss,
   LuSettings,
-  LuStar,
 } from "react-icons/lu";
 import { Link, useLocation } from "wouter";
 import { api } from "../lib/api";
@@ -178,8 +178,8 @@ export function Sidebar({
         active={isActive(activeStream, (s) => s.kind === "starred")}
         label={
           <Group gap="xs" wrap="nowrap">
-            <LuStar size={15} style={{ flexShrink: 0 }} />
-            <Text size="sm">Starred</Text>
+            <LuBookmark size={15} style={{ flexShrink: 0 }} />
+            <Text size="sm">Saved</Text>
           </Group>
         }
         onClick={() => nav("/starred")}

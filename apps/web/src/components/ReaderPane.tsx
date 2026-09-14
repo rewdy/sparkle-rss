@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import type { ReactElement } from "react";
 import { useEffect, useRef } from "react";
-import { LuArrowLeft, LuExternalLink, LuStar } from "react-icons/lu";
+import { LuArrowLeft, LuBookmark, LuExternalLink } from "react-icons/lu";
 import { useSubscriptionMap } from "../lib/feed-titles";
 import { useMarkRead, useToggleStar } from "../lib/mutations";
 import type { Entry } from "../lib/types";
@@ -166,8 +166,8 @@ export function ReaderPane({
               variant={entry.isStarred ? "light" : "subtle"}
               color="yellow"
               size="lg"
-              title="star (s)"
-              aria-label={entry.isStarred ? "unstar" : "star"}
+              title="save (s)"
+              aria-label={entry.isStarred ? "unsave" : "save"}
               onClick={() =>
                 void toggleStar.mutateAsync({
                   ids: [entry.id],
@@ -175,7 +175,7 @@ export function ReaderPane({
                 })
               }
             >
-              <LuStar
+              <LuBookmark
                 size={18}
                 style={entry.isStarred ? { fill: "currentColor" } : undefined}
               />

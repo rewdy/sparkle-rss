@@ -60,6 +60,7 @@
   overflow-x: auto;
   padding: var(--mantine-spacing-xs);
   background: var(--mantine-color-dark-7);
+  color: light-dark(var(--mantine-color-accent-0), var(--mantine-color-dark-0));
 }
 
 @media (max-width: 47.99em) {
