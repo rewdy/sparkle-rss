@@ -1,4 +1,4 @@
-import { Box, Group, Text } from "@mantine/core";
+import { Blockquote, Box, Group, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ReactElement, RefObject } from "react";
 import { memo, useCallback, useEffect, useMemo } from "react";
@@ -200,6 +200,22 @@ const EntryRow = memo(function EntryRow({
       >
         {entry.title}
       </Text>
+      {/* Read-later items can carry a note; only shown when there is one, so
+          ordinary feed rows keep their single-line shape. */}
+      {entry.excerpt && (
+        <Blockquote
+          icon={null}
+          color="gray"
+          fz="xs"
+          c="dimmed"
+          px="xs"
+          py={6}
+          my="xxs"
+          lh={1.35}
+        >
+          {entry.excerpt}
+        </Blockquote>
+      )}
     </Box>
   );
 });

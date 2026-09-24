@@ -29,6 +29,11 @@ export interface Entry {
   entryId?: string | null;
   source?: ReadLaterSource;
   siteName?: string;
+  /**
+   * The note (or the page's own excerpt) on a read-later item. Only present in
+   * read-later list payloads, so it is undefined for ordinary feed entries.
+   */
+  excerpt?: string;
   status?: ReadLaterStatus;
   savedAtMs?: number;
 }

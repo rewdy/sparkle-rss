@@ -75,11 +75,11 @@ function Providers({ children }: { children: ReactNode }): ReactElement {
   );
 }
 
-function Harness(): ReactElement {
+function Harness({ entry = ENTRY }: { entry?: Entry }): ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
   return (
     <EntryList
-      entries={[ENTRY]}
+      entries={[entry]}
       loading={false}
       activeId={null}
       onSelect={vi.fn()}
@@ -108,5 +108,27 @@ describe("EntryList", () => {
     expect(
       document.querySelector('img[src="https://example.com/icon.png"]'),
     ).not.toBeNull();
+  });
+
+  it("shows a saved item's note as a blockquote", async () => {
+    render(
+      <Providers>
+        <Harness
+          entry={{ ...ENTRY, source: "url", excerpt: "worth a re-read" }}
+        />
+      </Providers>,
+    );
+    const note = await screen.findByText("worth a re-read");
+    expect(note.closest("blockquote")).not.toBeNull();
+  });
+
+  it("renders no blockquote when the item has no note", async () => {
+    render(
+      <Providers>
+        <Harness />
+      </Providers>,
+    );
+    await screen.findByText("Postgres at the edge");
+    expect(document.querySelector("blockquote")).toBeNull();
   });
 });

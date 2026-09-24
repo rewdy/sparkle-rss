@@ -575,6 +575,9 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
         title: "from feed",
         contentHtml: "<p>x</p>",
         status: "ready",
+        // Marking a feed entry for later is a bookmark, not a note: the item
+        // must not pick up a snippet, so its list row shows no note.
+        excerpt: "",
       });
 
       // Entry-sourced read state lives on the entry so both lists agree.
