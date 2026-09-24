@@ -34,6 +34,11 @@ vi.mock("../src/lib/api", () => ({
       setRead: vi.fn(async () => ({ updated: 0 })),
       setStarred: vi.fn(async () => ({ updated: 0 })),
     },
+    readLater: {
+      saveEntries: vi.fn(async () => ({ updated: 0 })),
+      setRead: vi.fn(async () => ({ updated: 0 })),
+      remove: vi.fn(async () => ({ removed: 0 })),
+    },
   },
 }));
 
@@ -52,6 +57,7 @@ const ENTRY: Entry = {
   enclosures: [],
   isRead: false,
   isStarred: false,
+  isReadLater: false,
   articleImage: null,
 };
 
@@ -132,6 +138,38 @@ describe("ReaderPane", () => {
     renderPane();
     await user.click(screen.getByRole("button", { name: "save" }));
     expect(mockApi.entries.setStarred).toHaveBeenCalledWith(["42"], true);
+  });
+
+  it("adds a feed entry to read later", async () => {
+    renderPane();
+    await user.click(screen.getByRole("button", { name: "read later" }));
+    expect(mockApi.readLater.saveEntries).toHaveBeenCalledWith(["42"], true);
+  });
+
+  it("offers removal instead of saving when opened from the queue", async () => {
+    renderPane({ readLater: true });
+    expect(
+      screen.queryByRole("button", { name: "read later" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "remove from read later" }),
+    );
+    expect(mockApi.readLater.remove).toHaveBeenCalledWith(["42"]);
+  });
+
+  it("hides star and read-later toggles for a saved URL", async () => {
+    renderPane({
+      readLater: true,
+      entry: { ...ENTRY, id: "item-uuid", source: "url", siteName: "Example" },
+    });
+    expect(
+      screen.queryByRole("button", { name: "save" }),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByText(/Example/)).toBeInTheDocument();
+    // read state is per-item for saved URLs
+    expect(
+      screen.getByRole("button", { name: "remove from read later" }),
+    ).toBeInTheDocument();
   });
 
   it("wires previous and next to the reader nav buttons", async () => {

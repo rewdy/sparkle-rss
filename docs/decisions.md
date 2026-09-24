@@ -531,3 +531,117 @@ renders that URL directly because an `<img>` request cannot carry the SPA's Cogn
 a compatibility/fallback path. Entry queries garbage-collect inactive pages after four
 minutes and refresh active pages 30 seconds before their earliest image URL expires.
 The bucket remains private with worker write and API read IAM permissions only.
+
+## 2026-09-15 — Read later, slice 1: storage and service
+
+Plan and sign-off record: [10-read-later.md](10-read-later.md).
+
+- Read later is a new `/api/v1`-only feature: a triage queue holding feed articles marked
+  "read later" plus off-feed articles saved by URL. It is deliberately invisible to the
+  Google Reader surface (greader has no such concept), so the compatibility contract and
+  NetNewsWire behaviour are unchanged and the conformance suite remains the regression
+  gate for that boundary.
+- The starred stream keeps its existing "Saved" label for now. Renaming it is a separate
+  workstream and is explicitly not part of this feature.
+- Off-feed articles live in their own `read_later_items` table instead of being
+  materialized as `user_entries`: that table is feed-shaped (NOT NULL `feed_id`, part of
+  its dedupe key) and feeds "All items", unread counts, and the greader codecs, so a
+  synthetic per-user feed would have leaked saved URLs into all of them.
+- `entry_id` is nullable and set when an item came from a feed article. Entry content and
+  read state are resolved from `user_entries` at read time rather than copied, so a
+  re-published entry stays correct. `read_later_items.is_read` is authoritative only for
+  URL-sourced items. Unsubscribing deletes the entry but leaves the saved item listable;
+  such items report `status='error'` and are treated as read so the unread badge cannot
+  stick forever.
+- DSQL has no partial indexes, so idempotency reuses the `user_entries.guid_hash` trick: a
+  plain unique key over `(user_id, dedupe_hash)` where the hash covers `entry:<id>` or
+  `url:<normalized url>`. URL normalization lowercases the host, drops the fragment,
+  strips `utm_*`/click-id params, and sorts the rest, so re-saving the same article
+  updates the existing item and moves it back to the top of the queue.
+- `saved_at` is written by the application at millisecond precision so the keyset cursor
+  can round-trip it exactly; the DB `now()` default would carry microseconds the cursor
+  cannot represent. The shared stream cursor gained a `saved` sort key, and its id field
+  now accepts uuid row ids as well as decimal entry ids.
+- Landing this slice: schema plus migration `0003`, the `packages/core` read-later service
+  (list, save/remove entries, save URL, read state, count), cursor and normalization unit
+  tests, and Docker-Postgres integration coverage including cross-user isolation. No API
+  routes or UI yet — next slice is the `/api/v1` surface plus an `isReadLater` flag on
+  entry payloads.
+
+## 2026-09-15 — Read later, slices 2–5: API, queue UI, URL saving, bookmarklet
+
+- `/api/v1` gained `GET /read-later`, `POST /read-later` (save a URL), `PATCH
+  /read-later/entries` (add/remove feed entries), `PATCH /read-later/read`,
+  `DELETE /read-later`, and `GET /read-later/count`. Entry and single-entry payloads now
+  carry `isReadLater`, filled by the first-party API only: the flag is decorated in
+  `apps/api` rather than in the shared entry service, because `/api/greader.php` shares
+  that service and never reports it. The conformance suite stays green untouched, which is
+  the evidence that read later did not leak into the compatibility contract.
+- Read-later items are `Entry`-shaped and paged with the same cursor, so `EntryList`,
+  `StreamInner`, and the reading pane render the queue without a second list
+  implementation; the API client routes the `readLater` descriptor to `/api/v1/read-later`
+  instead of the entry stream endpoint. Their ids are uuids, so `mark read` and `remove`
+  address them directly while `star` and entry read-state still target the numeric entry id.
+- URL saving runs inline in the request, as agreed: `POST /read-later` fetches the page,
+  extracts a readable copy with `@mozilla/readability` on a `linkedom` DOM, and runs the
+  result through the same `sanitizeEntryHtml` allowlist as ingested feed content.
+  `linkedom` over `jsdom` for its lack of native dependencies. A body with less than ~250
+  characters of prose is rejected so a nav bar or cookie notice cannot masquerade as an
+  article; the item then degrades to title-plus-link (`status='ready'`, no body) rather than
+  pretending to have content.
+- The new outbound fetch is the only genuinely new attack surface, so it is guarded:
+  http(s) only, hostname resolution checked against loopback, private, link-local, CGNAT,
+  multicast, and cloud-metadata ranges, re-validated on **every** redirect hop, bounded at
+  2 MB read and a 10 s timeout, and never forwarding credentials. A blocked or malformed
+  address fails with 400 (the user's mistake); any other fetch failure still saves the link
+  with `status='error'` so an article is never silently lost. `feed/fetch-feed.ts` and
+  `feed/discover.ts` still lack these protections — adopting the shared guard is a roadmap
+  item, not a silent omission.
+- The bookmarklet is shipped as a Settings card (`lib/bookmarklet.ts`), not a server
+  feature: it gathers the page URL, title, and selected text, then opens
+  `/read-later/new?url=&title=&excerpt=&auto=1` in a small window. A bookmarklet runs in the
+  article's origin and cannot read our session, so the app must own the request.
+- UI decisions: the read-later stream is excluded from the unread filter and
+  mark-all-read controls (it is a queue, not a subscription stream); `l` toggles the queue
+  and removes the item when the pane was opened from it; saved URLs hide the star action;
+  the saved item's date falls back to `saved_at` when the source page has no publish time.
+
+## 2026-09-15 — Two pre-existing defects found while building read later
+
+Both were found by, and are now covered by, tests written for read later.
+
+- **Cross-user leak in keyset pagination (fixed).** The cursor tie-break branch is raw SQL,
+  and drizzle does not parenthesize raw SQL chunks inside `and(...)`. Both `entries.list`
+  and `read-later.list` were assembling `user_id = $1 and a < x or (a = x and id < y)`,
+  which SQL parses as `(user_id AND a < x) OR (a = x AND id < y)` — so a page could include
+  another user's row whenever its sort timestamp equalled the cursor's. The branch is now
+  explicitly parenthesized in both services, with regression tests that page with a cursor
+  aimed at a foreign row.
+- **The API test suites were not running (fixed).** `vitest.config.ts` included
+  `apps/*/test/**/*.test.tsx` but not `*.test.ts`, so `apps/api/test/api.int.test.ts` and
+  `apps/api/test/greader.conformance.test.ts` — the HTTP contract and the greader
+  conformance suite — were silently skipped by `pnpm test` in CI. The include now matches
+  both extensions, and the API suites' pre-test `DROP TABLE` lists were completed (media and
+  read-later tables were missing) so they pass regardless of which suite ran first. The
+  conformance suite is now genuinely part of CI.
+
+## 2026-09-15 — Read later UI pass: sidebar sections and the bookmarklet
+
+- The sidebar grew a third section. **Streams**, **Folders**, and **Feeds** each get an
+  uppercase heading, and there is exactly one divider per section boundary: one closing
+  Streams, and one closing Folders. The Folders section (heading, rows, and its divider) is
+  omitted entirely when the user has no folders, which is what previously produced two
+  rules back to back. Feeds carries no trailing divider because it already ends the list.
+- The `+ add` menu moved from the **Feeds** heading to the **Streams** heading, since
+  adding is a global action rather than a feeds property, and gained an "add article…"
+  entry. The `+ add article` button that briefly lived in the top bar was removed with it.
+  The feed-list options menu (the "unread only" toggle) stayed on the **Feeds** heading,
+  where it belongs.
+- A collapsed section under the add-article form offers the bookmarklet, using a shared
+  `BookmarkletLink` component so the settings card and the form cannot drift apart.
+- **React 19 blocks `javascript:` hrefs.** It replaces the attribute with a throw-stub, so
+  a bookmarklet rendered as a normal `href` prop is a dead drag target (the copy-code
+  button still worked, which is how this could have shipped unnoticed). The URL is now
+  written onto the anchor node in an effect; dragging reads the DOM attribute, so the drag
+  affordance survives. There is a test asserting the rendered href, because the failure is
+  invisible in the component source.

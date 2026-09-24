@@ -1,3 +1,6 @@
+export type ReadLaterSource = "entry" | "url";
+export type ReadLaterStatus = "pending" | "ready" | "error";
+
 export interface Entry {
   id: string;
   feedId: string;
@@ -10,6 +13,7 @@ export interface Entry {
   enclosures: Array<{ href?: string; type?: string; length?: number }>;
   isRead: boolean;
   isStarred: boolean;
+  isReadLater: boolean;
   articleImage: {
     id: string;
     width: number;
@@ -18,6 +22,15 @@ export interface Entry {
     url: string;
     urlExpiresAtMs: number;
   } | null;
+  /**
+   * Read-later list payloads carry where the item came from: the source entry
+   * when it was saved from a feed, or nothing for a one-off saved URL.
+   */
+  entryId?: string | null;
+  source?: ReadLaterSource;
+  siteName?: string;
+  status?: ReadLaterStatus;
+  savedAtMs?: number;
 }
 
 export interface EntryPage {
@@ -61,13 +74,24 @@ export interface Me {
 export type StreamDescriptor =
   | { kind: "all" }
   | { kind: "starred" }
+  | { kind: "readLater" }
   | { kind: "today" }
   | { kind: "unread" }
   | { kind: "folder"; id: string }
   | { kind: "feed"; id: string };
 
+/** Streams that are backed by the entry listing API. */
+export type EntryStreamDescriptor = Exclude<
+  StreamDescriptor,
+  { kind: "readLater" }
+>;
+
+export function isEntryStream(d: StreamDescriptor): d is EntryStreamDescriptor {
+  return d.kind !== "readLater";
+}
+
 /** 'today' and 'unread' are the API stream 'all' plus extra query params. */
-export function streamParam(d: StreamDescriptor): string {
+export function streamParam(d: EntryStreamDescriptor): string {
   switch (d.kind) {
     case "all":
       return "all";

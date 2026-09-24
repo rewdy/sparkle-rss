@@ -1,19 +1,22 @@
 import { randomUUID } from "node:crypto";
 import {
+  AppError,
   createApiTokensService,
   createEntriesService,
   createFoldersService,
   createIngestService,
   createOpmlService,
+  createReadLaterService,
   createSettingsService,
   createSubscriptionsService,
   createUsersService,
+  encodeCursor,
   guidHash,
 } from "@sparkle/core";
 import * as schema from "@sparkle/db";
-import { sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createLocalPool } from "../src/client";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -53,7 +56,7 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
     if (!databaseUrl) throw new Error("unreachable");
     pool = createLocalPool({ connectionString: databaseUrl });
     db = drizzle(pool, { schema });
-    await db.execute(sql`DROP TABLE IF EXISTS user_media, media_objects, user_entries,
+    await db.execute(sql`DROP TABLE IF EXISTS read_later_items, user_media, media_objects, user_entries,
       subscriptions, feeds, categories, api_tokens, user_settings, users CASCADE`);
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
@@ -77,6 +80,7 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
   let users: ReturnType<typeof createUsersService>;
   let opml: ReturnType<typeof createOpmlService>;
   let ingest: ReturnType<typeof createIngestService>;
+  let readLater: ReturnType<typeof createReadLaterService>;
 
   beforeAll(() => {
     folders = createFoldersService({ db });
@@ -87,6 +91,7 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
     users = createUsersService({ db });
     opml = createOpmlService({ db });
     ingest = createIngestService({ db });
+    readLater = createReadLaterService({ db });
   });
 
   describe("folders", () => {
@@ -522,6 +527,343 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
       expect(Number(imported)).toBeGreaterThan(0);
       const again = await opml.ensureFolderByName(userId, "ImportedFolder");
       expect(again).toBe(imported);
+    });
+  });
+
+  describe("read later", () => {
+    const otherUserId = randomUUID();
+
+    beforeAll(async () => {
+      await db.insert(schema.users).values({
+        id: otherUserId,
+        cognitoSub: `rl-sub-${otherUserId}`,
+        username: `rl-${otherUserId.slice(0, 8)}`,
+      });
+    });
+
+    it("saves and removes feed entries idempotently", async () => {
+      const entryId = await seedEntry(
+        9001,
+        "rl-entry-1",
+        new Date("2026-09-01T00:00:00Z"),
+      );
+
+      expect(await readLater.saveEntries(userId, [entryId], true)).toBe(1);
+      // re-saving the same entry is a no-op, not a duplicate row
+      expect(await readLater.saveEntries(userId, [entryId], true)).toBe(0);
+      expect(await readLater.entryIdsInQueue(userId, [entryId])).toEqual(
+        new Set([entryId]),
+      );
+
+      expect(await readLater.saveEntries(userId, [entryId], false)).toBe(1);
+      expect((await readLater.entryIdsInQueue(userId, [entryId])).size).toBe(0);
+    });
+
+    it("carries entry content and read state into the item", async () => {
+      const entryId = await seedEntry(
+        9002,
+        "rl-entry-2",
+        new Date("2026-09-02T00:00:00Z"),
+        { url: "https://example.com/from-feed", title: "from feed" },
+      );
+      await readLater.saveEntries(userId, [entryId], true);
+      const items = (await readLater.list(userId, { limit: 200 })).items;
+      const item = items.find((i) => i.entryId === entryId.toString());
+      expect(item).toMatchObject({
+        source: "entry",
+        url: "https://example.com/from-feed",
+        title: "from feed",
+        contentHtml: "<p>x</p>",
+        status: "ready",
+      });
+
+      // Entry-sourced read state lives on the entry so both lists agree.
+      await readLater.setReadState(userId, [item?.id ?? ""], true);
+      const [reloaded] = await readLater.getByIds(userId, [item?.id ?? ""]);
+      expect(reloaded?.isRead).toBe(true);
+      const [entry] = await entries.getByIds(userId, [entryId]);
+      expect(entry?.isRead).toBe(true);
+    });
+
+    it("keeps items whose entry disappeared, without counting them unread", async () => {
+      const entryId = await seedEntry(
+        9003,
+        "rl-entry-3",
+        new Date("2026-09-03T00:00:00Z"),
+        { url: "https://example.com/orphan", title: "orphan" },
+      );
+      await readLater.saveEntries(userId, [entryId], true);
+      const saved = (await readLater.list(userId, { limit: 200 })).items.find(
+        (i) => i.entryId === entryId.toString(),
+      );
+      expect(saved).toBeDefined();
+
+      // Unsubscribing deletes the entry (no FK cascade reaches saved items).
+      await db
+        .delete(schema.userEntries)
+        .where(eq(schema.userEntries.id, entryId));
+
+      const [orphaned] = await readLater.getByIds(userId, [saved?.id ?? ""]);
+      expect(orphaned).toMatchObject({
+        source: "entry",
+        status: "error",
+        url: "https://example.com/orphan",
+        title: "orphan",
+        isRead: true,
+      });
+      expect(await readLater.remove(userId, [saved?.id ?? ""])).toBe(1);
+    });
+
+    it("stores off-feed articles, normalized and deduped", async () => {
+      const first = await readLater.saveUrl(userId, {
+        url: "https://Example.com/post?utm_source=news&b=2&a=1#section",
+        title: "A post",
+        contentHtml: "<p>hello</p>",
+        imageUrl: "https://example.com/og.jpg",
+      });
+      expect(first).toMatchObject({
+        source: "url",
+        url: "https://example.com/post?a=1&b=2",
+        status: "ready",
+        isRead: false,
+        imageUrl: "https://example.com/og.jpg",
+      });
+
+      const again = await readLater.saveUrl(userId, {
+        url: "https://example.com/post?a=1&b=2",
+        title: "A post (updated)",
+      });
+      expect(again.id).toBe(first.id);
+      const urls = (await readLater.list(userId, { limit: 200 })).items.filter(
+        (i) => i.source === "url",
+      );
+      expect(urls).toHaveLength(1);
+      expect(urls[0]?.title).toBe("A post (updated)");
+
+      await readLater.setReadState(userId, [first.id], true);
+      const [read] = await readLater.getByIds(userId, [first.id]);
+      expect(read?.isRead).toBe(true);
+    });
+
+    it("rejects non-http urls", async () => {
+      await expect(
+        readLater.saveUrl(userId, { url: "file:///etc/passwd" }),
+      ).rejects.toMatchObject({ status: 400 });
+      await expect(
+        readLater.saveUrl(userId, { url: "not a url" }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    it("pages newest-saved first with a keyset cursor", async () => {
+      const saved: string[] = [];
+      for (let i = 0; i < 5; i++) {
+        const item = await readLater.saveUrl(userId, {
+          url: `https://example.com/page-${i}`,
+          title: `page ${i}`,
+        });
+        saved.push(item.id);
+      }
+      // Distinct, known save times: several saves can land in the same
+      // millisecond, which would leave the tie-break (row id) deciding order.
+      for (const [index, id] of saved.entries()) {
+        await db
+          .update(schema.readLaterItems)
+          .set({ savedAt: new Date(Date.UTC(2026, 0, 1, 0, index)) })
+          .where(eq(schema.readLaterItems.id, id));
+      }
+
+      const all = (await readLater.list(userId, { limit: 200 })).items;
+      const mine = all.filter((item) => saved.includes(item.id));
+      expect(mine.map((item) => item.id)).toEqual([...saved].reverse());
+
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await readLater.list(userId, { limit: 2, cursor });
+        expect(page.items.length).toBeLessThanOrEqual(2);
+        seen.push(...page.items.map((i) => i.id));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
+
+      expect(seen).toEqual(all.map((i) => i.id));
+      expect(new Set(seen).size).toBe(seen.length);
+      await expect(
+        readLater.list(userId, { cursor: "not-a-cursor" }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    it("reports totals and unread counts", async () => {
+      const counts = await readLater.count(userId);
+      const items = (await readLater.list(userId, { limit: 200 })).items;
+      expect(counts.total).toBe(items.length);
+      expect(counts.unread).toBeLessThanOrEqual(counts.total);
+    });
+
+    it("scopes items to their owner", async () => {
+      const item = await readLater.saveUrl(userId, {
+        url: "https://example.com/private",
+        title: "private",
+      });
+      expect(await readLater.getByIds(otherUserId, [item.id])).toHaveLength(0);
+      expect(await readLater.remove(otherUserId, [item.id])).toBe(0);
+      expect(await readLater.count(otherUserId)).toEqual({
+        total: 0,
+        unread: 0,
+      });
+
+      const entryId = await seedEntry(
+        9004,
+        "rl-entry-4",
+        new Date("2026-09-04T00:00:00Z"),
+      );
+      expect(await readLater.saveEntries(otherUserId, [entryId], true)).toBe(0);
+    });
+
+    it("stores extracted article content from the injected fetcher", async () => {
+      const fetcher = vi.fn(async (url: string) => ({
+        url,
+        title: "Extracted title",
+        byline: "Ada",
+        siteName: "Example Blog",
+        excerpt: "A summary.",
+        contentHtml: "<p>body</p>",
+        imageUrl: "https://example.com/hero.png",
+        publishedAt: new Date("2026-08-01T00:00:00Z"),
+        extracted: true,
+      }));
+      const service = createReadLaterService({ db, articleFetcher: fetcher });
+
+      const item = await service.saveUrlWithExtraction(userId, {
+        url: "https://example.com/extracted",
+        title: "Reader supplied title",
+      });
+      expect(fetcher).toHaveBeenCalledWith("https://example.com/extracted");
+      expect(item).toMatchObject({
+        source: "url",
+        url: "https://example.com/extracted",
+        // the reader's title wins over the scraped one
+        title: "Reader supplied title",
+        author: "Ada",
+        siteName: "Example Blog",
+        excerpt: "A summary.",
+        contentHtml: "<p>body</p>",
+        imageUrl: "https://example.com/hero.png",
+        status: "ready",
+      });
+      expect(item.publishedAtMs).toBe(Date.UTC(2026, 7, 1));
+
+      await service.remove(userId, [item.id]);
+    });
+
+    it("keeps the link when extraction fails but rejects a blocked address", async () => {
+      const failing = createReadLaterService({
+        db,
+        articleFetcher: async () => {
+          throw new AppError(502, "the site answered 500");
+        },
+      });
+      const item = await failing.saveUrlWithExtraction(userId, {
+        url: "https://example.com/down",
+        title: "Down",
+      });
+      expect(item).toMatchObject({
+        source: "url",
+        status: "error",
+        error: "the site answered 500",
+        url: "https://example.com/down",
+        title: "Down",
+        contentHtml: "",
+      });
+
+      const blocked = createReadLaterService({
+        db,
+        articleFetcher: async () => {
+          throw new AppError(400, "that address is not reachable from here");
+        },
+      });
+      await expect(
+        blocked.saveUrlWithExtraction(userId, { url: "http://127.0.0.1/x" }),
+      ).rejects.toMatchObject({ status: 400 });
+
+      await failing.remove(userId, [item.id]);
+    });
+  });
+
+  // A cursor's tie-break branch is raw SQL, and drizzle does not wrap raw SQL
+  // chunks. Both keyed lists therefore have to parenthesize it themselves, or
+  // the `or` escapes the user-scope condition and pages in another user's rows.
+  describe("keyset cursor isolation", () => {
+    const otherUserId = randomUUID();
+
+    beforeAll(async () => {
+      await db.insert(schema.users).values({
+        id: otherUserId,
+        cognitoSub: `cursor-sub-${otherUserId}`,
+        username: `cursor-${otherUserId.slice(0, 8)}`,
+      });
+    });
+
+    it("never returns another user's saved items", async () => {
+      const mine = await readLater.saveUrl(userId, {
+        url: "https://example.com/cursor-mine",
+        title: "cursor mine",
+      });
+      const foreignAt = new Date(mine.savedAtMs);
+      const foreignId = randomUUID();
+      await db.insert(schema.readLaterItems).values({
+        id: foreignId,
+        userId: otherUserId,
+        url: "https://example.com/cursor-foreign",
+        title: "cursor foreign",
+        dedupeHash: `cursor-foreign-${foreignId}`,
+        savedAt: foreignAt,
+      });
+      try {
+        // Same saved_at as the foreign row, with a maximal row id: the tie-break
+        // branch matches the foreign row if it is not parenthesized.
+        const cursor = encodeCursor({
+          sortKey: "saved",
+          direction: "desc",
+          primaryAtMs: foreignAt.getTime(),
+          entryId: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        });
+        const page = await readLater.list(userId, { limit: 50, cursor });
+        expect(page.items.map((item) => item.id)).toContain(mine.id);
+        expect(page.items.map((item) => item.id)).not.toContain(foreignId);
+      } finally {
+        await db
+          .delete(schema.readLaterItems)
+          .where(inArray(schema.readLaterItems.id, [foreignId, mine.id]));
+      }
+    });
+
+    it("never returns another user's entries", async () => {
+      const publishedAt = new Date("2026-08-08T08:08:08Z");
+      const mine = await seedEntry(9005, "cursor-mine", publishedAt);
+      const foreign = await seedEntry(9006, "cursor-foreign", publishedAt, {
+        userId: otherUserId,
+        title: "foreign entry",
+      });
+      try {
+        const cursor = encodeCursor({
+          sortKey: "published",
+          direction: "desc",
+          primaryAtMs: publishedAt.getTime(),
+          entryId: "999999999999999",
+        });
+        const page = await entries.list(userId, {
+          stream: { type: "all" },
+          limit: 50,
+          cursor,
+        });
+        const ids = page.items.map((item) => item.id);
+        expect(ids).toContain(String(mine));
+        expect(ids).not.toContain(String(foreign));
+      } finally {
+        await db
+          .delete(schema.userEntries)
+          .where(inArray(schema.userEntries.id, [mine, foreign]));
+      }
     });
   });
 });

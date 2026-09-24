@@ -16,18 +16,27 @@ describe("parseRoute", () => {
     expect(parseRoute("/all")).toEqual({
       stream: { kind: "all" },
       entryId: null,
+      storyIndex: null,
     });
     expect(parseRoute("/starred")).toEqual({
       stream: { kind: "starred" },
       entryId: null,
+      storyIndex: null,
     });
     expect(parseRoute("/today")).toEqual({
       stream: { kind: "today" },
       entryId: null,
+      storyIndex: null,
     });
     expect(parseRoute("/unread")).toEqual({
       stream: { kind: "unread" },
       entryId: null,
+      storyIndex: null,
+    });
+    expect(parseRoute("/read-later")).toEqual({
+      stream: { kind: "readLater" },
+      entryId: null,
+      storyIndex: null,
     });
   });
 
@@ -35,10 +44,12 @@ describe("parseRoute", () => {
     expect(parseRoute("/feed/5")).toEqual({
       stream: { kind: "feed", id: "5" },
       entryId: null,
+      storyIndex: null,
     });
     expect(parseRoute("/folder/2")).toEqual({
       stream: { kind: "folder", id: "2" },
       entryId: null,
+      storyIndex: null,
     });
   });
 
@@ -46,21 +57,50 @@ describe("parseRoute", () => {
     expect(parseRoute("/all/e/123")).toEqual({
       stream: { kind: "all" },
       entryId: "123",
+      storyIndex: null,
     });
     expect(parseRoute("/feed/5/e/123")).toEqual({
       stream: { kind: "feed", id: "5" },
       entryId: "123",
+      storyIndex: null,
     });
     expect(parseRoute("/today/e/9")).toEqual({
       stream: { kind: "today" },
       entryId: "9",
+      storyIndex: null,
     });
+  });
+
+  it("parses story presentation routes", () => {
+    expect(parseRoute("/all/story/3")).toEqual({
+      stream: { kind: "all" },
+      entryId: null,
+      storyIndex: 3,
+    });
+    expect(parseRoute("/feed/5/story/0")).toEqual({
+      stream: { kind: "feed", id: "5" },
+      entryId: null,
+      storyIndex: 0,
+    });
+  });
+
+  it("parses read-later item routes but not the save form", () => {
+    expect(parseRoute("/read-later/e/item-uuid")).toEqual({
+      stream: { kind: "readLater" },
+      entryId: "item-uuid",
+      storyIndex: null,
+    });
+    expect(parseRoute("/read-later/new")).toBeNull();
   });
 
   it("rejects unknown and settings paths", () => {
     expect(parseRoute("/settings")).toBeNull();
     expect(parseRoute("/nope")).toBeNull();
-    expect(parseRoute("/")).toEqual({ stream: { kind: "all" }, entryId: null });
+    expect(parseRoute("/")).toEqual({
+      stream: { kind: "all" },
+      entryId: null,
+      storyIndex: null,
+    });
   });
 });
 
@@ -71,6 +111,7 @@ describe("streamKey / streamPath", () => {
     expect(streamKey({ kind: "unread" })).toBe("unread");
     expect(streamKey({ kind: "feed", id: "5" })).toBe("feed:5");
     expect(streamKey({ kind: "folder", id: "2" })).toBe("folder:2");
+    expect(streamKey({ kind: "readLater" })).toBe("read-later");
   });
 
   it("keys today by calendar date so it rolls over at midnight", () => {
@@ -82,6 +123,7 @@ describe("streamKey / streamPath", () => {
     expect(streamPath({ kind: "starred" })).toBe("/starred");
     expect(streamPath({ kind: "feed", id: "5" })).toBe("/feed/5");
     expect(streamPath({ kind: "folder", id: "2" })).toBe("/folder/2");
+    expect(streamPath({ kind: "readLater" })).toBe("/read-later");
   });
 });
 

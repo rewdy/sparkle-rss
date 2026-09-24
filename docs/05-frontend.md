@@ -20,6 +20,8 @@
 | `/login` | Redirect to Cognito hosted UI (+ callback handler route) |
 | `/all` | Reading list (all subscriptions) |
 | `/starred` | Saved items |
+| `/read-later` | Read later queue (feed entries marked for later plus saved URLs) |
+| `/read-later/new` | Add-an-article form; the bookmarklet target (`?url=&title=&excerpt=&auto=1`) |
 | `/today` | Items published since local midnight |
 | `/unread` | All unread items (API stream `all`, filter forced to unread) |
 | `/folder/:id` | Folder stream |
@@ -29,10 +31,12 @@
 | `/settings` | Profile, appearance, API tokens (revocation requires a confirmation modal), OPML import/export |
 
 All stream routes share one component parameterized by stream descriptor
-(`{kind: 'all'|'starred'|'today'|'unread'|'folder'|'feed', id?}`), mirroring greader stream
-semantics. `today` and `unread` are the API stream `all` plus extra params
-(`pubFrom` = local midnight / `filter=unread`); they keep distinct query keys.
-Unknown routes → redirect `/all`.
+(`{kind: 'all'|'starred'|'readLater'|'today'|'unread'|'folder'|'feed', id?}`), mirroring greader
+stream semantics. `today` and `unread` are the API stream `all` plus extra params
+(`pubFrom` = local midnight / `filter=unread`); they keep distinct query keys. `readLater`
+is not an entry stream: the API client routes it to `/api/v1/read-later`, whose items are
+`Entry`-shaped so the same list and reading-pane components render them. Unknown routes →
+redirect `/all`.
 
 **Routing is the view state (standing requirement).** Every view change in the SPA —
 opening/closing the reading pane, switching streams, stepping between entries — must be
@@ -51,30 +55,36 @@ carries the same params so they survive opening and closing an article.
 ┌───────────────────────────────────────────────────────┐
 │ ✦ Sparkle RSS │ All items (340)          [all|unread] │ top bar
 ├──────┬────────────────────────────────────────────────┤
-│ ▣ All│  ── Today ─────────────────────────────────    │
-│ ★    │  ┃ Feed Name            2h   title line        │
-│      │  ┃ preview text two lines…                     │ card list,
-│ Tech │  ── Yesterday ────────────────────────────     │ date-grouped
-│  …   │                                                │
-│ News │   (select → focused reading pane, /e/:id)      │
-│      │   Title                                        │
-│ +Add │   Byline · timestamp · open-original ↗         │
-│      │   sanitized article content, ~68ch measure     │
+│STREAM│  ── Today ─────────────────────────────────    │
+│ ▣ All│  ┃ Feed Name            2h   title line        │
+│ ★    │  ┃ preview text two lines…                     │ card list,
+│ ◷    │  ── Yesterday ────────────────────────────     │ date-grouped
+│──────│                                                │
+│FOLDER│   (select → focused reading pane, /e/:id)      │
+│ Tech │   Title                                        │
+│──────│   Byline · timestamp · open-original ↗         │
+│ FEEDS│   sanitized article content, ~68ch measure     │
+│  News│                                                │
+│ +add │                                                │
 └──────┴────────────────────────────────────────────────┘
+      (Streams +add · Folders hides when empty · footer: settings, sign out)
 ```
 
-- Sidebar is split into two sections with matching uppercase headers: **Streams** (the
-  smart groupings Today / All unread / Saved / All items) and **Feeds** (the subscription
-  tree), whose `+ add` button opens a menu with "add feed…" / "add folder…" (each opening
-  its dialog), beside a feed-list options menu (ellipsis) that holds the "unread only"
-  toggle. That toggle is persisted per user like the
-  other reading prefs and hides feeds and folders with no unread items. Folders sit at the
-  top of the feed list, each bold with an open/closed folder glyph that collapses its feeds
-  (state is device-local in `collapsedFoldersAtom`, default open). Selecting a folder
-  navigates to its stream and selecting a feed opens the feed stream; unread badges show
-  per feed/folder. Fixed footer (settings, sign out). At `< sm` the sidebar becomes a
-  full-screen drawer toggled by a Burger in the top bar, auto-closing on navigation. A
-  desktop icon rail is deferred (`sidebarOpenAtom` reserved).
+- Sidebar has three uppercase-headed sections separated by exactly one divider each:
+  **Streams** (the smart groupings Today / All unread / Saved / Read later / All items),
+  **Folders**, and **Feeds** (the loose subscriptions). The Folders section — heading,
+  rows, and its divider — is omitted entirely when the user has no folders, so no empty
+  band or doubled rule appears. The `+ add` button sits beside the **Streams** heading
+  (adding is a global action, not a feeds property) and opens a menu with "add feed…" /
+  "add folder…" / "add article…", each opening its dialog or the save-article form. The
+  **Feeds** heading carries the feed-list options menu (ellipsis) that holds the
+  "unread only" toggle, persisted per user like the other reading prefs; it hides feeds and
+  folders with no unread items. Each folder is bold with an open/closed folder glyph that
+  collapses its feeds (state is device-local in `collapsedFoldersAtom`, default open).
+  Selecting a folder navigates to its stream and selecting a feed opens the feed stream;
+  unread badges show per feed/folder. Fixed footer (settings, sign out). At `< sm` the
+  sidebar becomes a full-screen drawer toggled by a Burger in the top bar, auto-closing on
+  navigation. A desktop icon rail is deferred (`sidebarOpenAtom` reserved).
 - Entry metadata is one shared `EntryMeta` component ([feed icon] Site • Author • Date),
   with `Date` passed only where it fits the context: the list rows leave it off because
   the time sits right-aligned, while the reading-pane byline includes the full timestamp.
@@ -89,7 +99,8 @@ carries the same params so they survive opening and closing an article.
   scrolling, React re-renders only when the visible range changes. j/k steps and
   deep links scroll the active entry into view (`scrollToIndex`, align auto).
 - Keyboard (implemented): `j/k` open next/previous (each step is a history entry),
-  `m` toggle read, `s` save, `Shift+A` mark stream read, `Esc` back to list, `?`
+  `m` toggle read, `s` save, `l` read later (inside the read-later stream the same key
+  removes the item), `Shift+A` mark stream read, `Esc` back to list, `?`
   shortcut sheet. Planned, not yet built: `Enter/o` open original, `/` search focus,
   `g a / g s` go all/saved.
 - Mark-read-on-open (implemented): global toggle in Settings, persisted like the other
@@ -101,18 +112,47 @@ carries the same params so they survive opening and closing an article.
   shortcut sheet are `React.lazy` chunks loaded on first open — the first-paint
   critical path stays just the reader shell.
 
+## Read later
+
+A triage queue that is deliberately web-only: greader has no such concept, so
+`/api/v1/read-later` is the only surface and NetNewsWire never sees these items (design and
+rationale: [10-read-later.md](10-read-later.md)).
+
+- The sidebar **Streams** block gets a **Read later** row with its unread badge. Adding an
+  article is reached from the `+ add` menu on the **Streams** heading ("add article…") or
+  from the bookmarklet; the stream itself has no header button.
+- The reading pane gains a clock action beside the bookmark: it adds feed entries to the
+  queue (`l`). Opened *from* the queue the action becomes "remove from read later", and
+  saved URLs hide the star action because there is no entry behind them.
+- `/read-later/new` is a code-split form (address / title / optional note). It
+  auto-submits once when the bookmarklet sets `auto=1`, then opens the saved item so the
+  extracted copy is the confirmation; a rejected or unfetchable address is explained inline
+  and the link is still kept. Below the form, a collapsed section offers the bookmarklet.
+- The bookmarklet link (`components/BookmarkletLink.tsx`, shared with the settings card) is
+  a drag-to-bookmarks button built from the current origin by `lib/bookmarklet.ts`, plus a
+  copy-code fallback. **React 19 refuses to render a `javascript:` href** (it substitutes a
+  throw-stub), so the URL is written to the anchor node directly in an effect; dragging
+  reads the DOM href, which is unaffected. The bookmarklet gathers only the page URL,
+  title, and selected text and opens the app's form in a small window, because it cannot
+  read the app's session from another origin.
+
 ## State management contract
 
 - **TanStack Query owns everything from the server.** Query keys:
   `['entries', streamKey, {filter, sort}]` — `streamKey` distinguishes `all` / `starred` /
-  `today` / `unread` / `feed:<id>` / `folder:<id>`, and `today` appends the local date
-  (`today:2026-08-24`) so the key rolls over at midnight; a midnight timer re-renders the
-  tree so an open tab rolls `today` over without navigation. `['entry', id]` (single-entry
-  fetch for deep links not in the loaded list); `['unread-counts']`,
-  `['subscriptions']`, `['folders']`, `['me']`. Infinite queries use our opaque cursor.
-- Mutations: `markRead`, `toggleStar` (optimistic set, rollback on error),
-  `markAllRead(stream, ts)`, subscription CRUD. Any entry mutation invalidates
-  `['unread-counts']`.
+  `read-later` / `today` / `unread` / `feed:<id>` / `folder:<id>`, and `today` appends the
+  local date (`today:2026-08-24`) so the key rolls over at midnight; a midnight timer
+  re-renders the tree so an open tab rolls `today` over without navigation. `['entry', id]`
+  (single-entry fetch for deep links not in the loaded list); `['unread-counts']`,
+  `['read-later-count']` (sidebar badge), `['subscriptions']`, `['folders']`, `['me']`.
+  Infinite queries use our opaque cursor. Read-later items reuse the entry key prefix
+  (`['entries','read-later',…]`) and the same cursor, so optimistic entry patches and cursor
+  paging work unchanged.
+- Mutations: `markRead` / `markReadLater`, `toggleStar`, `toggleReadLater`,
+  `removeReadLater`, `saveReadLaterUrl` (optimistic set, rollback on error; the URL save is
+  a request because the server fetches the article), `markAllRead(stream, ts)`,
+  subscription CRUD. Any entry mutation invalidates `['unread-counts']`; read-later
+  mutations invalidate the queue and its count.
 - **jotai owns ephemeral UI**: `colorSchemeAtom` (`light` / `dark` / `system`), `themeIdAtom`, `sidebarOpenAtom`,
   `markReadOnOpenAtom`, `sidebarUnreadOnlyAtom`, `collapsedFoldersAtom` (reading prefs also mirrored into
   `user_settings.data` via `/api/v1/me/settings` — server = source of truth across

@@ -1,4 +1,12 @@
 export {
+  assertPubliclyFetchable,
+  type ExtractedArticle,
+  extractArticle,
+  fetchAndExtractArticle,
+  isBlockedAddress,
+  type ResolveHost,
+} from "./article/fetch-article";
+export {
   findArticleImage,
   imageCandidates,
   type SelectedArticleImage,
@@ -41,6 +49,19 @@ export {
 } from "./services/ingest";
 export { createMediaService, type MediaStore } from "./services/media";
 export { createOpmlService } from "./services/opml";
+export {
+  type ArticleFetcher,
+  createReadLaterService,
+  entryDedupeHash,
+  type ListReadLaterQuery,
+  normalizeArticleUrl,
+  type ReadLaterItemDto,
+  type ReadLaterServiceDeps,
+  type ReadLaterSource,
+  type ReadLaterStatus,
+  type SaveUrlInput,
+  urlDedupeHash,
+} from "./services/read-later";
 export { createSettingsService, type SettingsData } from "./services/settings";
 export {
   createSubscriptionsService,

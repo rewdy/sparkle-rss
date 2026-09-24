@@ -165,6 +165,11 @@ Media should follow the ownership of the thing it is attached to:
 - A future `saved_article_image` association must not be deleted merely because the
   user unsubscribed. If the user intentionally saved it, `entry_id` may become null or
   the saved record may retain the original entry reference as historical metadata.
+  **Status:** read later ([10](10-read-later.md)) shipped without this: a saved URL keeps
+  its `og:image` as a remote URL on `read_later_items.image_url`, and feed-sourced items
+  reuse the entry's existing `article_splash`. Persisting images for saved URLs — which
+  needs a `read_later_item_id` on `user_media` so a standalone image can be associated —
+  is the planned upgrade, not a blocker.
 - A shared `media_objects` row is retained while any `user_media` association points to
   it, including another user's splash or the user's saved image.
 - Once an object has no associations, mark it orphaned and remove the S3 object and

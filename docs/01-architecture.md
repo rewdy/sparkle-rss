@@ -135,6 +135,19 @@ the fetch in-process.
 Backoff policy: success → `next_fetch_after = now() + ttl_minutes`; fetch error → double
 the delay up to 24 h and record `last_error`; HTTP 301/308 → persist permanent redirect.
 
+### 4. Read later save path (web app only)
+
+```
+SPA / bookmarklet ──POST /api/v1/read-later {url}──▶ api Lambda
+  api Lambda: SSRF-guarded fetch (bounded) → Readability extract → sanitizeEntryHtml
+              → INSERT/UPDATE read_later_items (dedupe by user + content hash)
+SPA renders the saved item; the original link is kept even if extraction failed
+```
+
+This flow exists only on the first-party API and in the web app. It is deliberately absent
+from `/api/greader.php` (greader has no read-later concept), so native clients and the
+conformance suite are unaffected. Design and rationale: [10-read-later.md](10-read-later.md).
+
 ## Security model
 
 | Concern | Control |
@@ -145,6 +158,7 @@ the delay up to 24 h and record `last_error`; HTTP 301/308 → persist permanent
 | DB auth | DSQL IAM tokens, auto-rotated per connection. Zero stored DB credentials. |
 | Least privilege | One execution role per function. `api` role: DSQL connect + read/write + its secret + SQS send on the refresh queue (immediate first fetch). Worker roles: DSQL connect + write only. Orchestrator: DSQL read + SQS send. |
 | Transport/content | TLS everywhere (ACM), CSP + HSTS + frame-deny at CloudFront response policy, sanitized HTML stored server-side (script-free allowlist), `<img>` hotlinking allowed (RSS norm). |
+| Outbound fetch of user-supplied URLs | Only the read-later save path fetches a URL the user typed or pushed in (`packages/core/src/article/fetch-article.ts`): http(s) only, and the resolved address is rejected when it is loopback / private / link-local / CGNAT / multicast / cloud-metadata, **re-validated on every redirect hop**; 2 MB read cap, 10 s timeout, no credentials or cookies forwarded. A blocked address is a 400; any other fetch failure still saves the link. Feed fetching (`feed/fetch-feed.ts`, `feed/discover.ts`) does not yet share this guard — see the roadmap follow-up. |
 | Abuse surface | API Gateway throttling (steady/burst tuned low), per-route quotas later; WAF deferred until public exposure matters. |
 | Data at rest | All services encrypt by default (S3-SSE, EBS-backed Lambda /tmp ephemeral, DSQL encrypted). |
 

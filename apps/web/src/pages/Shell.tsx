@@ -20,8 +20,15 @@ import {
   streamPath,
   viewSearch,
 } from "../lib/keys";
-import { useMarkRead, useToggleStar } from "../lib/mutations";
+import {
+  useMarkRead,
+  useMarkReadLater,
+  useRemoveReadLater,
+  useToggleReadLater,
+  useToggleStar,
+} from "../lib/mutations";
 import type { Entry, StreamDescriptor } from "../lib/types";
+import { isEntryStream } from "../lib/types";
 import {
   applySettings,
   loadLocalUi,
@@ -43,6 +50,13 @@ const ShortcutsModal = lazy(() =>
     default: m.ShortcutsModal,
   })),
 );
+// The bookmarklet opens this route in a popup window: keep its form out of the
+// first-paint critical path.
+const SaveArticlePage = lazy(() =>
+  import("../components/SaveArticlePage").then((m) => ({
+    default: m.SaveArticlePage,
+  })),
+);
 
 function streamTitle(
   d: StreamDescriptor,
@@ -54,6 +68,8 @@ function streamTitle(
       return "All items";
     case "starred":
       return "Saved";
+    case "readLater":
+      return "Read later";
     case "today":
       return "Today";
     case "unread":
@@ -105,6 +121,9 @@ export function Shell(): ReactElement {
   const setPresentation = useSetAtom(storyPresentationAtom);
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
+  const markReadLater = useMarkReadLater();
+  const toggleReadLater = useToggleReadLater();
+  const removeReadLater = useRemoveReadLater();
 
   const route = useMemo(() => parseRoute(location), [location]);
   const descriptor = route?.stream ?? null;
@@ -189,16 +208,28 @@ export function Shell(): ReactElement {
     }
   }, [descriptor, routeEntryId, entryQ.error, filter, sort, navigate]);
 
+  // Mark-on-open uses the right endpoint for the stream: saved items are
+  // addressed by uuid, entries by their numeric id.
+  const markOpened = useCallback(
+    (entry: Entry): void => {
+      if (!markReadOnOpen) return;
+      if (descriptor?.kind === "readLater")
+        markReadLater.mutate({ ids: [entry.id], read: true });
+      else markRead.mutate({ ids: [entry.id], read: true });
+    },
+    [descriptor, markRead, markReadLater, markReadOnOpen],
+  );
+
   // Stable callback: rows in the virtualized list are memoized on it.
   const openEntry = useCallback(
     (entry: Entry) => {
       if (!descriptor) return;
-      if (markReadOnOpen) markRead.mutate({ ids: [entry.id], read: true });
+      markOpened(entry);
       navigate(
         `${streamPath(descriptor)}/e/${entry.id}${viewSearch(filter, sort)}`,
       );
     },
-    [descriptor, filter, sort, markRead, markReadOnOpen, navigate],
+    [descriptor, filter, sort, markOpened, navigate],
   );
 
   const closeReader = useCallback((): void => {
@@ -235,7 +266,7 @@ export function Shell(): ReactElement {
           : Math.min(Math.max(idx + delta, 0), entriesCache.length - 1);
       const target = entriesCache[next];
       if (!target) return;
-      if (markReadOnOpen) markRead.mutate({ ids: [target.id], read: true });
+      markOpened(target);
       navigate(
         `${streamPath(descriptor)}/e/${target.id}${viewSearch(filter, sort)}`,
       );
@@ -244,8 +275,7 @@ export function Shell(): ReactElement {
       descriptor,
       entriesCache,
       filter,
-      markRead,
-      markReadOnOpen,
+      markOpened,
       navigate,
       routeEntryId,
       sort,
@@ -268,13 +298,11 @@ export function Shell(): ReactElement {
 
       if (e.shiftKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        // 'today' would mark ALL of today's API stream read — skip it
-        if (descriptor?.kind === "today") return;
-        const apiStream: StreamDescriptor =
-          descriptor && descriptor.kind === "unread"
-            ? { kind: "all" }
-            : (descriptor ?? { kind: "all" });
-        void api.entries.markAllRead(apiStream).catch(() => undefined);
+        const target = descriptor ?? { kind: "all" as const };
+        // 'today' would mark ALL of today's API stream read — skip it, and
+        // read later is not an entry stream at all.
+        if (target.kind === "today" || !isEntryStream(target)) return;
+        void api.entries.markAllRead(target).catch(() => undefined);
         return;
       }
       switch (e.key) {
@@ -306,6 +334,17 @@ export function Shell(): ReactElement {
               starred: !activeEntry.isStarred,
             });
           break;
+        case "l":
+          if (!activeEntry) break;
+          // Inside the queue the same key clears the item instead of re-saving it.
+          if (descriptor?.kind === "readLater")
+            removeReadLater.mutate([activeEntry.id]);
+          else
+            toggleReadLater.mutate({
+              ids: [activeEntry.id],
+              save: !activeEntry.isReadLater,
+            });
+          break;
         default:
           break;
       }
@@ -319,6 +358,8 @@ export function Shell(): ReactElement {
       setShortcutsOpen,
       markRead,
       toggleStar,
+      toggleReadLater,
+      removeReadLater,
     ],
   );
 
@@ -332,15 +373,19 @@ export function Shell(): ReactElement {
   }
 
   const APP_NAME = "Sparkle RSS";
-  const pageTitle = location.startsWith("/settings")
+  const isSettings = location.startsWith("/settings");
+  const isSaveArticle = location.startsWith("/read-later/new");
+  const pageTitle = isSettings
     ? `Settings · ${APP_NAME}`
-    : descriptor
-      ? `${streamTitle(
-          descriptor,
-          subsQ.data?.subscriptions ?? [],
-          foldersQ.data?.folders ?? [],
-        )} · ${APP_NAME}`
-      : APP_NAME;
+    : isSaveArticle
+      ? `Save to read later · ${APP_NAME}`
+      : descriptor
+        ? `${streamTitle(
+            descriptor,
+            subsQ.data?.subscriptions ?? [],
+            foldersQ.data?.folders ?? [],
+          )} · ${APP_NAME}`
+        : APP_NAME;
 
   return (
     <AppShell
@@ -357,15 +402,17 @@ export function Shell(): ReactElement {
         <Topbar
           stream={descriptor ?? { kind: "all" }}
           title={
-            location === "/settings"
+            isSettings
               ? "settings"
-              : descriptor
-                ? streamTitle(
-                    descriptor,
-                    subsQ.data?.subscriptions ?? [],
-                    foldersQ.data?.folders ?? [],
-                  )
-                : ""
+              : isSaveArticle
+                ? "read later"
+                : descriptor
+                  ? streamTitle(
+                      descriptor,
+                      subsQ.data?.subscriptions ?? [],
+                      foldersQ.data?.folders ?? [],
+                    )
+                  : ""
           }
           filter={filter}
           onFilterChange={onFilterChange}
@@ -381,7 +428,7 @@ export function Shell(): ReactElement {
       </AppShell.Navbar>
 
       <AppShell.Main style={{ position: "relative" }}>
-        {location === "/settings" ? (
+        {isSettings ? (
           <Suspense
             fallback={
               <Center mih="100%">
@@ -390,6 +437,16 @@ export function Shell(): ReactElement {
             }
           >
             <SettingsPage />
+          </Suspense>
+        ) : isSaveArticle ? (
+          <Suspense
+            fallback={
+              <Center h="calc(100dvh - var(--app-shell-header-offset, 0rem))">
+                <Loader size="sm" type="dots" />
+              </Center>
+            }
+          >
+            <SaveArticlePage />
           </Suspense>
         ) : descriptor ? (
           routeEntryId !== null ? (
@@ -400,6 +457,7 @@ export function Shell(): ReactElement {
             ) : activeEntry ? (
               <ReaderPane
                 entry={activeEntry}
+                readLater={descriptor.kind === "readLater"}
                 onClose={closeReader}
                 onNext={() => move(1)}
                 onPrev={() => move(-1)}
