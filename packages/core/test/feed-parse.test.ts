@@ -61,6 +61,18 @@ const ATOM_WITH_LOGO = `<?xml version="1.0"?>
   <logo>https://logo.example/logo.svg</logo>
 </feed>`;
 
+const ATOM_FUTURE_DATED = `<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Future Feed</title>
+  <link href="https://future.example/"/>
+  <entry>
+    <title>From Tomorrow</title>
+    <link href="https://future.example/e1"/>
+    <id>tag:future.example,2999:e1</id>
+    <updated>2999-01-01T00:00:00Z</updated>
+  </entry>
+</feed>`;
+
 const ATOM_WITH_ICON_ONLY = `<?xml version="1.0"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>Icon Only Feed</title>
@@ -126,6 +138,16 @@ describe("parseFeed", () => {
     if (!entry) throw new Error("expected an entry");
     expect(entry.rawContentHtml).toContain("data-src");
     expect(entry.contentHtml).not.toContain("data-src");
+  });
+
+  it("clamps future-dated entries to ingest time", async () => {
+    const before = Date.now();
+    const feed = await parseFeed(ATOM_FUTURE_DATED);
+    const entry = feed.entries.at(0);
+    if (!entry) throw new Error("expected an entry");
+    const at = entry.publishedAt.getTime();
+    expect(at).toBeGreaterThanOrEqual(before);
+    expect(at).toBeLessThanOrEqual(Date.now());
   });
 
   it("extracts the RSS 2.0 <image><url> as iconUrl", async () => {

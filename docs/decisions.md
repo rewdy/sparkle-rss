@@ -645,3 +645,20 @@ Both were found by, and are now covered by, tests written for read later.
   written onto the anchor node in an effect; dragging reads the DOM attribute, so the drag
   affordance survives. There is a test asserting the rendered href, because the failure is
   invisible in the component source.
+
+## 2026-09-23 — Future-dated feed entries are clamped at parse time
+
+- A feed entry whose `<updated>`/`pubDate` is in the future was stored verbatim, so it sorted
+  to the top of every date-ordered stream and, because the web UI buckets anything at or
+  after local midnight as "today" (`apps/web/src/lib/date-grouping.ts`), it appeared pinned
+  under **Today** while showing its own future date. This was observed live: the Allen Pike
+  feed declared `2026-09-30`, a week ahead of the crawl.
+- Decision: a future publish time is almost always a source bug, and our ingest runs on a
+  short cadence, so `parseFeed` now clamps any future `publishedAt` to the parse time
+  (`packages/core/src/feed/parse.ts`). The missing-date and unparseable-date fallbacks already
+  used "now", so this is the same fallback applied to a third case. No UI change is needed
+  once the data is clean.
+- Note: entries are insert-only (`onConflictDoNothing`), so this does **not** repair rows
+  already stored with a future date, and a later correction in the source feed will not
+  propagate either. Existing bad rows need a one-off data fix; a self-healing upsert remains
+  an open option if source corrections turn out to be common.

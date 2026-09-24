@@ -103,15 +103,18 @@ export async function parseFeed(
   const feedTitle = (parsed.title ?? "").trim();
   const siteUrl = (parsed.link ?? fallbackSiteUrl).trim();
 
+  const now = new Date();
   const entries: ParsedEntry[] = (parsed.items ?? []).map((item, index) => {
     const link = (item.link ?? "").trim();
     const rawContent =
       item["content:encoded"] ?? item.content ?? item.summary ?? "";
     const dateSource = item.isoDate ?? item.pubDate;
-    const candidate = dateSource ? new Date(dateSource) : new Date();
-    const publishedAt = Number.isNaN(candidate.getTime())
-      ? new Date()
-      : candidate;
+    const candidate = dateSource ? new Date(dateSource) : now;
+    // A feed should never publish in the future; when it does it is almost
+    // always a source bug (e.g. a mis-set <updated>). Clamp to ingest time so
+    // the entry does not pin itself to the top of date-ordered streams.
+    const publishedAt =
+      Number.isNaN(candidate.getTime()) || candidate > now ? now : candidate;
 
     const enclosures = item.enclosure?.url
       ? [
