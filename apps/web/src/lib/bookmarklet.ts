@@ -4,6 +4,7 @@
  * The bookmarklet runs in the article's own origin, where it cannot read the
  * app's session, so it only gathers the URL, title, and selected text, then
  * opens the app's save form in a small window and lets the app do the work.
+ * `popup=1` tells the form to confirm in place instead of navigating away.
  */
 export function buildBookmarklet(origin: string): string {
   const target = `${origin}/read-later/new`;
@@ -13,8 +14,8 @@ export function buildBookmarklet(origin: string): string {
     "url:location.href,",
     "title:document.title,",
     "excerpt:(window.getSelection()?String(window.getSelection()):'').slice(0,500),",
-    "auto:'1'",
-    `});window.open('${target}?'+q,'sparkle-read-later','width=460,height=560');`,
+    "popup:'1'",
+    `});window.open('${target}?'+q,'sparkle-read-later','width=530,height=460');`,
     "})()",
   ].join("");
 }

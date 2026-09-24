@@ -28,8 +28,8 @@ this block records where reality landed.
 | Article fetch + extraction | `packages/core/src/article/fetch-article.ts` |
 | API | `apps/api/src/apps/web-api.ts` (`/read-later…`), `isReadLater` on entry payloads |
 | Queue UI | `Sidebar` row (Streams section), `ReaderPane` clock action, `l` shortcut, read-later stream |
-| URL form | `apps/web/src/components/SaveArticlePage.tsx` (`/read-later/new`) |
-| Bookmarklet | `apps/web/src/lib/bookmarklet.ts` + `components/BookmarkletLink.tsx` (Settings card and the collapsed block on the form) |
+| URL form | `apps/web/src/components/SaveArticleForm.tsx` (`/read-later/new`) |
+| Bookmarklet | `apps/web/src/lib/bookmarklet.ts` + `components/BookmarkletLink.tsx` (Settings card) |
 
 Delivered as planned, with these deviations worth knowing:
 
@@ -237,7 +237,7 @@ posting the HTML. It is cheap server-side but unreliable (paywalls, SPA renderin
 | --- | --- |
 | `/read-later` | The list |
 | `/read-later/e/:id` | Reading pane for an item |
-| `/read-later/new` | Add-an-article form; `?url=&title=&excerpt=&auto=1` prefills and auto-submits (bookmarklet target) |
+| `/read-later/new` | Add-an-article form; `?url=&title=&excerpt=&popup=1` prefills it, and `popup=1` renders the chromeless popup variant (bookmarklet target) |
 
 Touch points, all small:
 
@@ -273,7 +273,7 @@ Ship it as a **snippet, not a server feature**: a "Read later bookmarklet" card 
 Settings with a drag-to-bookmarks-bar link.
 
 ```js
-javascript:(()=>{const s=window.getSelection();const q=new URLSearchParams({url:location.href,title:document.title,excerpt:s?String(s).slice(0,500):'',auto:'1'});window.open('https://app.sparklerss.com/read-later/new?'+q,'sparkle-read-later','width=460,height=460');})()
+javascript:(()=>{const s=window.getSelection();const q=new URLSearchParams({url:location.href,title:document.title,excerpt:s?String(s).slice(0,500):'',popup:'1'});window.open('https://app.sparklerss.com/read-later/new?'+q,'sparkle-read-later','width=530,height=460');})()
 ```
 
 Why a popup and not a direct POST: a bookmarklet runs in the *third party's* origin, where
@@ -308,7 +308,7 @@ HTTP. Required before shipping:
 - **API contract** (`apps/api/test/api.int.test.ts`): each new route, validation failures,
   authentication, and that a removed item disappears from the list and count.
 - **Web** (`apps/web/test`): route parsing for `/read-later` and `/read-later/new`, sidebar
-  entry, reader button state, and the form's prefill/auto-submit path.
+  entry, reader button state, and the form's prefill and popup confirmation paths.
 - **Regression gate:** `apps/api/test/greader.conformance.test.ts` must stay green with no
   edits — that is the proof that read later did not leak into the compatibility contract.
 

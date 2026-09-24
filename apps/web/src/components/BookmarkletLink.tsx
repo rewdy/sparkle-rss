@@ -4,8 +4,7 @@ import { useEffect, useRef } from "react";
 import { buildBookmarklet } from "../lib/bookmarklet";
 
 /**
- * The draggable "read later" bookmarklet, shared by the settings card and the
- * collapsed help section on the save-article form.
+ * The draggable "read later" bookmarklet, used by the settings card.
  *
  * The link is meant to be dragged to the bookmarks bar rather than clicked:
  * running it here would target our own page, where our CSP blocks it.

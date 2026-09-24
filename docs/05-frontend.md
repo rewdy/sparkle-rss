@@ -21,7 +21,7 @@
 | `/all` | Reading list (all subscriptions) |
 | `/starred` | Saved items |
 | `/read-later` | Read later queue (feed entries marked for later plus saved URLs) |
-| `/read-later/new` | Add-an-article form; the bookmarklet target (`?url=&title=&excerpt=&auto=1`) |
+| `/read-later/new` | Add-an-article form; the bookmarklet target (`?url=&title=&excerpt=&popup=1`) |
 | `/today` | Items published since local midnight |
 | `/unread` | All unread items (API stream `all`, filter forced to unread) |
 | `/folder/:id` | Folder stream |
@@ -124,11 +124,15 @@ rationale: [10-read-later.md](10-read-later.md)).
 - The reading pane gains a clock action beside the bookmark: it adds feed entries to the
   queue (`l`). Opened *from* the queue the action becomes "remove from read later", and
   saved URLs hide the star action because there is no entry behind them.
-- `/read-later/new` is a code-split form (address / title / optional note). It
-  auto-submits once when the bookmarklet sets `auto=1`, then opens the saved item so the
-  extracted copy is the confirmation; a rejected or unfetchable address is explained inline
-  and the link is still kept. Below the form, a collapsed section offers the bookmarklet.
-- The bookmarklet link (`components/BookmarkletLink.tsx`, shared with the settings card) is
+- `/read-later/new` is a code-split form (`components/SaveArticleForm.tsx`) with two
+  variants. The `page` variant is the in-app form: address / title / optional note, with
+  explanatory copy. The `popup` variant is what the bookmarklet's window renders — the same
+  fields but no intro copy and no per-field hints, and it confirms in place after saving
+  instead of navigating to the saved item. `Shell` picks the variant from `?popup=1` /
+  `window.opener` and, for the popup, renders the form without the app chrome (no topbar or
+  sidebar) so a 650x530 window is not mostly shell. The form never submits on its own; a
+  rejected or unfetchable address is explained inline and the link is still kept.
+- The bookmarklet link (`components/BookmarkletLink.tsx`, shown only in the settings card) is
   a drag-to-bookmarks button built from the current origin by `lib/bookmarklet.ts`, plus a
   copy-code fallback. **React 19 refuses to render a `javascript:` href** (it substitutes a
   throw-stub), so the URL is written to the anchor node directly in an effect; dragging

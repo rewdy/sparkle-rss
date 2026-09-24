@@ -11,11 +11,15 @@ describe("read later bookmarklet", () => {
     );
   });
 
-  it("gathers the page url, title, selection, and auto-submit flag", () => {
+  it("gathers the page url, title, selection, and popup flag", () => {
     expect(snippet).toContain("url:location.href");
     expect(snippet).toContain("title:document.title");
     expect(snippet).toContain("window.getSelection()");
-    expect(snippet).toContain("auto:'1'");
+    expect(snippet).toContain("popup:'1'");
+  });
+
+  it("leaves the form for the user to submit", () => {
+    expect(snippet).not.toContain("auto:");
   });
 
   it("follows the origin it was built for", () => {
@@ -25,6 +29,6 @@ describe("read later bookmarklet", () => {
   });
 
   it("opens a small window rather than a tab", () => {
-    expect(snippet).toContain("'sparkle-read-later','width=460,height=560'");
+    expect(snippet).toContain("'sparkle-read-later','width=530,height=460'");
   });
 });

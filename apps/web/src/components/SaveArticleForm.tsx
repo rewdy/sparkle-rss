@@ -1,5 +1,4 @@
 import {
-  Accordion,
   Alert,
   Box,
   Button,
@@ -11,20 +10,30 @@ import {
   Title,
 } from "@mantine/core";
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LuCircleAlert, LuClock } from "react-icons/lu";
+import { useCallback, useMemo, useState } from "react";
+import { LuCircleAlert, LuCircleCheck, LuClock } from "react-icons/lu";
 import { useLocation, useSearch } from "wouter";
 import { ApiError } from "../lib/api";
 import { useSaveReadLaterUrl } from "../lib/mutations";
-import { BookmarkletLink } from "./BookmarkletLink";
 
 /**
- * Adds an article to the read later queue by URL. Reachable directly
- * (/read-later/new), from the read-later stream's add button, and from the
- * bookmarklet, which opens it in a small window with the page's URL, title, and
- * selected text prefilled (`?url=&title=&excerpt=&auto=1`).
+ * How the save form is being shown:
+ * - `page`: the in-app route (/read-later/new), opened from the read-later
+ *   stream's add button. Gets the explanatory copy, and opens the saved item so
+ *   the extracted article is the confirmation.
+ * - `popup`: the same form as the bookmarklet's window. No app chrome and no
+ *   explanatory copy; it confirms in place instead of navigating, because the
+ *   window is small and the user is done with it. The prefilled URL, title, and
+ *   selected text arrive as query params (`?url=&title=&excerpt=`).
  */
-export function SaveArticlePage(): ReactElement {
+export type SaveArticleVariant = "page" | "popup";
+
+export function SaveArticleForm({
+  variant,
+}: {
+  variant: SaveArticleVariant;
+}): ReactElement {
+  const popup = variant === "popup";
   const [, navigate] = useLocation();
   const search = useSearch();
   const params = useMemo(() => new URLSearchParams(search), [search]);
@@ -35,7 +44,6 @@ export function SaveArticlePage(): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const save = useSaveReadLaterUrl();
-  const inPopup = typeof window !== "undefined" && Boolean(window.opener);
 
   const submit = useCallback(
     async (input: { url: string; title?: string; excerpt?: string }) => {
@@ -43,9 +51,7 @@ export function SaveArticlePage(): ReactElement {
       try {
         const { item } = await save.mutateAsync(input);
         setSavedId(item.id);
-        // Opening the saved item is the confirmation: it shows the extracted
-        // copy, or the original link when extraction was not possible.
-        navigate(`/read-later/e/${item.id}`);
+        if (!popup) navigate(`/read-later/e/${item.id}`);
       } catch (e) {
         setError(
           e instanceof ApiError
@@ -56,21 +62,25 @@ export function SaveArticlePage(): ReactElement {
         );
       }
     },
-    [navigate, save],
+    [navigate, popup, save],
   );
 
-  // Bookmarklet flow: submit once, as soon as the prefilled form is mounted.
-  const autoSubmitted = useRef(false);
-  const auto = params.get("auto") === "1";
-  useEffect(() => {
-    if (!auto || autoSubmitted.current || url.trim() === "") return;
-    autoSubmitted.current = true;
-    void submit({
-      url,
-      title: title || undefined,
-      excerpt: excerpt || undefined,
-    });
-  }, [auto, url, title, excerpt, submit]);
+  if (popup && savedId) {
+    return (
+      <Box maw={360} mx="auto" p="lg">
+        <Stack gap="md" align="center">
+          <LuCircleCheck size={28} />
+          <Title order={3}>saved</Title>
+          <Text size="sm" c="dimmed" ta="center">
+            This article is in your read later queue.
+          </Text>
+          <Button fullWidth={true} type="button" onClick={() => window.close()}>
+            close
+          </Button>
+        </Stack>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -93,10 +103,12 @@ export function SaveArticlePage(): ReactElement {
           <LuClock size={18} />
           <Title order={2}>read later</Title>
         </Group>
-        <Text size="sm" c="dimmed">
-          Paste a link to keep it for later. We fetch a readable copy when the
-          site allows it; otherwise the original stays linked.
-        </Text>
+        {!popup && (
+          <Text size="sm" c="dimmed">
+            Paste a link to keep it for later. We fetch a readable copy when the
+            site allows it; otherwise the original stays linked.
+          </Text>
+        )}
 
         <TextInput
           label="address"
@@ -107,13 +119,17 @@ export function SaveArticlePage(): ReactElement {
         />
         <TextInput
           label="title"
-          description="optional; taken from the page when left empty"
+          description={
+            popup ? undefined : "optional; taken from the page when left empty"
+          }
           value={title}
           onChange={(event) => setTitle(event.currentTarget.value)}
         />
         <Textarea
           label="note"
-          description="optional; quoted text or a reminder"
+          description={
+            popup ? undefined : "optional; quoted text or a reminder"
+          }
           rows={3}
           value={excerpt}
           onChange={(event) => setExcerpt(event.currentTarget.value)}
@@ -136,29 +152,7 @@ export function SaveArticlePage(): ReactElement {
           >
             cancel
           </Button>
-          {inPopup && savedId && (
-            <Button
-              variant="subtle"
-              type="button"
-              onClick={() => window.close()}
-            >
-              close window
-            </Button>
-          )}
         </Group>
-
-        {/* Collapsed by default: most saves are typed or pasted, and the
-            bookmarklet only needs setting up once. */}
-        <Accordion variant="separated" mt="xs">
-          <Accordion.Item value="bookmarklet">
-            <Accordion.Control>
-              <Text size="sm">save articles with one click</Text>
-            </Accordion.Control>
-            <Accordion.Panel>
-              <BookmarkletLink />
-            </Accordion.Panel>
-          </Accordion.Item>
-        </Accordion>
       </Stack>
     </Box>
   );

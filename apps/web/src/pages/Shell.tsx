@@ -50,11 +50,11 @@ const ShortcutsModal = lazy(() =>
     default: m.ShortcutsModal,
   })),
 );
-// The bookmarklet opens this route in a popup window: keep its form out of the
+// The bookmarklet opens this form in a popup window: keep it out of the
 // first-paint critical path.
-const SaveArticlePage = lazy(() =>
-  import("../components/SaveArticlePage").then((m) => ({
-    default: m.SaveArticlePage,
+const SaveArticleForm = lazy(() =>
+  import("../components/SaveArticleForm").then((m) => ({
+    default: m.SaveArticleForm,
   })),
 );
 
@@ -375,6 +375,13 @@ export function Shell(): ReactElement {
   const APP_NAME = "Sparkle RSS";
   const isSettings = location.startsWith("/settings");
   const isSaveArticle = location.startsWith("/read-later/new");
+  // The bookmarklet opens the save form in its own popup window. Same route and
+  // prefilled params, but the window gets the bare form instead of app chrome:
+  // a 650x530 popup has no room for the sidebar, topbar, or intro copy.
+  const isSaveArticlePopup =
+    isSaveArticle &&
+    (new URLSearchParams(search).get("popup") === "1" ||
+      Boolean(window.opener));
   const pageTitle = isSettings
     ? `Settings · ${APP_NAME}`
     : isSaveArticle
@@ -386,6 +393,21 @@ export function Shell(): ReactElement {
             foldersQ.data?.folders ?? [],
           )} · ${APP_NAME}`
         : APP_NAME;
+
+  if (isSaveArticlePopup) {
+    return (
+      <Suspense
+        fallback={
+          <Center mih="100vh">
+            <Loader size="sm" type="dots" />
+          </Center>
+        }
+      >
+        <PageTitle title={pageTitle} />
+        <SaveArticleForm variant="popup" />
+      </Suspense>
+    );
+  }
 
   return (
     <AppShell
@@ -446,7 +468,7 @@ export function Shell(): ReactElement {
               </Center>
             }
           >
-            <SaveArticlePage />
+            <SaveArticleForm variant="page" />
           </Suspense>
         ) : descriptor ? (
           routeEntryId !== null ? (

@@ -662,3 +662,40 @@ Both were found by, and are now covered by, tests written for read later.
   already stored with a future date, and a later correction in the source feed will not
   propagate either. Existing bad rows need a one-off data fix; a self-healing upsert remains
   an open option if source corrections turn out to be common.
+
+## 2026-09-23 — The bookmarklet shows the form and confirms in place
+
+- The bookmarklet opened `/read-later/new?…&auto=1`, which submitted the prefilled form
+  immediately and then navigated the popup to the saved item. That read as "it saved and
+  threw me at the article": the user never got to review or edit the prefill, and the popup
+  ended up showing the reading pane instead of a result.
+- Decision: the bookmarklet no longer auto-submits. It passes `popup=1`, and the form waits
+  for an explicit save. In that popup variant, a successful save replaces the form in place
+  with a short "saved" confirmation and a close button, rather than navigating; saving from
+  inside the app still opens the saved item as before. Popup detection also falls back to
+  `window.opener` so windows opened before this change still confirm in place.
+- The `auto` parameter is gone, so a stale bookmarklet from an earlier copy still prefills
+  correctly and simply waits for the user instead of failing.
+- Follow-up tweaks the same day: the bookmarklet popup settles at 530x460 (it was briefly
+  widened to 650x530, but the form fits better when it stays narrow), and the collapsed
+  "save articles with one click" section was removed from the save-article form. Bookmarklet
+  setup now lives only in the settings card, so the form is only ever the form;
+  `BookmarkletLink`'s rendered `javascript:` href — the React 19 workaround that previously
+  had no test of its own — gained one in `apps/web/test/bookmarklet-link.test.tsx`.
+
+## 2026-09-23 — One save form, two variants
+
+- The form was split from `SaveArticlePage` into `components/SaveArticleForm.tsx` with a
+  `variant` prop, because the bookmarklet's window and the in-app page need the same fields
+  and the same save call but different dressing.
+- `variant="page"` is the in-app form (explanatory copy, field hints, and it opens the saved
+  item after saving). `variant="popup"` drops the intro paragraph and the `optional; …`
+  descriptions, and confirms in place with a close button.
+- The variant is chosen in `Shell` from `?popup=1` / `window.opener`, not by the form, and
+  the popup branch returns before the `AppShell` wrapper — that is what removes the topbar
+  and sidebar. We kept one route (`/read-later/new`) rather than adding
+  `/read-later/bookmarklet`: the popup is the same operation with different chrome, and an
+  existing bookmarklet keeps working unchanged. If the two ever need genuinely different
+  routes (e.g. the popup grows its own data loading), a dedicated path is the next step.
+- `SaveArticlePage.tsx` is gone; `Shell` lazy-imports the form component for both variants,
+  so the code-splitting intent (keep the form off first paint) is preserved.
