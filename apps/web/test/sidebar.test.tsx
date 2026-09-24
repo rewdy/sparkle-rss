@@ -7,6 +7,7 @@ import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Router } from "wouter";
 import { Sidebar } from "../src/components/Sidebar";
+import { api } from "../src/lib/api";
 import {
   collapsedFoldersAtom,
   sidebarUnreadOnlyAtom,
@@ -47,6 +48,7 @@ vi.mock("../src/lib/api", () => ({
       feeds: [{ feedId: "f1", count: 1, newestMs: null }],
       folders: [],
     })),
+    readLater: { count: vi.fn(async () => ({ total: 2, unread: 2 })) },
     settings: { put: vi.fn(async () => ({ data: {} })) },
   },
 }));
@@ -102,7 +104,7 @@ describe("Sidebar unread-only filter", () => {
 });
 
 describe("Sidebar sections", () => {
-  it("renders Streams and Feeds headings", async () => {
+  it("renders Streams and Feeds headings with the add menu at the top", async () => {
     render(
       <Providers>
         <Sidebar />
@@ -110,9 +112,73 @@ describe("Sidebar sections", () => {
     );
     expect(await screen.findByText("feeds")).toBeInTheDocument();
     expect(screen.getByText("streams")).toBeInTheDocument();
+    // the add action lives next to the Streams heading, not inside Feeds
+    expect(
+      await screen.findByRole("button", { name: "add" }),
+    ).toBeInTheDocument();
   });
 
-  it("opens an add menu with feed and folder actions", async () => {
+  it("shows a separate Folders section for foldered subscriptions", async () => {
+    render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    expect(await screen.findByText("folders")).toBeInTheDocument();
+    expect(screen.getByText("Tech")).toBeInTheDocument();
+  });
+
+  it("hides the Folders section entirely when there are no folders", async () => {
+    vi.mocked(api.folders.list).mockResolvedValueOnce({ folders: [] });
+    render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    // The loose feed still renders under Feeds; its folder-less neighbour is
+    // grouped under the folder that is not there.
+    expect(await screen.findByText("Read Feed")).toBeInTheDocument();
+    expect(screen.queryByText("Unread Feed")).not.toBeInTheDocument();
+    expect(screen.queryByText("folders")).not.toBeInTheDocument();
+    expect(screen.getByText("feeds")).toBeInTheDocument();
+  });
+
+  it("draws one divider per section boundary", async () => {
+    const { container } = render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    expect(await screen.findByText("Tech")).toBeInTheDocument();
+    // streams | folders | feeds | footer
+    expect(container.querySelectorAll(".mantine-Divider-root")).toHaveLength(3);
+  });
+
+  it("does not double the divider when the Folders section is absent", async () => {
+    vi.mocked(api.folders.list).mockResolvedValueOnce({ folders: [] });
+    const { container } = render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    expect(await screen.findByText("Read Feed")).toBeInTheDocument();
+    // streams | feeds | footer — no empty folders band, so no extra rule
+    expect(container.querySelectorAll(".mantine-Divider-root")).toHaveLength(2);
+  });
+
+  it("shows the read later stream with its unread count", async () => {
+    render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    const readLater = await screen.findByRole("link", { name: /Read later/ });
+    expect(readLater).toHaveAttribute("href", "/read-later");
+    // the badge reflects the unread count from the read-later endpoint
+    expect(await screen.findByText("2")).toBeInTheDocument();
+  });
+
+  it("opens an add menu with feed, folder, and article actions", async () => {
     const user = userEvent.setup();
     render(
       <Providers>
@@ -122,6 +188,7 @@ describe("Sidebar sections", () => {
     await user.click(await screen.findByRole("button", { name: "add" }));
     expect(await screen.findByText("add feed…")).toBeInTheDocument();
     expect(screen.getByText("add folder…")).toBeInTheDocument();
+    expect(screen.getByText("add article…")).toBeInTheDocument();
   });
 
   it("toggles unread-only from the feed list options menu", async () => {

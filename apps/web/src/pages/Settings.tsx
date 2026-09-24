@@ -21,6 +21,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { BookmarkletLink } from "../components/BookmarkletLink";
 import { api } from "../lib/api";
 import { logout } from "../lib/auth";
 import { qk } from "../lib/keys";
@@ -129,6 +130,8 @@ export function SettingsPage(): ReactElement {
       </Card>
 
       <ApiTokensCard />
+
+      <BookmarkletCard />
 
       <OpmlCard />
 
@@ -294,6 +297,19 @@ function mintedTokenBanner(token: string | null): ReactElement | null {
         shown once — store it now
       </Text>
     </Box>
+  );
+}
+
+function BookmarkletCard(): ReactElement {
+  return (
+    <Card withBorder padding="lg">
+      <Stack gap="sm">
+        <Text fw={700} size="sm">
+          read later bookmarklet
+        </Text>
+        <BookmarkletLink showCode={true} />
+      </Stack>
+    </Card>
   );
 }
 

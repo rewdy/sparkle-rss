@@ -25,8 +25,8 @@ Explicitly out of scope for launch. Recorded so they are *deferred*, not forgott
 | --- | --- |
 | Public multi-tenant signup | Personal/family deployment; Cognito invites only |
 | Full-text article search | No strong day-to-day need yet; revisit if added |
-| Article-level labels (tags beyond starred) | NetNewsWire doesn't sync them; UI value unclear |
-| XPath/web-scraping feed synthesis | Large parser surface, niche need |
+| Article-level labels (tags beyond starred) | NetNewsWire doesn't sync them; UI value unclear. **Read later** ([10](10-read-later.md)) is the deliberate exception: it stays on `/api/v1`, and is never exposed to native clients. |
+| XPath/web-scraping feed synthesis | Large parser surface, niche need. Fetching *one* saved article for read later is a bounded, separate capability — not feed synthesis. |
 | WebSub (push) real-time updates | Polling scheduler is sufficient at this scale |
 | Fever API | Legacy; Google Reader API is the strategic surface |
 | Sharing services, saved user queries, themes/extensions engine | FreshRSS power-user features |
@@ -39,7 +39,8 @@ Explicitly out of scope for launch. Recorded so they are *deferred*, not forgott
   Authenticates with a per-user **API token** generated in the web UI (same model as
   FreshRSS — the web login and the client-API credential are separate secrets).
 - **Service API** (`/api/v1/*`): first-party JSON API consumed by the web app. Authenticates
-  with Cognito JWTs.
+  with Cognito JWTs. Web-only features that have no Google Reader equivalent (currently
+  **read later**) live here exclusively.
 - **Ingestion pipeline**: scheduled feed refresh (EventBridge Scheduler → SQS → Lambda
   workers) with conditional GETs, HTML sanitization, and per-feed error backoff.
 - **Database**: Amazon Aurora DSQL (serverless Postgres). No VPC, no passwords — IAM auth.
@@ -89,5 +90,8 @@ sparkle-rss/
 | [04-infrastructure.md](04-infrastructure.md) | Terraform structure, CI/CD, environments, cost model |
 | [05-frontend.md](05-frontend.md) | Web app architecture, state management, UX specification |
 | [06-roadmap.md](06-roadmap.md) | Build phases with exit criteria |
+| [07-local-development.md](07-local-development.md) | Local dev workflow (Docker Postgres, dev auth, ingest, tests) |
 | [08-article-images.md](08-article-images.md) | Article splash-image selection, storage, and future media API plan |
 | [09-swipe-story-view.md](09-swipe-story-view.md) | Full-screen swipe story-view interaction and implementation plan |
+| [10-read-later.md](10-read-later.md) | Read later queue: storage, API, article extraction, bookmarklet |
+| [decisions.md](decisions.md) | Dated decision/outcome log referenced from the docs above |

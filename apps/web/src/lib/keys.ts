@@ -13,6 +13,7 @@ export const qk = {
     sort: "asc" | "desc",
   ) => ["entries", streamKey(stream), { filter, sort }] as const,
   entry: (id: string) => ["entry", id] as const,
+  readLaterCount: ["read-later-count"] as const,
 };
 
 /** Local calendar date as YYYY-MM-DD; rolls over at midnight. */
@@ -47,6 +48,8 @@ export function streamKey(d: StreamDescriptor): string {
       return "starred";
     case "unread":
       return "unread";
+    case "readLater":
+      return "read-later";
   }
 }
 
@@ -56,6 +59,8 @@ export function streamPath(d: StreamDescriptor): string {
       return "/all";
     case "starred":
       return "/starred";
+    case "readLater":
+      return "/read-later";
     case "today":
       return "/today";
     case "unread":
@@ -102,7 +107,7 @@ const STORY_SUFFIX = /\/story\/(\d+)$/;
  * Parse a location into stream + optional story position/open entry.
  * Handles story routes like /all/story/3 and entry routes like /all/e/123,
  * /feed/5/e/123.
- * Returns null for /settings and unknown paths.
+ * Returns null for /settings, /read-later/new, and unknown paths.
  */
 export function parseRoute(pathname: string): RouteInfo | null {
   const suffix = ENTRY_SUFFIX.exec(pathname);
@@ -120,6 +125,8 @@ export function parseRoute(pathname: string): RouteInfo | null {
     return { stream: { kind: "all" }, entryId, storyIndex };
   if (base === "/starred")
     return { stream: { kind: "starred" }, entryId, storyIndex };
+  if (base === "/read-later")
+    return { stream: { kind: "readLater" }, entryId, storyIndex };
   if (base === "/today")
     return { stream: { kind: "today" }, entryId, storyIndex };
   if (base === "/unread")

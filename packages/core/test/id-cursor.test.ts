@@ -75,6 +75,22 @@ describe("stream cursors", () => {
     });
   });
 
+  it("round-trips saved-item cursors keyed by a uuid row id", () => {
+    const token = encodeCursor({
+      sortKey: "saved",
+      direction: "desc",
+      primaryAtMs: 1690000000123,
+      entryId: "6f1c1f6e-2f0f-4a2b-9a2f-58a2f0f3c1d2",
+    });
+    expect(decodeCursor(token, { sortKey: "saved" })).toEqual({
+      sortKey: "saved",
+      direction: "desc",
+      primaryAtMs: 1690000000123,
+      entryId: "6f1c1f6e-2f0f-4a2b-9a2f-58a2f0f3c1d2",
+    });
+    expect(decodeCursor(token, { sortKey: "published" })).toBeNull();
+  });
+
   it("enforces expected direction when provided", () => {
     const token = encodeCursor({
       sortKey: "published",

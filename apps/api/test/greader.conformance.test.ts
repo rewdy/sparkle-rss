@@ -36,8 +36,8 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("greader conformance", () => {
     if (!testDbUrl) throw new Error("TEST_DATABASE_URL required");
     pool = createLocalPool({ connectionString: testDbUrl });
     db = drizzle(pool, { schema });
-    await db.execute(sql`DROP TABLE IF EXISTS user_entries, subscriptions, feeds, categories,
-      api_tokens, user_settings, users CASCADE`);
+    await db.execute(sql`DROP TABLE IF EXISTS read_later_items, user_media, media_objects, user_entries,
+      subscriptions, feeds, categories, api_tokens, user_settings, users CASCADE`);
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
     await migrate(db, {

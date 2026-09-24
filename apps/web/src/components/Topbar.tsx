@@ -20,6 +20,7 @@ import {
 import { Link } from "wouter";
 import { useMarkAllRead } from "../lib/mutations";
 import type { StreamDescriptor } from "../lib/types";
+import { isEntryStream } from "../lib/types";
 import { useColorSchemeValue } from "../lib/ui-state";
 
 export function Topbar({
@@ -42,7 +43,12 @@ export function Topbar({
   onPresentationChange: (value: "list" | "swipe") => void;
 }): ReactElement {
   const qc = useQueryClient();
-  const markAll = useMarkAllRead(stream);
+  // Read later is a queue of saved items, not a subscription stream: the
+  // unread filter and mark-all-read controls do not apply to it.
+  const entryStream = isEntryStream(stream) ? stream : null;
+  // Hooks cannot be conditional; the fallback is never acted on because the
+  // mark-all-read button is hidden for read later.
+  const markAll = useMarkAllRead(entryStream ?? { kind: "all" });
   const [scheme, setScheme] = useColorSchemeValue();
 
   function cycleScheme(): void {
@@ -101,33 +107,38 @@ export function Topbar({
             { label: "swipe", value: "swipe" },
           ]}
         />
-        {stream.kind !== "starred" && stream.kind !== "unread" && (
-          <SegmentedControl
-            size="xs"
-            visibleFrom="sm"
-            value={filter}
-            onChange={(value) => {
-              if (value === "all" || value === "unread") onFilterChange(value);
-            }}
-            data={[
-              { label: "all", value: "all" },
-              { label: "unread", value: "unread" },
-            ]}
-          />
-        )}
-        {stream.kind !== "starred" && stream.kind !== "today" && (
-          <Tooltip label="mark everything read (Shift+A)">
-            <Button
-              size="compact-xs"
-              variant="default"
+        {entryStream &&
+          stream.kind !== "starred" &&
+          stream.kind !== "unread" && (
+            <SegmentedControl
+              size="xs"
               visibleFrom="sm"
-              loading={markAll.isPending}
-              onClick={() => markAll.mutate(undefined)}
-            >
-              mark all read
-            </Button>
-          </Tooltip>
-        )}
+              value={filter}
+              onChange={(value) => {
+                if (value === "all" || value === "unread")
+                  onFilterChange(value);
+              }}
+              data={[
+                { label: "all", value: "all" },
+                { label: "unread", value: "unread" },
+              ]}
+            />
+          )}
+        {entryStream &&
+          stream.kind !== "starred" &&
+          stream.kind !== "today" && (
+            <Tooltip label="mark everything read (Shift+A)">
+              <Button
+                size="compact-xs"
+                variant="default"
+                visibleFrom="sm"
+                loading={markAll.isPending}
+                onClick={() => markAll.mutate(undefined)}
+              >
+                mark all read
+              </Button>
+            </Tooltip>
+          )}
 
         <Tooltip label="refresh">
           <ActionIcon

@@ -183,7 +183,7 @@ const EntryRow = memo(function EntryRow({
       <Group justify="space-between" wrap="nowrap" gap="xs" mb="xxs">
         <EntryMeta
           iconUrl={sub?.iconUrl}
-          site={sub?.displayTitle}
+          site={sub?.displayTitle ?? entry.siteName}
           author={entry.author}
           truncate={true}
           size="xs"

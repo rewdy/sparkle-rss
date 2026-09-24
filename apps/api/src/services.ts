@@ -6,6 +6,7 @@ import {
   createIngestService,
   createMediaService,
   createOpmlService,
+  createReadLaterService,
   createSettingsService,
   createSubscriptionsService,
   createUsersService,
@@ -26,6 +27,7 @@ export interface Services {
   opml: ReturnType<typeof createOpmlService>;
   ingest: ReturnType<typeof createIngestService>;
   media: ReturnType<typeof createMediaService>;
+  readLater: ReturnType<typeof createReadLaterService>;
 }
 
 interface Handle {
@@ -91,6 +93,7 @@ function createServices(db: NodePgDatabase<typeof schema>): Services {
     opml: createOpmlService(deps),
     ingest: createIngestService({ ...deps, media: bucket ? media : undefined }),
     media,
+    readLater: createReadLaterService(deps),
   };
 }
 

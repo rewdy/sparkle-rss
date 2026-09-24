@@ -1,10 +1,11 @@
 export type CursorDirection = "asc" | "desc";
-export type CursorSortKey = "published" | "starred";
+export type CursorSortKey = "published" | "starred" | "saved";
 
 export interface StreamCursor {
   sortKey: CursorSortKey;
   direction: CursorDirection;
   primaryAtMs: number;
+  /** Opaque row id of the list being paged: a decimal entry id, or a uuid for saved items. */
   entryId: string;
 }
 
@@ -28,7 +29,9 @@ function decode(token: string): CursorPayload | null {
     // Legacy shape (pre-sortKey): {p,i,d}
     const k =
       typeof legacy.k === "string" &&
-      (legacy.k === "published" || legacy.k === "starred")
+      (legacy.k === "published" ||
+        legacy.k === "starred" ||
+        legacy.k === "saved")
         ? legacy.k
         : typeof legacy.d === "string"
           ? "published"
@@ -40,7 +43,8 @@ function decode(token: string): CursorPayload | null {
         : null;
     if (!k || !d) return null;
     if (typeof legacy.p !== "number" || Number.isNaN(legacy.p)) return null;
-    if (typeof legacy.i !== "string" || !/^\d{1,19}$/.test(legacy.i))
+    // Decimal entry ids and uuid saved-item ids are both valid here.
+    if (typeof legacy.i !== "string" || !/^[0-9a-zA-Z-]{1,64}$/.test(legacy.i))
       return null;
     return { k, d, p: legacy.p, i: legacy.i };
   } catch {

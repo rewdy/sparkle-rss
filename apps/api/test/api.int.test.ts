@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { guidHash } from "@sparkle/core";
 import * as schema from "@sparkle/db";
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -27,8 +27,8 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("api v1 http surface", () => {
     if (!testDbUrl) throw new Error("TEST_DATABASE_URL required");
     pool = createLocalPool({ connectionString: testDbUrl });
     db = drizzle(pool, { schema });
-    await db.execute(sql`DROP TABLE IF EXISTS user_entries, subscriptions, feeds, categories,
-      api_tokens, user_settings, users CASCADE`);
+    await db.execute(sql`DROP TABLE IF EXISTS read_later_items, user_media, media_objects, user_entries,
+      subscriptions, feeds, categories, api_tokens, user_settings, users CASCADE`);
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
     await migrate(db, {
@@ -407,6 +407,197 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("api v1 http surface", () => {
     expect(((await empty.json()) as { tokens: unknown[] }).tokens).toHaveLength(
       0,
     );
+  });
+
+  it("tracks read later for feed entries", async () => {
+    const userId = await devUserId();
+    const entryId = await seedEntry(
+      userId,
+      "rl-api-1",
+      "Read Later Entry",
+      new Date(Date.UTC(2026, 5, 6)),
+    );
+    const jsonHeaders = { ...H, "Content-Type": "application/json" };
+    try {
+      const saved = await app.request("/api/v1/read-later/entries", {
+        method: "PATCH",
+        headers: jsonHeaders,
+        body: JSON.stringify({ ids: [entryId], save: true }),
+      });
+      expect(saved.status).toBe(200);
+      expect(((await saved.json()) as { updated: number }).updated).toBe(1);
+
+      // Entry payloads advertise the queue membership.
+      const single = await app.request(`/api/v1/entries/${entryId}`, {
+        headers: H,
+      });
+      const singleBody = (await single.json()) as {
+        entry: { isReadLater: boolean };
+      };
+      expect(singleBody.entry.isReadLater).toBe(true);
+
+      const list = await app.request("/api/v1/read-later", { headers: H });
+      const page = (await list.json()) as {
+        items: Array<{
+          id: string;
+          source: string;
+          entryId: string | null;
+          title: string;
+          isRead: boolean;
+          isStarred: boolean;
+        }>;
+        nextCursor: string | null;
+      };
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0]).toMatchObject({
+        source: "entry",
+        entryId: String(entryId),
+        title: "Read Later Entry",
+        isRead: false,
+        isStarred: false,
+      });
+      expect(page.nextCursor).toBeNull();
+
+      const counts = await app.request("/api/v1/read-later/count", {
+        headers: H,
+      });
+      expect(await counts.json()).toEqual({ total: 1, unread: 1 });
+
+      const itemId = page.items[0]?.id ?? "";
+      const read = await app.request("/api/v1/read-later/read", {
+        method: "PATCH",
+        headers: jsonHeaders,
+        body: JSON.stringify({ ids: [itemId], read: true }),
+      });
+      expect(((await read.json()) as { updated: number }).updated).toBe(1);
+
+      // Feed-sourced read state lands on the entry so both lists agree.
+      const afterRead = await app.request(`/api/v1/entries/${entryId}`, {
+        headers: H,
+      });
+      expect(
+        ((await afterRead.json()) as { entry: { isRead: boolean } }).entry
+          .isRead,
+      ).toBe(true);
+      expect(
+        await (
+          await app.request("/api/v1/read-later/count", { headers: H })
+        ).json(),
+      ).toEqual({ total: 1, unread: 0 });
+
+      const removed = await app.request("/api/v1/read-later", {
+        method: "DELETE",
+        headers: jsonHeaders,
+        body: JSON.stringify({ ids: [itemId] }),
+      });
+      expect(((await removed.json()) as { removed: number }).removed).toBe(1);
+
+      const empty = await app.request("/api/v1/read-later", { headers: H });
+      expect(((await empty.json()) as { items: unknown[] }).items).toHaveLength(
+        0,
+      );
+    } finally {
+      await db
+        .delete(schema.userEntries)
+        .where(inArray(schema.userEntries.id, [entryId]));
+    }
+  });
+
+  it("keeps read later items private to their owner", async () => {
+    const userId = await devUserId();
+    const entryId = await seedEntry(
+      userId,
+      "rl-api-2",
+      "Private Entry",
+      new Date(Date.UTC(2026, 5, 7)),
+    );
+    try {
+      await app.request("/api/v1/read-later/entries", {
+        method: "PATCH",
+        headers: { ...H, "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [entryId], save: true }),
+      });
+      const other = { "X-Dev-User": `rl-other-${randomUUID().slice(0, 8)}` };
+      const list = await app.request("/api/v1/read-later", { headers: other });
+      expect(((await list.json()) as { items: unknown[] }).items).toHaveLength(
+        0,
+      );
+      const counts = await app.request("/api/v1/read-later/count", {
+        headers: other,
+      });
+      expect(await counts.json()).toEqual({ total: 0, unread: 0 });
+      // Another user cannot queue an entry they do not own either.
+      const denied = await app.request("/api/v1/read-later/entries", {
+        method: "PATCH",
+        headers: { ...other, "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [entryId], save: true }),
+      });
+      expect(((await denied.json()) as { updated: number }).updated).toBe(0);
+    } finally {
+      await db
+        .delete(schema.readLaterItems)
+        .where(eq(schema.readLaterItems.userId, userId));
+      await db
+        .delete(schema.userEntries)
+        .where(inArray(schema.userEntries.id, [entryId]));
+    }
+  });
+
+  it("rejects unsafe article urls and bad payloads", async () => {
+    const jsonHeaders = { ...H, "Content-Type": "application/json" };
+    // Loopback and friends are refused before any request is made.
+    const loopback = await app.request("/api/v1/read-later", {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ url: "http://127.0.0.1:8080/admin" }),
+    });
+    expect(loopback.status).toBe(400);
+
+    const metadata = await app.request("/api/v1/read-later", {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ url: "http://169.254.169.254/latest/meta-data" }),
+    });
+    expect(metadata.status).toBe(400);
+
+    const scheme = await app.request("/api/v1/read-later", {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({ url: "file:///etc/passwd" }),
+    });
+    expect(scheme.status).toBe(400);
+
+    const missing = await app.request("/api/v1/read-later", {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({}),
+    });
+    expect(missing.status).toBe(400);
+
+    // Nothing was persisted by any of the rejected saves.
+    const list = await app.request("/api/v1/read-later", { headers: H });
+    const items = ((await list.json()) as { items: Array<{ url: string }> })
+      .items;
+    expect(items.map((item) => item.url)).toEqual([]);
+  });
+
+  it("validates read-later payloads with 400s", async () => {
+    const badId = await app.request("/api/v1/read-later", {
+      method: "DELETE",
+      headers: { ...H, "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: ["not-a-uuid"] }),
+    });
+    expect(badId.status).toBe(400);
+    const badEntryIds = await app.request("/api/v1/read-later/entries", {
+      method: "PATCH",
+      headers: { ...H, "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: "nope", save: true }),
+    });
+    expect(badEntryIds.status).toBe(400);
+    const badCursor = await app.request("/api/v1/read-later?cursor=zzz", {
+      headers: H,
+    });
+    expect(badCursor.status).toBe(400);
   });
 
   it("validates payloads with 400s", async () => {

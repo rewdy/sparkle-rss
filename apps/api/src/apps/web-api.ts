@@ -10,19 +10,18 @@ type Env = { Variables: { cognitoSub: string; username?: string } };
 
 const MEDIA_URL_EXPIRES_SECONDS = 300;
 
-type MediaEntry = EntryDto & {
-  articleImage: NonNullable<EntryDto["articleImage"]> & {
-    url: string;
-    urlExpiresAtMs: number;
-  };
-};
+/**
+ * Minimal shape needed to attach a signed URL. Entry payloads and saved
+ * read-later items both qualify, so the presigning lives in one place.
+ */
+type MediaDecorable = { articleImage: EntryDto["articleImage"] };
 
-async function withSignedMediaUrls(
+async function withSignedMediaUrls<T extends MediaDecorable>(
   s: Services,
   userId: string,
-  entries: EntryDto[],
+  entries: T[],
   bucket: string,
-): Promise<EntryDto[]> {
+): Promise<T[]> {
   const mediaIds = [
     ...new Set(
       entries.flatMap((entry) =>
@@ -67,8 +66,28 @@ async function withSignedMediaUrls(
         url,
         urlExpiresAtMs,
       },
-    } as MediaEntry;
+    } as T;
   });
+}
+
+/**
+ * Marks which of the given entries are in the caller's read-later queue. Kept
+ * out of the entry service because greader shares it and has no such concept.
+ */
+async function withReadLaterFlags<T extends { id: string }>(
+  s: Services,
+  userId: string,
+  entries: T[],
+): Promise<T[]> {
+  if (entries.length === 0) return entries;
+  const ids = entries
+    .map((entry) => Number(entry.id))
+    .filter((id) => Number.isInteger(id));
+  const inQueue = await s.readLater.entryIdsInQueue(userId, ids);
+  return entries.map((entry) => ({
+    ...entry,
+    isReadLater: inQueue.has(Number(entry.id)),
+  }));
 }
 
 const streamSchema = z.string().transform((value): StreamSelector => {
@@ -90,6 +109,9 @@ const streamSchema = z.string().transform((value): StreamSelector => {
 });
 
 const idArray = z.array(z.number().int().positive()).max(1000);
+
+/** Read-later items are addressed by their own uuid, not an entry id. */
+const savedIdArray = z.array(z.uuid()).max(1000);
 
 export function createWebApiApp(): Hono<Env> {
   const app = new Hono<Env>();
@@ -258,10 +280,12 @@ export function createWebApiApp(): Hono<Env> {
       publishedFrom: parsed.pubFrom,
     });
     const bucket = process.env.MEDIA_BUCKET;
-    if (!bucket) return c.json(page);
+    const items = bucket
+      ? await withSignedMediaUrls(s, userId, page.items, bucket)
+      : page.items;
     return c.json({
       ...page,
-      items: await withSignedMediaUrls(s, userId, page.items, bucket),
+      items: await withReadLaterFlags(s, userId, items),
     });
   });
 
@@ -274,9 +298,11 @@ export function createWebApiApp(): Hono<Env> {
     const [entry] = await s.entries.getByIds(userId, [id]);
     if (!entry) throw new AppError(404, "entry not found");
     const bucket = process.env.MEDIA_BUCKET;
-    if (!bucket) return c.json({ entry });
-    const [decorated] = await withSignedMediaUrls(s, userId, [entry], bucket);
-    return c.json({ entry: decorated });
+    const decorated = bucket
+      ? ((await withSignedMediaUrls(s, userId, [entry], bucket)).at(0) ?? entry)
+      : entry;
+    const [flagged] = await withReadLaterFlags(s, userId, [decorated]);
+    return c.json({ entry: flagged });
   });
 
   app.get("/media/:id", async (c) => {
@@ -338,6 +364,90 @@ export function createWebApiApp(): Hono<Env> {
         body.stream ?? { type: "all" },
         body.olderThan ?? new Date(),
       ),
+    });
+  });
+
+  // --- read later ------------------------------------------------------------
+  // Web-API only by design: the queue (and especially off-feed saved URLs) is
+  // never exposed through /api/greader.php. See docs/10-read-later.md.
+  app.get("/read-later", async (c) => {
+    const q = c.req.query();
+    const parsed = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        cursor: z.string().optional(),
+      })
+      .parse({ limit: q.limit, cursor: q.cursor });
+    const s = await getServices();
+    const userId = await userIdOf(s, c);
+    const page = await s.readLater.list(userId, parsed);
+    const bucket = process.env.MEDIA_BUCKET;
+    if (!bucket) return c.json(page);
+    return c.json({
+      ...page,
+      items: await withSignedMediaUrls(s, userId, page.items, bucket),
+    });
+  });
+
+  // Saves an off-feed article by URL, extracting a readable copy inline.
+  app.post("/read-later", async (c) => {
+    const body = z
+      .object({
+        url: z.string().min(1).max(2000),
+        title: z.string().max(300).optional(),
+        excerpt: z.string().max(2000).optional(),
+      })
+      .parse(await c.req.json());
+    const s = await getServices();
+    return c.json(
+      {
+        item: await s.readLater.saveUrlWithExtraction(
+          await userIdOf(s, c),
+          body,
+        ),
+      },
+      201,
+    );
+  });
+
+  app.get("/read-later/count", async (c) => {
+    const s = await getServices();
+    return c.json(await s.readLater.count(await userIdOf(s, c)));
+  });
+
+  app.patch("/read-later/entries", async (c) => {
+    const body = z
+      .object({ ids: idArray, save: z.boolean() })
+      .parse(await c.req.json());
+    const s = await getServices();
+    return c.json({
+      updated: await s.readLater.saveEntries(
+        await userIdOf(s, c),
+        body.ids,
+        body.save,
+      ),
+    });
+  });
+
+  app.patch("/read-later/read", async (c) => {
+    const body = z
+      .object({ ids: savedIdArray, read: z.boolean() })
+      .parse(await c.req.json());
+    const s = await getServices();
+    return c.json({
+      updated: await s.readLater.setReadState(
+        await userIdOf(s, c),
+        body.ids,
+        body.read,
+      ),
+    });
+  });
+
+  app.delete("/read-later", async (c) => {
+    const body = z.object({ ids: savedIdArray }).parse(await c.req.json());
+    const s = await getServices();
+    return c.json({
+      removed: await s.readLater.remove(await userIdOf(s, c), body.ids),
     });
   });
 

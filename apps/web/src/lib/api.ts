@@ -9,6 +9,7 @@ import { localMidnightIso } from "./keys";
 import type {
   Entry,
   EntryPage,
+  EntryStreamDescriptor,
   Folder,
   Me,
   StreamDescriptor,
@@ -122,6 +123,15 @@ export const api = {
         cursor?: string;
       } = {},
     ): Promise<EntryPage> => {
+      // Read later is a separate resource, but its items are entry-shaped so
+      // the list/reading-pane components can render them unchanged.
+      if (stream.kind === "readLater") {
+        const saved = new URLSearchParams({
+          limit: String(opts.limit ?? 50),
+        });
+        if (opts.cursor) saved.set("cursor", opts.cursor);
+        return request(`/api/v1/read-later?${saved.toString()}`);
+      }
       const q = new URLSearchParams({
         stream: streamParam(stream),
         // 'unread' stream implies the unread filter; 'today' adds the pubFrom bound
@@ -149,7 +159,7 @@ export const api = {
         body: JSON.stringify({ ids: ids.map(Number), starred }),
       }),
     markAllRead: (
-      stream: StreamDescriptor,
+      stream: EntryStreamDescriptor,
       olderThan?: Date,
     ): Promise<{ updated: number }> =>
       request("/api/v1/entries/mark-all-read", {
@@ -158,6 +168,34 @@ export const api = {
           stream: streamParam(stream),
           olderThan: (olderThan ?? new Date()).toISOString(),
         }),
+      }),
+  },
+  readLater: {
+    count: (): Promise<{ total: number; unread: number }> =>
+      request("/api/v1/read-later/count"),
+    saveUrl: (input: {
+      url: string;
+      title?: string;
+      excerpt?: string;
+    }): Promise<{ item: Entry }> =>
+      request("/api/v1/read-later", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    saveEntries: (ids: string[], save: boolean): Promise<{ updated: number }> =>
+      request("/api/v1/read-later/entries", {
+        method: "PATCH",
+        body: JSON.stringify({ ids: ids.map(Number), save }),
+      }),
+    setRead: (ids: string[], read: boolean): Promise<{ updated: number }> =>
+      request("/api/v1/read-later/read", {
+        method: "PATCH",
+        body: JSON.stringify({ ids, read }),
+      }),
+    remove: (ids: string[]): Promise<{ removed: number }> =>
+      request("/api/v1/read-later", {
+        method: "DELETE",
+        body: JSON.stringify({ ids }),
       }),
   },
   unreadCounts: (): Promise<UnreadCounts> => request("/api/v1/unread-counts"),

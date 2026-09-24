@@ -20,6 +20,12 @@ breaking it silently is the worst class of bug in this repo.
 7. `docs/06-roadmap.md` — phases & exit criteria
 8. `docs/07-local-development.md` — local dev workflow (Docker Postgres, dev auth, ingest)
 
+Feature design/plan docs, read when working on them: `docs/08-article-images.md` (media),
+`docs/09-swipe-story-view.md` (swipe presentation), `docs/10-read-later.md` (read later).
+`docs/decisions.md` is the dated decision log those docs link into.
+
+Web-only features (e.g. read later) live on `/api/v1` only — never on `/api/greader.php`.
+
 ## Repo layout
 
 ```
@@ -95,6 +101,15 @@ docs/            Source of truth for design
   everywhere IDs enter the API.
 - FreshRSS tolerates empty/`x` write-tokens (client quirks) — we replicate tolerance.
 - Cognito hosted UI default domain needs no cert; custom domains do (us-east-1).
+- Drizzle does not parenthesize raw SQL chunks: inside `and(...)`, an unparenthesized
+  `or` escapes the surrounding condition. Keyset-cursor tie-breakers must wrap their own
+  parens or they can page in another user's rows (this was a real leak; regression tests
+  live in `packages/db/test/services.int.test.ts`).
+- React 19 refuses to render `javascript:` hrefs (swaps in a throw-stub), so a bookmarklet
+  link has to be written onto the DOM node after mount.
+- The Vitest `include` patterns must cover `apps/*/test/**/*.test.ts` as well as `.tsx`;
+  dropping the `.ts` pattern silently stops running the API contract and greader
+  conformance suites.
 
 ### Aurora DSQL engine quirks (full list in docs/decisions.md)
 

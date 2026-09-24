@@ -3,17 +3,23 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-09-02)
+## Current state (updated 2026-09-15)
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
 
 1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
    still pending; until it passes, Phase 4 is "done, pending device verification".
-2. **Phase 6** — the active backlog below (9 of 13 chunks landed; lifecycle cleanup
-   and article splash persistence landed 2026-08-29).
+2. **Phase 6** — the active backlog below (lifecycle cleanup and article splash
+   persistence landed 2026-08-29; read later landed 2026-09-15).
 3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
    the app is live and fast enough that this never blocked anything).
+
+> **Test-runner gap fixed 2026-09-15:** `pnpm test` never ran `apps/api/test/*.test.ts`
+> because the Vitest include only matched `*.test.tsx` under `apps/`, so the greader
+> conformance suite and the HTTP contract suite were silently skipped in CI. The include
+> now covers both, and the API suites' table resets were completed so they no longer depend
+> on file order. Treat "conformance suite runs in CI" as true from this date, not before.
 
 ## How state is tracked (session workflow)
 
@@ -231,6 +237,19 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       `pnpm dev` and local ingestion must continue to receive the Compose configuration.
       *Exit: restarting the local stack provisions the runtime and image ingestion works
       without copying stable media settings into `.env`.*
+- [x] **Read later** — a triage queue in the sidebar Streams block holding feed articles
+      marked "read later" plus off-feed articles saved by URL (form + bookmarklet), with
+      best-effort server-side article extraction. Deliberately invisible to the
+      greader/NetNewsWire surface. Plan: [10-read-later.md](10-read-later.md). ✅
+      *Landed 2026-09-15: storage/service, `/api/v1` routes + `isReadLater` on entry
+      payloads, the queue UI and keyboard shortcut, inline URL saving with a
+      SSRF-guarded fetch and Readability extraction, and the Settings bookmarklet.
+      Remaining optional polish is listed in doc 10.*
+- [ ] **Shared outbound-fetch guard** — `feed/fetch-feed.ts` and `feed/discover.ts` still
+      fetch arbitrary URLs with no address filtering and an unbounded `response.text()`.
+      Adopt the guard and byte cap built for read later (`article/fetch-article.ts`) so feed
+      fetching gets the same protections. *Exit: both feed paths reject private/metadata
+      addresses and cap response size, with tests.*
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
       image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse
       PWA criteria met; first-view images lazy-load.*

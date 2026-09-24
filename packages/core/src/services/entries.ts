@@ -37,6 +37,12 @@ export interface EntryDto {
   enclosures: Array<{ href?: string; type?: string; length?: number }>;
   isRead: boolean;
   isStarred: boolean;
+  /**
+   * Whether the entry is in the caller's read-later queue. Populated by the
+   * first-party API only (greader has no read-later concept), so the entry
+   * service itself always reports false here.
+   */
+  isReadLater: boolean;
   articleImage: {
     id: string;
     width: number;
@@ -110,6 +116,7 @@ export function createEntriesService({ db }: ServicesDeps) {
         enclosures: (row.enclosures as EntryDto["enclosures"]) ?? [],
         isRead: row.isRead,
         isStarred: row.isStarred,
+        isReadLater: false,
         articleImage: image
           ? {
               id: image.id,
@@ -168,10 +175,13 @@ export function createEntriesService({ db }: ServicesDeps) {
       if (cursor) {
         const at = new Date(cursor.primaryAtMs);
         const id = Number(cursor.entryId);
+        // Parenthesized: drizzle does not wrap raw SQL chunks, so an unparenthesized
+        // `or` here would escape the user-scope condition and could page in another
+        // user's rows.
         conditions.push(
           order === "desc"
-            ? sql`${primary} < ${at.toISOString()} or (${primary} = ${at.toISOString()} and ${schema.userEntries.id} < ${id})`
-            : sql`${primary} > ${at.toISOString()} or (${primary} = ${at.toISOString()} and ${schema.userEntries.id} > ${id})`,
+            ? sql`(${primary} < ${at.toISOString()} or (${primary} = ${at.toISOString()} and ${schema.userEntries.id} < ${id}))`
+            : sql`(${primary} > ${at.toISOString()} or (${primary} = ${at.toISOString()} and ${schema.userEntries.id} > ${id}))`,
         );
       }
 

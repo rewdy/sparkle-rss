@@ -12,6 +12,20 @@ Sources of truth:
   [Martin Doms](https://web.archive.org/web/20210126115837/https://blog.martindoms.com/2009/10/16/using-the-google-reader-api-part-2/),
   [mihaip's wiki](https://github.com/mihaip/google-reader-api/wikis)
 
+## Deliberately outside this contract
+
+First-party features with no Google Reader equivalent live on `/api/v1` only and must never
+appear on this surface — adding them would change behaviour for real clients without a test
+able to catch it:
+
+- **Read later** ([10-read-later.md](10-read-later.md)): the queue, its saved off-feed URLs,
+  and the `isReadLater` flag that `/api/v1` adds to entry payloads.
+- Anything account- or UI-shaped that clients never ask for (themes, sidebar prefs, media
+  delivery).
+
+`starred` is explicitly *not* in this list: it is part of the Google Reader tag model and
+stays synced.
+
 ## Base URL & path handling
 
 Canonical base: `https://<host>/api/greader.php`

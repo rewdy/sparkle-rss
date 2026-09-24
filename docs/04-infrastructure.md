@@ -65,7 +65,8 @@ resources Terraform manages; no static AWS keys anywhere.
 ci.yaml (pull_request + push to main — no deploy)
   pnpm install --frozen-lockfile
   pnpm lint && pnpm typecheck
-  pnpm test                # vitest units + integration (service Postgres)
+  pnpm test                # vitest units + integration, incl. the API contract and
+                           # greader conformance suites (service Postgres)
   pnpm build               # web + lambda bundles + static marketing site (uploaded as artifact)
   tf: terraform fmt -check -recursive && init -backend=false && validate
   plan job (pull_request only): OIDC-assumes the read-only `sparkle-rss-github-plan`

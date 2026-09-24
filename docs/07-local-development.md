@@ -114,6 +114,10 @@ the client refuses plain HTTP, tunnel it (SSH reverse tunnel or Tailscale).
 conformance suite need Docker Postgres and `TEST_DATABASE_URL` (default
 `postgres://postgres:postgres@localhost:5432/sparkle_test`; create the database once
 with `docker compose exec -T db psql -U postgres -c 'CREATE DATABASE sparkle_test'`).
+The config's include patterns cover `packages/*/test` and both `apps/*/test/**/*.test.ts`
+and `*.test.tsx` — the API contract and greader conformance suites are `.ts` files under
+`apps/api/test`, so dropping that pattern silently stops running them (which is exactly
+what happened until 2026-09-15).
 
 `pnpm typecheck` and `pnpm lint` (Biome) must stay clean.
 

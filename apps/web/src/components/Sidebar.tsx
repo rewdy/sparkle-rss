@@ -20,6 +20,7 @@ import { lazy, Suspense, useState } from "react";
 import {
   LuBookmark,
   LuCalendarDays,
+  LuClock,
   LuEllipsisVertical,
   LuFolder,
   LuFolderOpen,
@@ -79,6 +80,10 @@ export function Sidebar({
     queryKey: qk.unreadCounts,
     queryFn: api.unreadCounts,
   });
+  const readLaterQ = useQuery({
+    queryKey: qk.readLaterCount,
+    queryFn: api.readLater.count,
+  });
 
   const [subscribeOpen, setSubscribeOpen] = useState(false);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
@@ -116,6 +121,7 @@ export function Sidebar({
   }
 
   const totalUnread = countsQ.data?.total ?? 0;
+  const readLaterUnread = readLaterQ.data?.unread ?? 0;
 
   const route = parseRoute(location);
   const activeStream = route?.stream;
@@ -139,10 +145,45 @@ export function Sidebar({
 
   return (
     <Box p="xs" h="100%" style={{ display: "flex", flexDirection: "column" }}>
-      <Group mb="xs" px={4} flex="none">
+      {/* The add menu sits with the Streams header: adding a feed, folder, or
+          article is a global action, not a property of one section. */}
+      <Group justify="space-between" mb="xs" px={4} flex="none">
         <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
           streams
         </Text>
+        <Menu position="bottom-end" withinPortal>
+          <Menu.Target>
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              leftSection={<LuPlus size={13} />}
+              title="add feed, folder, or article"
+            >
+              add
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<LuRss size={14} />}
+              onClick={() => setSubscribeOpen(true)}
+            >
+              add feed…
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<LuFolderPlus size={14} />}
+              onClick={() => setFolderModalOpen(true)}
+            >
+              add folder…
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<LuClock size={14} />}
+              component={Link}
+              href="/read-later/new"
+            >
+              add article…
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
 
       <NavLink
@@ -186,6 +227,21 @@ export function Sidebar({
       />
       <NavLink
         component={Link}
+        href="/read-later"
+        active={isActive(activeStream, (s) => s.kind === "readLater")}
+        label={
+          <Group justify="space-between" w="100%">
+            <Group gap="xs" wrap="nowrap">
+              <LuClock size={15} style={{ flexShrink: 0 }} />
+              <Text size="sm">Read later</Text>
+            </Group>
+            {unreadBadge(readLaterUnread)}
+          </Group>
+        }
+        onClick={() => nav("/read-later")}
+      />
+      <NavLink
+        component={Link}
         href="/all"
         active={isActive(activeStream, (s) => s.kind === "all")}
         label={
@@ -202,145 +258,136 @@ export function Sidebar({
 
       <Divider my="xs" c="dimmed" flex="none" />
 
+      {/* Folders get their own section; the heading (and section) disappears
+          entirely when the user has none. */}
+      {visibleFolders.length > 0 && (
+        <>
+          <Group mb="xs" px={4} flex="none">
+            <Text
+              size="xs"
+              c="dimmed"
+              tt="uppercase"
+              style={{ letterSpacing: 2 }}
+            >
+              folders
+            </Text>
+          </Group>
+          <Stack gap={2} flex="none">
+            {visibleFolders.map((folder: Folder) => {
+              const folderSubs = byFolder.get(folder.id) ?? [];
+              const collapsed = collapsedFolders.includes(folder.id);
+              return (
+                <div key={folder.id}>
+                  <NavLink
+                    component={Link}
+                    href={`/folder/${folder.id}`}
+                    active={isActive(
+                      activeStream,
+                      (s) => s.kind === "folder" && s.id === folder.id,
+                    )}
+                    leftSection={
+                      <ActionIcon
+                        variant="subtle"
+                        color="dimmed"
+                        size="compact-sm"
+                        aria-label={
+                          collapsed
+                            ? `expand folder ${folder.name}`
+                            : `collapse folder ${folder.name}`
+                        }
+                        title={collapsed ? "expand folder" : "collapse folder"}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleFolder(folder.id);
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        {collapsed ? (
+                          <LuFolder size={14} />
+                        ) : (
+                          <LuFolderOpen size={14} />
+                        )}
+                      </ActionIcon>
+                    }
+                    label={
+                      <Group justify="space-between" w="100%">
+                        <Text size="sm" fw={700} truncate={true}>
+                          {folder.name}
+                        </Text>
+                        <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
+                          {unreadBadge(folder.unreadCount)}
+                          <FolderMenu folder={folder} />
+                        </Group>
+                      </Group>
+                    }
+                    onClick={() => nav(`/folder/${folder.id}`)}
+                  />
+                  {!collapsed &&
+                    folderSubs.map((sub) => (
+                      <FeedRow
+                        key={sub.feedId}
+                        sub={sub}
+                        unread={feedUnread.get(sub.feedId) ?? 0}
+                        active={isActive(
+                          activeStream,
+                          (s) => s.kind === "feed" && s.id === sub.feedId,
+                        )}
+                        onNavigate={onNavigate}
+                        folders={folders}
+                        indent
+                      />
+                    ))}
+                </div>
+              );
+            })}
+          </Stack>
+          {/* One divider per section boundary: closing the folders block here
+              keeps the streams/folders/feeds separators from doubling up when
+              folders are hidden. */}
+          <Divider my="xs" c="dimmed" flex="none" />
+        </>
+      )}
+
       <Group justify="space-between" mb="xs" px={4} flex="none">
         <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: 2 }}>
           feeds
         </Text>
-        <Group gap={2} wrap="nowrap">
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <Button
-                size="compact-xs"
-                variant="subtle"
-                leftSection={<LuPlus size={13} />}
-                title="add feed or folder"
-              >
-                add
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<LuRss size={14} />}
-                onClick={() => setSubscribeOpen(true)}
-              >
-                add feed…
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<LuFolderPlus size={14} />}
-                onClick={() => setFolderModalOpen(true)}
-              >
-                add folder…
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <ActionIcon
-                variant="subtle"
-                color="dimmed"
-                size="compact-xs"
-                aria-label="feed list options"
-                title="feed list options"
-              >
-                <LuEllipsisVertical size={14} />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Group
-                gap="lg"
-                px="sm"
-                py="xs"
-                wrap="nowrap"
-                justify="space-between"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Text size="sm">unread only</Text>
-                <Switch
-                  size="xs"
-                  aria-label="unread only"
-                  checked={unreadOnly}
-                  onChange={(e) => updateUnreadOnly(e.currentTarget.checked)}
-                />
-              </Group>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
+        <Menu position="bottom-end" withinPortal>
+          <Menu.Target>
+            <ActionIcon
+              variant="subtle"
+              color="dimmed"
+              size="compact-xs"
+              aria-label="feed list options"
+              title="feed list options"
+            >
+              <LuEllipsisVertical size={14} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Group
+              gap="lg"
+              px="sm"
+              py="xs"
+              wrap="nowrap"
+              justify="space-between"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Text size="sm">unread only</Text>
+              <Switch
+                size="xs"
+                aria-label="unread only"
+                checked={unreadOnly}
+                onChange={(e) => updateUnreadOnly(e.currentTarget.checked)}
+              />
+            </Group>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
 
       <ScrollArea type="hover" style={{ flex: 1, minHeight: 0 }}>
         <Stack gap={2}>
-          {visibleFolders.map((folder: Folder) => {
-            const folderSubs = byFolder.get(folder.id) ?? [];
-            const collapsed = collapsedFolders.includes(folder.id);
-            return (
-              <div key={folder.id}>
-                <NavLink
-                  component={Link}
-                  href={`/folder/${folder.id}`}
-                  active={isActive(
-                    activeStream,
-                    (s) => s.kind === "folder" && s.id === folder.id,
-                  )}
-                  leftSection={
-                    <ActionIcon
-                      variant="subtle"
-                      color="dimmed"
-                      size="compact-sm"
-                      aria-label={
-                        collapsed
-                          ? `expand folder ${folder.name}`
-                          : `collapse folder ${folder.name}`
-                      }
-                      title={collapsed ? "expand folder" : "collapse folder"}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleFolder(folder.id);
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                    >
-                      {collapsed ? (
-                        <LuFolder size={14} />
-                      ) : (
-                        <LuFolderOpen size={14} />
-                      )}
-                    </ActionIcon>
-                  }
-                  label={
-                    <Group justify="space-between" w="100%">
-                      <Text size="sm" fw={700} truncate={true}>
-                        {folder.name}
-                      </Text>
-                      <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
-                        {unreadBadge(folder.unreadCount)}
-                        <FolderMenu folder={folder} />
-                      </Group>
-                    </Group>
-                  }
-                  onClick={() => nav(`/folder/${folder.id}`)}
-                />
-                {!collapsed &&
-                  folderSubs.map((sub) => (
-                    <FeedRow
-                      key={sub.feedId}
-                      sub={sub}
-                      unread={feedUnread.get(sub.feedId) ?? 0}
-                      active={isActive(
-                        activeStream,
-                        (s) => s.kind === "feed" && s.id === sub.feedId,
-                      )}
-                      onNavigate={onNavigate}
-                      folders={folders}
-                      indent
-                    />
-                  ))}
-              </div>
-            );
-          })}
-          {visibleFolders.length > 0 && loose.length > 0 && (
-            <Divider my="xs" c="dimmed" />
-          )}
           {loose.length > 0 &&
             loose.map((sub) => (
               <FeedRow

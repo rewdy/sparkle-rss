@@ -22,10 +22,12 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@sparkle/db": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.2.5",
     "image-size": "^2.0.2",
+    "linkedom": "^0.18.13",
     "rss-parser": "^3.13.0",
     "sanitize-html": "^2.17.7"
   }

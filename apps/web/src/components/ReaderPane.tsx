@@ -11,25 +11,46 @@ import {
 } from "@mantine/core";
 import type { ReactElement } from "react";
 import { useEffect, useRef } from "react";
-import { LuArrowLeft, LuBookmark, LuExternalLink } from "react-icons/lu";
+import {
+  LuArrowLeft,
+  LuBookmark,
+  LuClock,
+  LuExternalLink,
+  LuTrash2,
+} from "react-icons/lu";
 import { useSubscriptionMap } from "../lib/feed-titles";
-import { useMarkRead, useToggleStar } from "../lib/mutations";
+import {
+  useMarkRead,
+  useMarkReadLater,
+  useRemoveReadLater,
+  useToggleReadLater,
+  useToggleStar,
+} from "../lib/mutations";
 import type { Entry } from "../lib/types";
 import { EntryMeta } from "./EntryMeta";
 
 export function ReaderPane({
   entry,
+  readLater = false,
   onClose,
   onNext,
   onPrev,
 }: {
   entry: Entry;
+  readLater?: boolean;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
 }): ReactElement {
-  const markRead = useMarkRead();
+  const markReadEntry = useMarkRead();
+  const markReadSaved = useMarkReadLater();
+  const markRead = readLater ? markReadSaved : markReadEntry;
   const toggleStar = useToggleStar();
+  const toggleReadLater = useToggleReadLater();
+  const removeReadLater = useRemoveReadLater();
+  // Saved URLs have no entry behind them: read state is per-item and
+  // star/read-later toggles do not apply.
+  const isSavedUrl = readLater && entry.source === "url";
   const feedMeta = useSubscriptionMap();
   const sub = feedMeta.get(entry.feedId);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -117,7 +138,7 @@ export function ReaderPane({
         >
           <EntryMeta
             iconUrl={sub?.iconUrl}
-            site={sub?.displayTitle}
+            site={sub?.displayTitle ?? entry.siteName}
             author={entry.author}
             date={new Date(entry.publishedAtMs).toLocaleString()}
             size="sm"
@@ -162,24 +183,63 @@ export function ReaderPane({
               ↓ next (j)
             </Button>
             <Divider orientation="vertical" c="dimmed" />
-            <ActionIcon
-              variant={entry.isStarred ? "light" : "subtle"}
-              color="yellow"
-              size="lg"
-              title="save (s)"
-              aria-label={entry.isStarred ? "unsave" : "save"}
-              onClick={() =>
-                void toggleStar.mutateAsync({
-                  ids: [entry.id],
-                  starred: !entry.isStarred,
-                })
-              }
-            >
-              <LuBookmark
-                size={18}
-                style={entry.isStarred ? { fill: "currentColor" } : undefined}
-              />
-            </ActionIcon>
+            {readLater ? (
+              <Tooltip label="remove from read later (l)">
+                <ActionIcon
+                  variant="light"
+                  color="accent"
+                  size="lg"
+                  aria-label="remove from read later"
+                  onClick={() => void removeReadLater.mutateAsync([entry.id])}
+                >
+                  <LuTrash2 size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : (
+              <Tooltip label="read later (l)">
+                <ActionIcon
+                  variant={entry.isReadLater ? "light" : "subtle"}
+                  color="accent"
+                  size="lg"
+                  aria-label={
+                    entry.isReadLater ? "remove from read later" : "read later"
+                  }
+                  onClick={() =>
+                    void toggleReadLater.mutateAsync({
+                      ids: [entry.id],
+                      save: !entry.isReadLater,
+                    })
+                  }
+                >
+                  <LuClock
+                    size={18}
+                    style={
+                      entry.isReadLater ? { fill: "currentColor" } : undefined
+                    }
+                  />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            {!isSavedUrl && (
+              <ActionIcon
+                variant={entry.isStarred ? "light" : "subtle"}
+                color="yellow"
+                size="lg"
+                title="save (s)"
+                aria-label={entry.isStarred ? "unsave" : "save"}
+                onClick={() =>
+                  void toggleStar.mutateAsync({
+                    ids: [entry.id],
+                    starred: !entry.isStarred,
+                  })
+                }
+              >
+                <LuBookmark
+                  size={18}
+                  style={entry.isStarred ? { fill: "currentColor" } : undefined}
+                />
+              </ActionIcon>
+            )}
           </Group>
         </Stack>
       </ScrollArea>

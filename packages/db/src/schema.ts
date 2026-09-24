@@ -141,6 +141,50 @@ export const userEntries = pgTable(
   ],
 );
 
+// Read Later is web-API only: it is intentionally never exposed through the
+// Google Reader surface (see docs/10-read-later.md). `entryId` points at a
+// `user_entries` row when the item was saved from a feed article and is null
+// for one-off URLs, so the entry's live content is resolved at read time
+// instead of being copied here.
+export const readLaterItems = pgTable(
+  "read_later_items",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id").notNull(),
+    entryId: bigint("entry_id", { mode: "number" }),
+    url: text("url").notNull(),
+    title: text("title").notNull().default(""),
+    author: text("author").notNull().default(""),
+    siteName: text("site_name").notNull().default(""),
+    excerpt: text("excerpt").notNull().default(""),
+    contentHtml: text("content_html").notNull().default(""),
+    imageUrl: text("image_url").notNull().default(""),
+    status: text("status").notNull().default("ready"),
+    error: text("error"),
+    // Read state is the item's own for one-off URLs; for feed-sourced items the
+    // entry's read state wins so the two lists never disagree.
+    isRead: boolean("is_read").notNull().default(false),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    // No partial indexes on DSQL, so idempotency is expressed as a plain
+    // unique key over a content hash (same trick as user_entries.guid_hash):
+    // sha256("entry:<id>") or sha256("url:<normalized url>").
+    dedupeHash: text("dedupe_hash").notNull(),
+    savedAt: timestamp("saved_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("rl_dedupe_key").on(t.userId, t.dedupeHash),
+    // Mirrors ue_stream_idx: (saved_at, id) keyset pagination, newest first.
+    index("rl_user_saved_idx").on(t.userId, t.savedAt, t.id),
+    index("rl_user_entry_idx").on(t.userId, t.entryId),
+  ],
+);
+
 export const mediaObjects = pgTable("media_objects", {
   id: uuid("id").primaryKey(),
   objectKey: text("object_key").notNull().unique(),
