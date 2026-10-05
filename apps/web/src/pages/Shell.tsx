@@ -37,7 +37,7 @@ import {
   storyPresentationAtom,
   todayRolloverAtom,
 } from "../lib/ui-state";
-import { FullscreenLoader, useAuthGuard } from "./guard";
+import { FullscreenLoader, SessionRestoreError, useAuthGuard } from "./guard";
 
 // Settings drags the heaviest non-essential Mantine components (forms, copy
 // button, switches); keep them off the first-paint critical path.
@@ -368,6 +368,7 @@ export function Shell(): ReactElement {
     return () => window.removeEventListener("keydown", onKey);
   }, [onKey]);
 
+  if (authState === "error") return <SessionRestoreError />;
   if (authState !== "authed") {
     return <FullscreenLoader label="checking session…" />;
   }

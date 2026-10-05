@@ -1,16 +1,14 @@
-import { Center, Loader, Stack, Text } from "@mantine/core";
+import { Alert, Button, Center, Loader, Stack, Text } from "@mantine/core";
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { accessToken, devAuthBypassed, getUser, login } from "../lib/auth";
+import { accessToken, devAuthBypassed, SessionExpiredError } from "../lib/auth";
 
-/** Guards the app: redirects to Cognito when no session, renders children when authed. */
-export function useAuthGuard(
-  onLoginError?: (error: Error) => void,
-): "checking" | "authed" | "anon" {
+/** Guards the app by restoring a first-party session from its HttpOnly cookie. */
+export function useAuthGuard(): "checking" | "authed" | "anon" | "error" {
   // Dev bypass: auth is structurally disabled, so the shell renders on the
   // first paint (no loader flash / layout shift).
-  const [state, setState] = useState<"checking" | "authed" | "anon">(
+  const [state, setState] = useState<"checking" | "authed" | "anon" | "error">(
     devAuthBypassed ? "authed" : "checking",
   );
   const [, navigate] = useLocation();
@@ -19,34 +17,39 @@ export function useAuthGuard(
     if (devAuthBypassed) return;
     let cancelled = false;
     (async () => {
-      const user = await getUser().catch(() => null);
       if (cancelled) return;
-      if (user && !user.expired) {
-        // Warm the access token (renews if needed). Only treat the session as
-        // authed if the renewal actually succeeded — never mount the app with a
-        // dead token just because one happened to be stored.
-        const token = await accessToken().catch(() => null);
-        if (cancelled) return;
-        if (token) {
-          setState("authed");
-          return;
-        }
+      try {
+        await accessToken();
+        if (!cancelled) setState("authed");
+      } catch (error) {
+        if (!cancelled)
+          setState(error instanceof SessionExpiredError ? "anon" : "error");
       }
-      if (!cancelled) setState("anon");
-      login().catch((e) =>
-        onLoginError?.(e instanceof Error ? e : new Error(String(e))),
-      );
     })();
     return () => {
       cancelled = true;
     };
-  }, [onLoginError]);
+  }, []);
 
   useEffect(() => {
     if (state === "anon") navigate("/login", { replace: true });
   }, [state, navigate]);
 
   return state;
+}
+
+export function SessionRestoreError(): ReactElement {
+  return (
+    <Center mih="100vh" p="md">
+      <Stack align="center" gap="md" maw={420}>
+        <Alert color="yellow" title="Could not check your session">
+          The authentication service did not respond. Your sign-in may still be
+          valid; try again in a moment.
+        </Alert>
+        <Button onClick={() => window.location.reload()}>Try again</Button>
+      </Stack>
+    </Center>
+  );
 }
 
 export function FullscreenLoader({

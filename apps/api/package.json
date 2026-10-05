@@ -12,6 +12,7 @@
     "ingest": "tsx scripts/ingest-local.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1146.0",
     "@aws-sdk/client-s3": "^3.1121.0",
     "@aws-sdk/client-secrets-manager": "^3.875.0",
     "@aws-sdk/client-sqs": "^3.1116.0",

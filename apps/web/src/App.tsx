@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { Route, Switch } from "wouter";
 import { queryClient } from "./lib/query-client";
 import { colorSchemeAtom, themeIdAtom } from "./lib/ui-state";
-import { Callback } from "./pages/Callback";
 import { Login } from "./pages/Login";
 import { Shell } from "./pages/Shell";
 import { THEMES } from "./themes";
@@ -32,7 +31,6 @@ function ThemedApp() {
   return (
     <MantineProvider theme={THEMES[themeId]} forceColorScheme={resolvedScheme}>
       <Switch>
-        <Route path="/auth/callback" component={Callback} />
         <Route path="/login" component={Login} />
         <Route component={Shell} />
       </Switch>

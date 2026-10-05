@@ -86,7 +86,7 @@ resource "aws_cognito_user_pool_client" "spa" {
   user_pool_id = aws_cognito_user_pool.this.id
 
   generate_secret                      = false
-  explicit_auth_flows                  = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_ADMIN_USER_PASSWORD_AUTH"]
+  explicit_auth_flows                  = ["ALLOW_USER_SRP_AUTH", "ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_ADMIN_USER_PASSWORD_AUTH"]
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["code"]
   allowed_oauth_scopes                 = ["openid", "email", "profile"]
@@ -97,7 +97,7 @@ resource "aws_cognito_user_pool_client" "spa" {
 
   access_token_validity  = 1
   id_token_validity      = 1
-  refresh_token_validity = 30
+  refresh_token_validity = 7
 
   token_validity_units {
     access_token  = "hours"

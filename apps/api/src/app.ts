@@ -1,6 +1,7 @@
 import { AppError } from "@sparkle/core";
 import { Hono, type MiddlewareHandler } from "hono";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createAuthApi } from "./apps/auth-api";
 import { createGreaderApp } from "./apps/greader";
 import { createWebApiApp } from "./apps/web-api";
 import { env } from "./env";
@@ -56,6 +57,7 @@ app.use("/api/v1", cognitoAuth);
 app.use("/api/v1/*", cognitoAuth);
 
 app.route("/api/v1", createWebApiApp());
+app.route("/api/auth", createAuthApi());
 app.route("/api/greader.php", createGreaderApp());
 app.route("/greader.php", createGreaderApp());
 

@@ -1,118 +1,157 @@
-import { type User, UserManager, WebStorageStateStore } from "oidc-client-ts";
-
-const ISSUER = import.meta.env.VITE_COGNITO_ISSUER as string | undefined;
-const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID as string | undefined;
-
-/** Local-development escape hatch: no Cognito, requests use X-Dev-User. */
 export const devAuthBypassed = import.meta.env.VITE_AUTH_DISABLED === "true";
 
-export const authConfigured = devAuthBypassed || Boolean(ISSUER && CLIENT_ID);
+let activeAccessToken: string | null = null;
+let activeAccessTokenExpiresAt = 0;
+let refreshInFlight: Promise<string> | null = null;
 
-let userManager: UserManager | null = null;
-
-function um(): UserManager {
-  if (!userManager) {
-    if (!ISSUER || !CLIENT_ID) throw new Error("auth not configured");
-    userManager = new UserManager({
-      authority: ISSUER,
-      client_id: CLIENT_ID,
-      redirect_uri: `${window.location.origin}/auth/callback`,
-      post_logout_redirect_uri: `${window.location.origin}/`,
-      scope: "openid profile email",
-      response_type: "code",
-      // Renewal happens on demand (through accessToken / the API client's 401
-      // retry) rather than in the background, so a single code path owns token
-      // freshness and there is no renewal to race against.
-      automaticSilentRenew: false,
-      userStore: new WebStorageStateStore({ store: sessionStorage }),
-    });
-  }
-  return userManager;
-}
-
-const DEV_USER: User = {
-  profile: { sub: "dev-user" },
-  access_token: "dev-token",
-  expired: false,
-} as unknown as User;
-
-export async function login(): Promise<void> {
-  if (devAuthBypassed) {
-    window.history.replaceState({}, "", "/");
-    return;
-  }
-  await um().signinRedirect();
-}
-
-export async function handleCallback(): Promise<User> {
-  return um().signinRedirectCallback();
-}
-
-export async function logout(): Promise<void> {
-  if (devAuthBypassed) {
-    window.location.href = "/";
-    return;
-  }
-  await um().signoutRedirect();
-}
-
-export async function getUser(): Promise<User | null> {
-  if (devAuthBypassed) return DEV_USER;
-  return um().getUser();
-}
-
-export async function accessToken(): Promise<string> {
-  if (devAuthBypassed) return "dev-token";
-  const user = await um().getUser();
-  if (!user || user.expired) {
-    return renewToken();
-  }
-  return user.access_token;
-}
-
-/** The refresh token was rejected by the provider (revoked/expired) — the
- * session is genuinely over and the app must send the user back to /login. */
 export class SessionExpiredError extends Error {
   constructor(cause?: unknown) {
     super("session expired");
     this.name = "SessionExpiredError";
-    if (cause !== undefined) {
-      // Standard Error cause so debugging keeps the original failure around.
+    if (cause !== undefined)
       (this as Error & { cause?: unknown }).cause = cause;
-    }
   }
 }
 
-/** Hard redirect the app to /login (used on confirmed session expiry). */
-export function redirectToLogin(): void {
+type TokenResponse = { accessToken: string };
+export type SignInResult =
+  | { type: "authenticated" }
+  | { type: "new-password-required"; username: string; session: string };
+
+function tokenExpiry(token: string): number {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) throw new Error("missing token payload");
+    const decoded = JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/")),
+    ) as { exp?: number };
+    return typeof decoded.exp === "number"
+      ? decoded.exp * 1000
+      : Date.now() + 5 * 60_000;
+  } catch {
+    return Date.now() + 5 * 60_000;
+  }
+}
+
+function storeAccessToken(token: string): string {
+  activeAccessToken = token;
+  activeAccessTokenExpiresAt = tokenExpiry(token);
+  return token;
+}
+
+async function authRequest<T>(path: string, body?: object): Promise<T> {
+  const response = await fetch(`/api/auth/${path}`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    message?: string;
+    accessToken?: string;
+    challenge?: string;
+    session?: string;
+  };
+  if (!response.ok) {
+    const error = new Error(
+      payload.message ?? "Authentication failed",
+    ) as Error & { status?: number; code?: string };
+    error.status = response.status;
+    error.code = payload.error;
+    throw error;
+  }
+  return payload as T;
+}
+
+export async function signIn(
+  username: string,
+  password: string,
+): Promise<SignInResult> {
+  const result = await authRequest<{
+    accessToken?: string;
+    challenge?: string;
+    session?: string;
+  }>("sign-in", { username, password });
+  if (result.challenge === "new-password-required" && result.session) {
+    return { type: "new-password-required", username, session: result.session };
+  }
+  if (!result.accessToken)
+    throw new Error("The authentication service returned no access token.");
+  storeAccessToken(result.accessToken);
+  return { type: "authenticated" };
+}
+
+export async function completeNewPassword(
+  username: string,
+  newPassword: string,
+  session: string,
+): Promise<void> {
+  const result = await authRequest<TokenResponse>("complete-new-password", {
+    username,
+    newPassword,
+    session,
+  });
+  storeAccessToken(result.accessToken);
+}
+
+export async function requestPasswordReset(username: string): Promise<void> {
+  await authRequest("forgot-password", { username });
+}
+
+export async function confirmPasswordReset(
+  username: string,
+  code: string,
+  password: string,
+): Promise<void> {
+  await authRequest("confirm-reset", { username, code, password });
+}
+
+export async function logout(): Promise<void> {
+  if (devAuthBypassed) {
+    activeAccessToken = null;
+    activeAccessTokenExpiresAt = 0;
+    window.location.assign("/");
+    return;
+  }
+  await fetch("/api/auth/sign-out", {
+    method: "POST",
+    credentials: "same-origin",
+  }).catch(() => {});
+  activeAccessToken = null;
+  activeAccessTokenExpiresAt = 0;
   window.location.assign("/login");
 }
 
-/** Force a token renewal. Distinguishes a genuinely dead refresh token (the
- * provider answered with an OAuth error like `invalid_grant`) from a transient
- * network/timeout failure — only the former is allowed to destroy the session.
- * Used by the API client to retry a 401 with fresh credentials. */
+export function redirectToLogin(): void {
+  activeAccessToken = null;
+  activeAccessTokenExpiresAt = 0;
+  window.location.assign("/login");
+}
+
 export async function renewToken(): Promise<string> {
   if (devAuthBypassed) return "dev-token";
-  let renewed: User | null;
-  try {
-    renewed = await um().signinSilent();
-  } catch (cause) {
-    // oidc-client-ts surfaces provider rejections as an ErrorResponse carrying
-    // an `error` field; network/timeout errors have none. Rejections without
-    // that field are transient and must not clear the stored session.
-    const providerRejected = Boolean((cause as { error?: unknown })?.error);
-    if (!providerRejected) throw cause;
-    await um()
-      .removeUser()
-      .catch(() => {});
-    throw new SessionExpiredError(cause);
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = authRequest<TokenResponse>("refresh")
+    .then((result) => storeAccessToken(result.accessToken))
+    .catch((cause) => {
+      if ((cause as { status?: number })?.status === 401) {
+        activeAccessToken = null;
+        activeAccessTokenExpiresAt = 0;
+        throw new SessionExpiredError(cause);
+      }
+      throw cause;
+    })
+    .finally(() => {
+      refreshInFlight = null;
+    });
+  return refreshInFlight;
+}
+
+export async function accessToken(): Promise<string> {
+  if (devAuthBypassed) return "dev-token";
+  if (activeAccessToken && activeAccessTokenExpiresAt > Date.now() + 30_000) {
+    return activeAccessToken;
   }
-  if (!renewed?.access_token) {
-    await um()
-      .removeUser()
-      .catch(() => {});
-    throw new SessionExpiredError();
-  }
-  return renewed.access_token;
+  return renewToken();
 }

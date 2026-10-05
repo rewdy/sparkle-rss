@@ -37,7 +37,6 @@ export default defineConfig({
           react: ["react", "react-dom"],
           query: ["@tanstack/react-query", "@tanstack/react-virtual"],
           mantine: ["@mantine/core", "@mantine/hooks"],
-          oidc: ["oidc-client-ts"],
           state: ["jotai"],
           routes: ["wouter"],
           icons: ["react-icons"],

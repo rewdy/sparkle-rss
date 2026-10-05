@@ -185,6 +185,8 @@ locals {
   # greader surface authenticates inside the Lambda (GoogleLogin header);
   # /api/v1 requires a valid Cognito JWT.
   open_routes = [
+    "ANY /api/auth",
+    "ANY /api/auth/{proxy+}",
     "ANY /api/greader.php",
     "ANY /api/greader.php/{proxy+}",
     "ANY /greader.php",

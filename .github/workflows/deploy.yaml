@@ -76,8 +76,6 @@ jobs:
         id: tfout
         working-directory: ${{ env.TF_DIR }}
         run: |
-          echo "cognito_issuer=$(terraform output -raw cognito_issuer 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
-          echo "cognito_client_id=$(terraform output -raw cognito_client_id 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
           echo "db_endpoint=$(terraform output -raw db_endpoint)" >> "$GITHUB_OUTPUT"
           echo "assets_bucket=$(terraform output -raw assets_bucket_name)" >> "$GITHUB_OUTPUT"
           echo "distribution_id=$(terraform output -raw distribution_id)" >> "$GITHUB_OUTPUT"
@@ -90,13 +88,8 @@ jobs:
         env:
           DSQL_ENDPOINT: ${{ steps.tfout.outputs.db_endpoint }}
 
-      # Build the web bundle from post-apply Cognito outputs so the baked-in
-      # client id always matches the pool that owns the hosted-UI domain.
       - name: build web
         run: pnpm build:web
-        env:
-          VITE_COGNITO_ISSUER: ${{ steps.tfout.outputs.cognito_issuer }}
-          VITE_COGNITO_CLIENT_ID: ${{ steps.tfout.outputs.cognito_client_id }}
 
       - name: publish web assets
         run: |
