@@ -727,5 +727,6 @@ Both were found by, and are now covered by, tests written for read later.
   routes succeeded against Cognito, including rejection after token revocation. After the
   pipeline deployed Terraform, the production app client reported `ALLOW_USER_PASSWORD_AUTH`
   and a seven-day refresh lifetime; the user confirmed a successful login. The one-time
-  reset code was removed from the local secret file. Delete the disposable user after any
-  remaining post-deploy observation is complete.
+  reset code was removed from the local secret file. After the post-deploy walkthrough,
+  the disposable Cognito user was deleted and its username/password were removed from the
+  local secret file.
