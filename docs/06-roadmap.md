@@ -250,6 +250,12 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       Adopt the guard and byte cap built for read later (`article/fetch-article.ts`) so feed
       fetching gets the same protections. *Exit: both feed paths reject private/metadata
       addresses and cap response size, with tests.*
+- [ ] **Full content for teaser feeds** (decision pending) — reuse the read-later
+      extractor so articles whose feed only supplies a summary can be read in full. Two
+      scopes are estimated (on-demand ~4-6 days, automatic at ingest ~8-12 days) along with
+      the robots.txt/ToS, cost, and per-user-refetch questions that gate automation. Plan /
+      LOE: [11-full-content-fetch.md](11-full-content-fetch.md). *Exit: decision recorded,
+      then the chosen scope implemented with greader conformance unchanged.*
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
       image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse
       PWA criteria met; first-view images lazy-load.*
