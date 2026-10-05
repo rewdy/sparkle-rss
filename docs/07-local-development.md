@@ -79,12 +79,9 @@ locally persisted images can be fetched through the normal media endpoint. Remov
 API_TARGET=https://app.sparklerss.com pnpm dev
 ```
 
-The Vite proxy then forwards `/api` to the deployed stack. The browser performs a real
-Cognito login in this mode (leave `VITE_AUTH_DISABLED` unset): set
-`VITE_COGNITO_ISSUER` and `VITE_COGNITO_CLIENT_ID` in `.env` from `terraform output`
-(the prod env exposes both), and ensure the deployed API's `WEB_ORIGINS` includes
-`http://localhost:5173`. The prod stack already allows `http://localhost:5173` as a
-Cognito callback (`enable_local_dev_callbacks`).
+The Vite proxy then forwards `/api` to the deployed stack. The browser uses the first-party
+sign-in flow in this mode (leave `VITE_AUTH_DISABLED` unset); no Cognito issuer or client id
+is needed in the web bundle. Use the Vite proxy so the refresh cookie stays same-origin.
 
 ## Using NetNewsWire locally
 
@@ -133,7 +130,6 @@ list.
 | `ALLOW_INSECURE_DEV_AUTH` | API | Accept `X-Dev-User` instead of Cognito JWTs |
 | `GREADER_HMAC_KEY` | API | HMAC key for greader credential derivation (local; prod uses Secrets Manager) |
 | `VITE_AUTH_DISABLED` | web | Skip Cognito in the SPA |
-| `VITE_COGNITO_ISSUER` / `VITE_COGNITO_CLIENT_ID` | web | Real Cognito login when testing the local UI against a deployed API |
 | `API_TARGET` | Vite dev server | Proxy target override (default `http://localhost:8787`) |
 | `WEB_ORIGINS` | API | CORS allowlist for the dev origin |
 | `DSQL_ENDPOINT`, `AWS_REGION` | db spike scripts | DSQL spikes only |

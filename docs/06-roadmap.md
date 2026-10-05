@@ -3,7 +3,7 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-09-15)
+## Current state (updated 2026-10-05)
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
@@ -147,7 +147,8 @@ gate before calling the milestone fully done.
       (terminal-inspired theme from hn-tok).
 - [x] Settings page: color scheme, density, mark-on-open, API token mint/revoke
       (shown once + copy), OPML import/export, sign out.
-- [x] PKCE auth against Cognito hosted UI with silent renew; guarded shell;
+- [x] First-party Cognito auth through service endpoints with cookie-backed renewal;
+      guarded shell;
       optimistic read/star mutations; cursor-based infinite scroll;
       unread badge correctness via single counts query invalidation.
 - [x] Keyboard-first: j/k navigate, m read, s star, Esc close, Shift+A mark stream
@@ -156,7 +157,7 @@ gate before calling the milestone fully done.
       (tracked there, not here).
 
 **Exit:** ✅ deployed and live at app.sparklerss.com (bundle carries Cognito config
-injected from tf outputs). Daily-driveable loop verified by author during Phase 6
+      is configuration-free; Cognito issuer/client settings stay on the API. Daily-driveable loop verified by author during Phase 6
 usage window; design direction: terminal-inspired, colors adjustable.
 
 ## Phase 6 — Hardening & polish (ACTIVE)
@@ -245,6 +246,13 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       payloads, the queue UI and keyboard shortcut, inline URL saving with a
       SSRF-guarded fetch and Readability extraction, and the Settings bookmarklet.
       Remaining optional polish is listed in doc 10.*
+- [ ] **First-party auth live verification** — the self-hosted Cognito flow is implemented
+      in the repository; verify it against a designated Cognito test user before production
+      rollout. See the `self-hosted-cognito-auth` OpenSpec change.
+- [x] **First-party Cognito authentication** — replace hosted-login redirects with
+      service-mediated sign-in, temporary-password setup, password recovery, and session
+      renewal through a seven-day HttpOnly refresh cookie. Invite-only provisioning and the
+      existing `/api/v1` JWT and Google Reader authentication contracts remain in place.
 - [ ] **Shared outbound-fetch guard** — `feed/fetch-feed.ts` and `feed/discover.ts` still
       fetch arbitrary URLs with no address filtering and an unbounded `response.text()`.
       Adopt the guard and byte cap built for read later (`article/fetch-article.ts`) so feed

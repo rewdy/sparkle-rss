@@ -699,3 +699,33 @@ Both were found by, and are now covered by, tests written for read later.
   routes (e.g. the popup grows its own data loading), a dedicated path is the next step.
 - `SaveArticlePage.tsx` is gone; `Shell` lazy-imports the form component for both variants,
   so the code-splitting intent (keep the form off first paint) is preserved.
+## 2026-10-05 — First-party Cognito authentication
+
+- Replaced the SPA's hosted-login PKCE redirect with same-origin `/api/auth/*` endpoints
+  backed by Cognito password authentication. Sign-in handles admin-created users who must
+  set a permanent password, and forgot/reset flows return generic account lookup responses.
+- The API returns the one-hour access token to the SPA and keeps the seven-day refresh
+  token in a Secure, HttpOnly, SameSite=Strict cookie scoped to `/api/auth`. The SPA keeps
+  access tokens in memory and renews through the API after reload or a protected API 401.
+- The Cognito app client remains public and invite-only provisioning stays unchanged.
+  API Gateway keeps only `/api/v1/*` behind the Cognito JWT authorizer; `/api/auth/*` is
+  explicitly open for the auth exchanges and the greader API retains its existing token
+  authentication.
+- The old browser OIDC package, callback route, and web build-time issuer/client settings
+  were removed. Cognito hosted-login infrastructure remains managed in Terraform during
+  rollout; no database change is required.
+- The deployment pipeline applies the API Gateway and Cognito app-client changes before
+  publishing the new SPA, so the new open auth routes are live before the UI calls them.
+  Existing hosted-login resources remain available during rollout. Rollback restores the
+  prior SPA build and the previous 30-day refresh-token setting; the hosted-login callback
+  configuration is retained in Terraform for that path.
+- Local checks passed for the auth API, the web auth flows, and existing API/Google Reader
+  contracts. With the user's approval, a disposable verification user was created in the
+  production pool with invitation delivery suppressed. Cognito's temporary-password
+  challenge, permanent-password change, refresh, and refresh-token revocation succeeded.
+  Password reset succeeded through the new API endpoint, and live API refresh/sign-out
+  routes succeeded against Cognito, including rejection after token revocation. After the
+  pipeline deployed Terraform, the production app client reported `ALLOW_USER_PASSWORD_AUTH`
+  and a seven-day refresh lifetime; the user confirmed a successful login. The one-time
+  reset code was removed from the local secret file. Delete the disposable user after any
+  remaining post-deploy observation is complete.

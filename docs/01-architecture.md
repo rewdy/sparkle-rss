@@ -50,12 +50,14 @@ simplification vs. a classic RDS design (no NAT gateway, no subnets, no security
 
 | Component | Notes |
 | --- | --- |
-| Cognito User Pool | Sign-up **disabled** (invite-only: `aws cognito-idp admin-create-user`). Password policy enforced; MFA optional later. Hosted UI on the default `*.auth.<region>.amazoncognito.com` domain initially (custom domain possible later, cert in us-east-1). |
-| App client | Public client (no secret), PKCE + authorization-code flow for the SPA. Access token JWTs carry `sub` = our `users.cognito_sub`. |
-| API Gateway JWT authorizer | Bound only to `/api/v1/*` routes. Validates issuer + audience. The greader routes deliberately have **no** authorizer (see auth model below). |
+| Cognito User Pool | Sign-up **disabled** (invite-only: `aws cognito-idp admin-create-user`). Password policy enforced; MFA optional later. |
+| App client | Public client (no secret), password and refresh-token auth. Access/ID tokens last one hour; refresh tokens last seven days. Access token JWTs carry `sub` = our `users.cognito_sub`. |
+| API Gateway authorization | `/api/v1/*` uses the Cognito JWT authorizer. `/api/auth/*` and greader routes have no gateway authorizer; auth endpoints call Cognito and greader authenticates its own API token. |
 
-The SPA uses `oidc-client-ts` against the hosted UI. Tokens live in memory +
-`sessionStorage`; silent renew via refresh token.
+The SPA signs in through `/api/auth/*`. The API keeps the refresh token in a Secure,
+HttpOnly, SameSite=Strict cookie scoped to `/api/auth`; it returns the one-hour access token
+to the SPA, which keeps it in memory and restores the session through the refresh endpoint.
+Password reset codes are delivered by Cognito. User creation remains admin-managed.
 
 ### Service layer
 
@@ -63,7 +65,7 @@ One codebase (`apps/api`, Hono) packaged into **three Lambda functions**, all No
 
 | Function | Trigger | Purpose |
 | --- | --- | --- |
-| `api` | API Gateway `/api/{proxy+}` | Mounts two Hono apps: `greaderApp` (Google Reader compat, self-authenticating) and `webApiApp` (Cognito JWT, `/api/v1`). Also serves OPML import/export under `/api/v1`. |
+| `api` | API Gateway `/api/{proxy+}` | Mounts three Hono apps: `authApi` (`/api/auth`, calls Cognito), `greaderApp` (Google Reader compat, self-authenticating), and `webApiApp` (Cognito JWT, `/api/v1`). Also serves OPML import/export under `/api/v1`. |
 | `ingest-orchestrator` | EventBridge Scheduler `rate(5 minutes)` | Queries DSQL for feeds where `next_fetch_after <= now()`, applies max-batch cap, enqueues one SQS message per due feed. Idempotent by construction (re-running just re-enqueues; workers dedupe writes). |
 | `ingest-worker` | SQS event source mapping (batch ~5, reserved concurrency ~10) | Fetches one feed per message with conditional GET (`ETag`/`If-Modified-Since`), parses RSS/Atom/JSON Feed (`rss-parser`), sanitizes HTML (`sanitize-html`), upserts entries per subscriber, updates feed sync metadata and backoff state. Failures retry per SQS redrive policy → DLQ. |
 
@@ -95,7 +97,8 @@ Amazon Aurora DSQL cluster (single region), Postgres wire-compatible, accessed w
 ### 1. Web app reading path
 
 ```
-Browser ──OIDC PKCE──▶ Cognito hosted UI ──code+tokens──▶ SPA
+Browser ──POST /api/auth/sign-in──▶ api Lambda ──password auth──▶ Cognito
+Browser ◀──access token + HttpOnly refresh cookie── api Lambda
 SPA ──GET /api/v1/entries?stream=all&unread=true&cursor=…──▶ JWT authorizer ──▶ api Lambda
 api Lambda ──keyset SELECT──▶ DSQL ──▶ JSON page {items, nextCursor}
 SPA renders list; mark-read/star are PATCH mutations with optimistic UI
@@ -152,7 +155,7 @@ conformance suite are unaffected. Design and rationale: [10-read-later.md](10-re
 
 | Concern | Control |
 | --- | --- |
-| Human auth | Cognito (invite-only pool, PKCE SPA client, JWT authorizer on `/api/v1/*`) |
+| Human auth | Cognito (invite-only pool, API-mediated password auth, HttpOnly refresh cookie, JWT authorizer on `/api/v1/*`) |
 | Client (NetNewsWire) auth | Per-user random API token (32 bytes, base64url). Stored **SHA-256 hashed**. `ClientLogin` verifies token, returns stateless HMAC credential derived from `(server HMAC key, user id, token hash)` so request validation is one DB read (or cacheable). Revocation = delete token row. |
 | Write-token replay | Google Reader's `T` token is implemented as a deterministic per-user value (FreshRSS parity) — it exists because clients require fetching one; it is not a CSRF defense in our threat model. Mutations still require the valid `GoogleLogin auth` header. |
 | DB auth | DSQL IAM tokens, auto-rotated per connection. Zero stored DB credentials. |
