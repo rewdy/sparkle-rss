@@ -153,3 +153,27 @@ v1 keeps everything. Expected growth at personal scale (~100 feeds): ~700k entri
 beyond per-feed caps or age, **excluding starred entries and anything referenced by
 `read_later_items.entry_id`**, plus quarantine sweep for feeds with `error_count >= 50`.
 No premature tooling.
+
+## Saved article images (2026-10-10)
+
+`user_media.kind = saved_article_image` represents an explicit save. The additive
+0004 migration adds nullable `read_later_item_id`, `source_identity`, `dedupe_hash`,
+`image_source_url`, `saved_at`, and a `source` JSONB snapshot. Snapshot fields are
+kind/id, articleTitle/articleUrl, feedId/feedTitle/feedUrl, and siteName. Attribution
+lives on the association, independently of globally shared binary metadata. Splash
+rows keep these fields null. The unique ascending index
+`user_media_saved_dedupe_key(user_id, kind, dedupe_hash)` permits multiple null
+splash keys; saved keys hash source identity plus resolved image URL. Additional
+ascending indexes cover `(user_id, kind, saved_at, id)` and read-later references.
+
+Explicit saves survive unsubscribe, orphan-feed cleanup, un-star, and read-later
+removal. Those feed cleanup paths delete only `article_splash` associations. Source
+IDs are historical references, with no FKs; unavailable sources retain their snapshot.
+Removing a save deletes its association only. Unreferenced binaries currently remain
+in private storage; physical garbage collection is a separate lifecycle task.
+
+`GET /api/v1/saved` unions user-scoped starred entries and saved-image associations,
+orders by save timestamp/type/typed ID, then hydrates one bounded page. Its versioned
+base64url cursor includes saved-library scope, sort direction, a UTC timestamp with
+database precision, kind, and ID. Article IDs compare numerically and image IDs as
+UUIDs. Existing Google Reader and `/entries?stream=starred` stay article-only.

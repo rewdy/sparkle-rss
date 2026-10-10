@@ -62,6 +62,11 @@ data "aws_iam_policy_document" "media_read" {
     actions   = ["s3:GetObject"]
     resources = ["${var.media_bucket_arn}/*"]
   }
+  statement {
+    effect    = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["${var.media_bucket_arn}/media/*"]
+  }
 }
 
 resource "aws_iam_role_policy" "media_read" {

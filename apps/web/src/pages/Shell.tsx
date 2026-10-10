@@ -7,6 +7,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { PageTitle } from "../components/PageTitle";
 import { ReaderPane } from "../components/ReaderPane";
+import { SavedImagePane } from "../components/SavedImagePane";
+import { SavedList } from "../components/SavedList";
 import { Sidebar } from "../components/Sidebar";
 import { StreamInner } from "../components/StreamInner";
 import { Topbar } from "../components/Topbar";
@@ -27,6 +29,7 @@ import {
   useToggleReadLater,
   useToggleStar,
 } from "../lib/mutations";
+import { useSavedLibrary } from "../lib/saved-queries";
 import type { Entry, StreamDescriptor } from "../lib/types";
 import { isEntryStream } from "../lib/types";
 import {
@@ -128,6 +131,7 @@ export function Shell(): ReactElement {
   const route = useMemo(() => parseRoute(location), [location]);
   const descriptor = route?.stream ?? null;
   const routeEntryId = route?.entryId ?? null;
+  const imageId = route?.imageId ?? null;
   const storyIndex = route?.storyIndex ?? 0;
 
   const subsQ = useQuery({
@@ -166,9 +170,29 @@ export function Shell(): ReactElement {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     select: (data) => data.pages.flatMap((p) => p.items),
-    enabled: descriptor !== null,
+    enabled: descriptor !== null && descriptor.kind !== "starred",
   });
-  const entriesCache = entriesQ.data ?? [];
+  const savedQ = useSavedLibrary(sort, descriptor?.kind === "starred");
+  const entriesCache = useMemo(
+    () =>
+      descriptor?.kind === "starred"
+        ? (savedQ.data?.pages.flatMap((page) =>
+            page.items.flatMap((item) =>
+              item.kind === "article" ? [item.entry] : [],
+            ),
+          ) ?? [])
+        : (entriesQ.data ?? []),
+    [descriptor?.kind, savedQ.data, entriesQ.data],
+  );
+
+  useEffect(() => {
+    if (
+      descriptor?.kind === "starred" &&
+      route?.storyIndex !== null &&
+      route?.storyIndex !== undefined
+    )
+      navigate(`/starred${viewSearch("all", sort)}`, { replace: true });
+  }, [descriptor?.kind, route?.storyIndex, sort, navigate]);
 
   // Source of truth for the open entry is the react-query cache (mutations
   // patch it optimistically); seed it from the stream cache to avoid a flash.
@@ -301,7 +325,13 @@ export function Shell(): ReactElement {
         const target = descriptor ?? { kind: "all" as const };
         // 'today' would mark ALL of today's API stream read — skip it, and
         // read later is not an entry stream at all.
-        if (target.kind === "today" || !isEntryStream(target)) return;
+        if (
+          target.kind === "today" ||
+          target.kind === "starred" ||
+          !isEntryStream(target) ||
+          imageId
+        )
+          return;
         void api.entries.markAllRead(target).catch(() => undefined);
         return;
       }
@@ -310,13 +340,15 @@ export function Shell(): ReactElement {
           setShortcutsOpen((open) => !open);
           break;
         case "Escape":
-          if (routeEntryId !== null) closeReader();
+          if (routeEntryId !== null || imageId !== null) closeReader();
           break;
         case "j":
+          if (imageId) break;
           e.preventDefault();
           move(1);
           break;
         case "k":
+          if (imageId) break;
           e.preventDefault();
           move(-1);
           break;
@@ -351,6 +383,7 @@ export function Shell(): ReactElement {
     },
     [
       descriptor,
+      imageId,
       routeEntryId,
       activeEntry,
       move,
@@ -451,6 +484,16 @@ export function Shell(): ReactElement {
       </AppShell.Navbar>
 
       <AppShell.Main style={{ position: "relative" }}>
+        {descriptor?.kind === "starred" && (
+          <SavedList
+            sort={sort}
+            hidden={routeEntryId !== null || imageId !== null}
+            onSelectArticle={openEntry}
+            onSelectImage={(id) =>
+              navigate(`/starred/images/${id}${viewSearch("all", sort)}`)
+            }
+          />
+        )}
         {isSettings ? (
           <Suspense
             fallback={
@@ -472,7 +515,18 @@ export function Shell(): ReactElement {
             <SaveArticleForm variant="page" />
           </Suspense>
         ) : descriptor ? (
-          routeEntryId !== null ? (
+          imageId !== null ? (
+            <SavedImagePane
+              id={imageId}
+              sort={sort}
+              onClose={closeReader}
+              onRemoved={() =>
+                navigate(`/starred${viewSearch("all", sort)}`, {
+                  replace: true,
+                })
+              }
+            />
+          ) : routeEntryId !== null ? (
             entryLoading ? (
               <Center h="calc(100dvh - var(--app-shell-header-offset, 0rem))">
                 <Loader size="sm" type="dots" />
@@ -486,7 +540,7 @@ export function Shell(): ReactElement {
                 onPrev={() => move(-1)}
               />
             ) : null
-          ) : (
+          ) : descriptor.kind === "starred" ? null : (
             <StreamInner
               stream={descriptor}
               filter={filter}

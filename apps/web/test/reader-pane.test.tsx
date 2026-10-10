@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +11,10 @@ import type { Entry } from "../src/lib/types";
 // through a fake api so no real network happens.
 vi.mock("../src/lib/api", () => ({
   api: {
+    savedImages: {
+      listForSource: vi.fn(async () => ({ items: [] })),
+      save: vi.fn(),
+    },
     subscriptions: {
       list: vi.fn(async () => ({
         subscriptions: [
@@ -180,5 +184,113 @@ describe("ReaderPane", () => {
     await user.click(screen.getByRole("button", { name: /previous/ }));
     expect(onNext).toHaveBeenCalledTimes(1);
     expect(onPrev).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("reader image saving", () => {
+  it("saves the selected image without starring the article", async () => {
+    vi.mocked(mockApi.savedImages.save).mockResolvedValue({
+      item: { id: "saved-image", imageSourceUrl: "https://example.com/a.png" },
+    } as never);
+    renderPane();
+    await user.click(screen.getByRole("button", { name: "save image" }));
+    expect(mockApi.savedImages.save).toHaveBeenCalledWith({
+      source: { kind: "entry", id: "42" },
+      imageUrl: "https://example.com/a.png",
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "image saved" }),
+      ).toBeDisabled(),
+    );
+    expect(mockApi.entries.setStarred).not.toHaveBeenCalled();
+  });
+  it("offers retry after failure and does not show success prematurely", async () => {
+    vi.mocked(mockApi.savedImages.save).mockRejectedValueOnce(
+      new Error("storage failed"),
+    );
+    renderPane();
+    await user.click(screen.getByRole("button", { name: "save image" }));
+    expect(
+      await screen.findByRole("button", { name: "retry saving image" }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "image saved" }),
+    ).not.toBeInTheDocument();
+  });
+  it("keeps controls outside linked images and preserves text links", () => {
+    renderPane({
+      entry: {
+        ...ENTRY,
+        contentHtml:
+          '<a href="https://example.com/full">text<img src="/a.png" alt="diagram"></a>',
+      },
+    });
+    const control = screen.getByRole("button", { name: "save image: diagram" });
+    expect(control.closest("a")).toBeNull();
+    const image = document.querySelector(".reading-content img");
+    expect(image?.closest("a")?.href).toBe("https://example.com/full");
+    expect(screen.getByText("text").closest("a")?.href).toBe(
+      "https://example.com/full",
+    );
+  });
+  it("supports keyboard activation", async () => {
+    vi.mocked(mockApi.savedImages.save).mockResolvedValue({
+      item: { id: "keyboard-image" },
+    } as never);
+    renderPane();
+    const control = screen.getByRole("button", { name: "save image" });
+    control.focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(mockApi.savedImages.save).toHaveBeenCalledTimes(1),
+    );
+  });
+  it("updates controls when content changes without changing the entry ID", () => {
+    const view = render(
+      <Providers>
+        <ReaderPane
+          entry={ENTRY}
+          onClose={vi.fn()}
+          onNext={vi.fn()}
+          onPrev={vi.fn()}
+        />
+      </Providers>,
+    );
+    view.rerender(
+      <Providers>
+        <ReaderPane
+          entry={{
+            ...ENTRY,
+            contentHtml:
+              '<figure><img src="/b.png" alt="new"><figcaption>caption</figcaption></figure>',
+          }}
+          onClose={vi.fn()}
+          onNext={vi.fn()}
+          onPrev={vi.fn()}
+        />
+      </Providers>,
+    );
+    expect(screen.getAllByRole("button", { name: /save image/ })).toHaveLength(
+      1,
+    );
+    expect(
+      screen.getByRole("button", { name: "save image: new" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("caption")).toBeInTheDocument();
+  });
+  it("uses read-later source identity for URL articles", async () => {
+    vi.mocked(mockApi.savedImages.save).mockResolvedValue({
+      item: { id: "url-image" },
+    } as never);
+    renderPane({
+      readLater: true,
+      entry: { ...ENTRY, id: "url-item", source: "url" },
+    });
+    await user.click(screen.getByRole("button", { name: "save image" }));
+    expect(mockApi.savedImages.save).toHaveBeenCalledWith({
+      source: { kind: "read-later", id: "url-item" },
+      imageUrl: "https://example.com/a.png",
+    });
   });
 });

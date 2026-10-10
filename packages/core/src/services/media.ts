@@ -38,7 +38,44 @@ export function createMediaService({
       );
   }
 
+  async function persist(image: SelectedArticleImage) {
+    const sha256 = createHash("sha256").update(image.bytes).digest("hex");
+    let object = (
+      await db
+        .select()
+        .from(schema.mediaObjects)
+        .where(eq(schema.mediaObjects.sha256, sha256))
+    ).at(0);
+    if (!object) {
+      const id = randomUUID();
+      const objectKey = `media/${sha256}`;
+      await store.put(objectKey, image.bytes, image.mimeType);
+      await db
+        .insert(schema.mediaObjects)
+        .values({
+          id,
+          objectKey,
+          sha256,
+          mimeType: image.mimeType,
+          byteSize: image.bytes.byteLength,
+          width: image.width,
+          height: image.height,
+          sourceUrl: image.candidate.url,
+        })
+        .onConflictDoNothing();
+      object = (
+        await db
+          .select()
+          .from(schema.mediaObjects)
+          .where(eq(schema.mediaObjects.sha256, sha256))
+      ).at(0);
+    }
+    if (!object) throw new Error("media object missing after insert");
+    return object;
+  }
+
   return {
+    persist,
     async getForUser(userId: string, mediaId: string) {
       const rows = await findForUser(userId, [mediaId]);
       return rows.at(0) ?? null;
@@ -51,38 +88,7 @@ export function createMediaService({
       entryId: number,
       image: SelectedArticleImage,
     ): Promise<string> {
-      const sha256 = createHash("sha256").update(image.bytes).digest("hex");
-      let object = (
-        await db
-          .select()
-          .from(schema.mediaObjects)
-          .where(eq(schema.mediaObjects.sha256, sha256))
-      ).at(0);
-      if (!object) {
-        const id = randomUUID();
-        const objectKey = `media/${sha256}`;
-        await store.put(objectKey, image.bytes, image.mimeType);
-        await db
-          .insert(schema.mediaObjects)
-          .values({
-            id,
-            objectKey,
-            sha256,
-            mimeType: image.mimeType,
-            byteSize: image.bytes.byteLength,
-            width: image.width,
-            height: image.height,
-            sourceUrl: image.candidate.url,
-          })
-          .onConflictDoNothing();
-        object = (
-          await db
-            .select()
-            .from(schema.mediaObjects)
-            .where(eq(schema.mediaObjects.sha256, sha256))
-        ).at(0);
-      }
-      if (!object) throw new Error("media object missing after insert");
+      const object = await persist(image);
       await db
         .delete(schema.userMedia)
         .where(

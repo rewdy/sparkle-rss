@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { api } from "./api";
 import { qk } from "./keys";
-import type { Entry, EntryStreamDescriptor } from "./types";
+import type { Entry, EntryStreamDescriptor, ImageSource } from "./types";
 
 /**
  * Read-state toggle, optimistically applied across entry caches. Saved
@@ -65,6 +65,7 @@ function useReadStateMutation(readLater: boolean) {
         qc.setQueryData(key, data);
     },
     onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["saved"] });
       void qc.invalidateQueries({ queryKey: qk.unreadCounts });
       if (readLater) void qc.invalidateQueries({ queryKey: readLaterKey });
     },
@@ -128,9 +129,35 @@ export function useToggleStar() {
         qc.setQueryData(key, data);
     },
     onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["saved"] });
       void qc.invalidateQueries({
         queryKey: qk.entries({ kind: "starred" }, "all", "desc"),
       });
+    },
+  });
+}
+
+export function useSaveImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { source: ImageSource; imageUrl: string }) =>
+      api.savedImages.save(input),
+    onSuccess: (data, input) => {
+      qc.setQueryData(qk.savedImage(data.item.id), data);
+      void qc.invalidateQueries({ queryKey: qk.sourceImages(input.source) });
+      void qc.invalidateQueries({ queryKey: ["saved"] });
+    },
+  });
+}
+
+export function useRemoveImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.savedImages.remove(id),
+    onSuccess: (_data, id) => {
+      qc.removeQueries({ queryKey: qk.savedImage(id) });
+      void qc.invalidateQueries({ queryKey: ["source-images"] });
+      void qc.invalidateQueries({ queryKey: ["saved"] });
     },
   });
 }

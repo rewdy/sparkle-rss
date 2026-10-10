@@ -186,3 +186,14 @@ describe("date-grouping helpers", () => {
     );
   });
 });
+
+it("parses a saved-image deep link without treating it as an article", () => {
+  expect(
+    parseRoute("/starred/images/12345678-1234-1234-1234-123456789012"),
+  ).toEqual({
+    stream: { kind: "starred" },
+    entryId: null,
+    storyIndex: null,
+    imageId: "12345678-1234-1234-1234-123456789012",
+  });
+});

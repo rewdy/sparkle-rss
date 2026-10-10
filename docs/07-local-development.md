@@ -136,3 +136,15 @@ list.
 | `MEDIA_BUCKET` | API/ingest | S3 bucket for article media; set to a local Floci bucket for image testing |
 | `S3_ENDPOINT` | API/ingest | Optional S3-compatible endpoint, e.g. `http://localhost:4566` |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | API/ingest | Local emulator credentials when `S3_ENDPOINT` is set |
+
+## Verifying explicit image saves
+
+Use the existing local media bucket/Floci environment above, run the new database
+migration, and open feed or read-later articles with inline images. Hover/focus or
+use a touch device to save an image, then inspect Saved and refresh its preview.
+Unsubscribe/delete the source to verify stored bytes and attribution survive.
+Removing a saved image revokes the association, while automatic splashes/shared
+objects remain. Downloads are limited to public HTTP(S) targets even in dev mode;
+local/private URLs are rejected. API source-state and list/detail ownership can be
+checked using different `X-Dev-User` values. Unit tests inject transport and DNS;
+Postgres integration tests exercise concurrency, retention, and mixed cursors.

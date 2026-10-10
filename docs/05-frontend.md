@@ -218,3 +218,41 @@ the favicon is never used as the hero image. The swipe surface is a native verti
 scroll container with mandatory CSS scroll snapping; its settled story index is written
 to `<stream>/story/:index` so refresh and article back navigation preserve position.
 Read stories remain actionable but use a gray button, check icon, and muted headline.
+
+## Saved images and mixed Saved timeline (2026-10-10)
+
+Saved (`/starred`) uses `/api/v1/saved` rather than the article-only starred listing.
+Its discriminated rows are `{kind: article, id, savedAtMs, entry}` and
+`{kind: image, id, savedAtMs, item}`. Ordering, date groups, and row times use save
+time. Article publish time remains intact in the reader. Images show lazy thumbnails
+from private stored originals with proportional `object-fit: contain`; thumbnails
+are display sizing, not generated derivatives. URL read-later articles do not enter
+Saved merely by being in the queue.
+
+`/starred/images/:id` opens an independently fetched image preview with provenance,
+external source link, available internal article link, and independent removal.
+Browser routes own selection and retain `?sort=asc`; the Saved list stays mounted
+when its article/image reader opens to preserve scroll. Image previews do not apply
+article read state or article shortcuts. Article j/k navigation skips image rows.
+Saved always uses the mixed list, hides the swipe toggle, and normalizes its old
+story routes to the list; other streams keep their presentation preference.
+
+Reader content images have app-owned controls outside publisher links. Desktop
+hover/focus reveals the button; touch/coarse-pointer controls remain visible. Native
+buttons support keyboard activation. Pending, saved, and retry states leave article
+read/star/read-later state independent. Enhancement is rebuilt for content changes
+and cleaned up on unmount, preserving captions and source links.
+
+React Query owns `['saved', {sort}]`, `['saved-image', id]`, and
+`['source-images', kind, id]`; image mutations invalidate source/library data, and
+article mutations invalidate the mixed library. Active library/detail queries refresh
+signed image URLs before expiry. No saved payload is held in jotai.
+
+Web-only API: `POST /saved-images` takes `{source: {kind: entry|read-later, id},
+imageUrl}`; `GET /saved-images?sourceKind=&sourceId=` supplies reader state;
+`GET /saved-images/:id` supplies preview; `DELETE /saved-images/:id` removes a save.
+`GET /saved?sort=asc|desc&limit=&cursor=` supplies mixed pages (max 200). Image
+responses carry source snapshots, availability, save time, original image URL, and
+media dimensions/alt. Create/detail/library include signed `image.url` and
+`image.urlExpiresAtMs`; reader state does not need signed URLs. Missing or foreign
+image IDs return 404, including repeat deletion.

@@ -247,6 +247,7 @@ export function createSubscriptionsService(
         .where(
           and(
             eq(schema.userMedia.userId, userId),
+            eq(schema.userMedia.kind, "article_splash"),
             sql`${schema.userMedia.entryId} in (select id from ${schema.userEntries} where ${schema.userEntries.userId} = ${userId} and ${schema.userEntries.feedId} = ${feedId})`,
           ),
         );

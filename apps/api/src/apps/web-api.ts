@@ -1,6 +1,11 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { AppError, type EntryDto, type StreamSelector } from "@sparkle/core";
+import {
+  AppError,
+  type EntryDto,
+  type SavedImageDto,
+  type StreamSelector,
+} from "@sparkle/core";
 import { Hono } from "hono";
 import { z } from "zod";
 import { createS3Client } from "../s3";
@@ -368,6 +373,100 @@ export function createWebApiApp(): Hono<Env> {
   });
 
   // --- read later ------------------------------------------------------------
+  const imageSourceSchema = z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("entry"),
+      id: z
+        .string()
+        .regex(/^[1-9]\d*$/)
+        .refine((value) => Number.isSafeInteger(Number(value))),
+    }),
+    z.object({ kind: z.literal("read-later"), id: z.uuid() }),
+  ]);
+  async function signedImage(s: Services, userId: string, item: SavedImageDto) {
+    const bucket = process.env.MEDIA_BUCKET;
+    if (!bucket) throw new AppError(503, "media storage unavailable");
+    const [decorated] = await withSignedMediaUrls(
+      s,
+      userId,
+      [{ articleImage: item.image }],
+      bucket,
+    );
+    if (!decorated?.articleImage)
+      throw new AppError(404, "saved image not found");
+    return { ...item, image: decorated.articleImage };
+  }
+
+  app.get("/saved", async (c) => {
+    const query = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        cursor: z.string().optional(),
+        sort: z.enum(["asc", "desc"]).default("desc"),
+      })
+      .parse(c.req.query());
+    const s = await getServices();
+    const userId = await userIdOf(s, c);
+    const page = await s.savedLibrary.list(userId, query);
+    const items = await Promise.all(
+      page.items.map(async (item) => {
+        if (item.kind === "image")
+          return { ...item, item: await signedImage(s, userId, item.item) };
+        let [entry] = await withReadLaterFlags(s, userId, [item.entry]);
+        if (!entry) throw new AppError(404, "entry not found");
+        if (process.env.MEDIA_BUCKET)
+          [entry] = await withSignedMediaUrls(
+            s,
+            userId,
+            [entry],
+            process.env.MEDIA_BUCKET,
+          );
+        return { ...item, entry };
+      }),
+    );
+    return c.json({ ...page, items });
+  });
+  app.post("/saved-images", async (c) => {
+    if (!process.env.MEDIA_BUCKET)
+      throw new AppError(503, "media storage unavailable");
+    const body = z
+      .object({
+        source: imageSourceSchema,
+        imageUrl: z.string().min(1).max(8000),
+      })
+      .parse(await c.req.json());
+    const s = await getServices();
+    const userId = await userIdOf(s, c);
+    const item = await s.savedImages.save(userId, body.source, body.imageUrl);
+    return c.json({ item: await signedImage(s, userId, item) }, 201);
+  });
+  app.get("/saved-images", async (c) => {
+    const source = imageSourceSchema.parse({
+      kind: c.req.query("sourceKind"),
+      id: c.req.query("sourceId"),
+    });
+    const s = await getServices();
+    const userId = await userIdOf(s, c);
+    const items = await s.savedImages.listForSource(userId, source);
+    // Reader state only needs provenance and IDs; avoid signing every saved
+    // image in an article just to render its saved buttons.
+    return c.json({ items });
+  });
+  app.get("/saved-images/:id", async (c) => {
+    const id = z.uuid().parse(c.req.param("id"));
+    const s = await getServices();
+    const userId = await userIdOf(s, c);
+    return c.json({
+      item: await signedImage(s, userId, await s.savedImages.get(userId, id)),
+    });
+  });
+  app.delete("/saved-images/:id", async (c) => {
+    const id = z.uuid().parse(c.req.param("id"));
+    const s = await getServices();
+    await s.savedImages.remove(await userIdOf(s, c), id);
+    return c.body(null, 204);
+  });
+
   // Web-API only by design: the queue (and especially off-feed saved URLs) is
   // never exposed through /api/greader.php. See docs/10-read-later.md.
   app.get("/read-later", async (c) => {

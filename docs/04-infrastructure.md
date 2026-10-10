@@ -127,3 +127,19 @@ Assumptions: 1–3 users, ~100 feeds refreshed hourly-ish, ~50k API requests/mo,
 
 Compare: cheapest FreshRSS-capable VPS ≈ $4–7/mo but requires server upkeep. The premium
 here buys zero maintenance, not scale.
+
+## Explicit image saves (2026-10-10)
+
+The API Lambda media policy grants `s3:PutObject` only on the existing private
+bucket's `media/*` prefix, in addition to its existing reads. Image writes use
+conditional creation (`If-None-Match: *`) so content-addressed objects stay immutable.
+The bucket stays private; delivery uses authorized short-lived signatures. No new
+persistent AWS resources or manual applies are needed. The PR CI plan is the infrastructure review gate.
+
+On an existing deployment, the pipeline runs additive database migrations before
+Terraform publishes new Lambda code, then repeats the idempotent migration runner
+after apply for first-time provisioning or a replacement cluster. Migration failure
+stops the Lambda update. For rollback, restore the prior web UI while retaining the new media cleanup
+protections in the services: older unsubscribe/orphan cleanup removes all media
+associations and would discard saves. Keep additive columns, rows, and private
+objects; never reverse this migration or drop these resources.

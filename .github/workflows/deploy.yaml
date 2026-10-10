@@ -68,6 +68,17 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         run: terraform plan -input=false -out=tfplan
 
+      # Additive migrations must land before Lambda code starts selecting new
+      # columns. A fresh deployment has no database yet; the post-apply step
+      # below initializes that database and also handles cluster replacement.
+      - name: migrate existing database before Lambda update
+        run: |
+          outputs=$(terraform -chdir="${TF_DIR}" output -json)
+          endpoint=$(jq -r '.db_endpoint.value // empty' <<< "$outputs")
+          if [ -n "$endpoint" ]; then
+            DSQL_ENDPOINT="$endpoint" pnpm --filter @sparkle/db exec tsx src/migrate.ts
+          fi
+
       - name: terraform apply
         working-directory: ${{ env.TF_DIR }}
         run: terraform apply -input=false -auto-approve tfplan

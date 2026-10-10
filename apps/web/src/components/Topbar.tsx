@@ -95,18 +95,20 @@ export function Topbar({
       </Group>
 
       <Group gap="xs" wrap="nowrap">
-        <SegmentedControl
-          size="xs"
-          value={presentation}
-          onChange={(value) => {
-            if (value === "list" || value === "swipe")
-              onPresentationChange(value);
-          }}
-          data={[
-            { label: "list", value: "list" },
-            { label: "swipe", value: "swipe" },
-          ]}
-        />
+        {stream.kind !== "starred" && (
+          <SegmentedControl
+            size="xs"
+            value={presentation}
+            onChange={(value) => {
+              if (value === "list" || value === "swipe")
+                onPresentationChange(value);
+            }}
+            data={[
+              { label: "list", value: "list" },
+              { label: "swipe", value: "swipe" },
+            ]}
+          />
+        )}
         {entryStream &&
           stream.kind !== "starred" &&
           stream.kind !== "unread" && (

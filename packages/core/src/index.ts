@@ -62,6 +62,15 @@ export {
   type SaveUrlInput,
   urlDedupeHash,
 } from "./services/read-later";
+export {
+  createSavedImagesService,
+  type ImageSource,
+  type SavedImageDto,
+} from "./services/saved-images";
+export {
+  createSavedLibraryService,
+  type SavedLibraryItem,
+} from "./services/saved-library";
 export { createSettingsService, type SettingsData } from "./services/settings";
 export {
   createSubscriptionsService,

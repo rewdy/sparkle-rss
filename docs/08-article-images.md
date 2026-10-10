@@ -301,3 +301,29 @@ path unchanged and use lazy loading for the image.
   associations and garbage-collect unreferenced objects after a grace period.
 - Treat feed-row orphan cleanup as part of the lifecycle hardening slice, not as an
   implicit side effect of image ingestion.
+
+## Explicit saves: implementation update (2026-10-10)
+
+User-selected inline images now use the existing immutable `media_objects` storage
+and `user_media.kind = saved_article_image`. The old plan above is historical;
+this implementation uses source snapshots/identity and read-later references described
+in doc 03, plus the API/UI described in doc 05. A save copies bytes or retains an
+authorized stored source object and only reports success once persistence completes.
+Per-user/source/image URL dedupe preserves original save time. Feed/read-later views
+of a live feed entry share source identity; different articles can retain separate
+attribution while sharing identical bytes.
+
+Explicit selection bypasses automatic splash size and semantic exclusions. It accepts
+JPEG, PNG, WebP, GIF, and AVIF with detected/declared format agreement, validates
+dimensions/container boundaries, caps at 5 MiB, 40 megapixels, and 16,384 per axis,
+and uses a ten-second fetch deadline and five redirects. HTTP(S) credentials and
+nonpublic targets are rejected; the validated DNS addresses are used by the socket
+lookup on every hop, with no forwarded cookies or caller authorization. The source
+article and candidate URL are authorized before any fetch.
+
+Image saves survive all source cleanup. Removal deletes only the owned association;
+existing signatures expire within five minutes, and binary garbage collection is
+explicitly deferred. The application does not physically erase unreferenced bytes
+yet. Original-sized thumbnail delivery has a bandwidth cost; lazy loading is used.
+Controls handle hover, focus, keyboard, touch, pending, success, and retry. Generated
+thumbnail storage and automatic read-later hero persistence remain separate work.

@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -208,6 +209,21 @@ export const userMedia = pgTable(
     entryId: bigint("entry_id", { mode: "number" }),
     kind: text("kind").notNull(),
     alt: text("alt").notNull().default(""),
+    readLaterItemId: uuid("read_later_item_id"),
+    sourceIdentity: text("source_identity"),
+    dedupeHash: text("dedupe_hash"),
+    imageSourceUrl: text("image_source_url"),
+    savedAt: timestamp("saved_at", { withTimezone: true }),
+    source: jsonb("source").$type<{
+      kind: "entry" | "read-later";
+      id: string;
+      articleTitle: string;
+      articleUrl: string;
+      feedId: string | null;
+      feedTitle: string;
+      feedUrl: string;
+      siteName: string;
+    }>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -215,6 +231,13 @@ export const userMedia = pgTable(
   (t) => [
     index("user_media_user_entry_idx").on(t.userId, t.entryId),
     index("user_media_user_kind_idx").on(t.userId, t.kind),
+    uniqueIndex("user_media_saved_dedupe_key").on(
+      t.userId,
+      t.kind,
+      t.dedupeHash,
+    ),
+    index("user_media_saved_idx").on(t.userId, t.kind, t.savedAt, t.id),
+    index("user_media_read_later_idx").on(t.userId, t.readLaterItemId),
   ],
 );
 
