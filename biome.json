@@ -12,7 +12,8 @@
       "!**/coverage",
       "!**/drizzle",
       "!**/.terraform",
-      "!**/.astro"
+      "!**/.astro",
+      "!**/.floci-data"
     ]
   },
   "formatter": {

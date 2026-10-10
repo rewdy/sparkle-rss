@@ -122,7 +122,10 @@ export function createIngestService({ db, media }: ServicesDeps) {
         await db
           .delete(schema.userMedia)
           .where(
-            sql`${schema.userMedia.entryId} in (select id from ${schema.userEntries} where ${schema.userEntries.feedId} = ${feed.id})`,
+            and(
+              eq(schema.userMedia.kind, "article_splash"),
+              sql`${schema.userMedia.entryId} in (select id from ${schema.userEntries} where ${schema.userEntries.feedId} = ${feed.id})`,
+            ),
           );
         await db
           .delete(schema.userEntries)

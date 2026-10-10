@@ -43,6 +43,33 @@ export interface EntryPage {
   nextCursor: string | null;
 }
 
+export interface ImageSource {
+  kind: "entry" | "read-later";
+  id: string;
+}
+export interface SavedImage {
+  id: string;
+  savedAtMs: number;
+  imageSourceUrl: string;
+  image: NonNullable<Entry["articleImage"]>;
+  source: ImageSource & {
+    articleTitle: string;
+    articleUrl: string;
+    feedId: string | null;
+    feedTitle: string;
+    feedUrl: string;
+    siteName: string;
+    available: boolean;
+  };
+}
+export type SavedItem =
+  | { kind: "article"; id: string; savedAtMs: number; entry: Entry }
+  | { kind: "image"; id: string; savedAtMs: number; item: SavedImage };
+export interface SavedPage {
+  items: SavedItem[];
+  nextCursor: string | null;
+}
+
 export interface Folder {
   id: string;
   name: string;

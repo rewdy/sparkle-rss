@@ -730,3 +730,40 @@ Both were found by, and are now covered by, tests written for read later.
   reset code was removed from the local secret file. After the post-deploy walkthrough,
   the disposable Cognito user was deleted and its username/password were removed from the
   local secret file.
+
+## 2026-10-10 — Explicit saved article images (local implementation)
+
+- Implemented OpenSpec `save-article-images`: reader image controls support hover,
+  focus, keyboard and touch; confirmed saves appear with starred articles ordered by
+  save time. Dedicated preview routes fetch independently, preserve source attribution,
+  and support association removal without changing article state or deleting shared bytes.
+- Saved associations snapshot article/feed or URL provenance in `user_media`, use
+  source identity plus normalized image URL for concurrent dedupe, and retain the original
+  save time. Feed-backed read-later views resolve to the same entry identity. Unsubscribe,
+  orphan-feed cleanup, and URL-article deletion leave explicit saves intact.
+- Explicit fetching pins validated public DNS addresses to the connection, rechecks every
+  redirect, carries no user credentials, and bounds download time, bytes, dimensions,
+  and formats. AVIF box boundaries are checked before header parsing, including zero-size
+  properties. JPEG/PNG/GIF/WebP/AVIF fixtures and malformed-container tests pass. Small
+  intentionally selected images are accepted independently of automatic splash thresholds.
+- Additive migration `0004_complete_kree` uses nullable fields and plain ascending/unique
+  indexes; DSQL's migration runner rewrites index creation to ASYNC. API writes are limited
+  to the existing private media prefix. Shared objects use conditional immutable puts;
+  physical orphan-byte collection remains a separate change.
+- The existing deployment workflow published Lambdas before migrations. It now migrates
+  an existing database before Terraform updates Lambda code, with the post-apply idempotent
+  migration retained for initial provisioning/replacement. Rollback restores the prior web
+  UI while keeping the service cleanup protections, additive schema, and stored copies;
+  reverting the older indiscriminate cleanup could discard saved associations.
+- Local verification: all 35 test files / 292 tests pass against Docker Postgres, including
+  unchanged Google Reader conformance. Biome, TypeScript for all app packages, Astro check,
+  web and all three Lambda builds, Terraform validation/fmt, and strict OpenSpec validation
+  pass. Generated Floci runtime state is excluded from Biome.
+- Browser walkthrough against disposable test data and Floci on port 4577 confirmed feed
+  and URL article saves, desktop hover and keyboard activation, mobile touch visibility,
+  stored-copy delivery after unsubscribe/source deletion, preview reload, association removal
+  with a sibling shared copy retained, global cursor paging, back/forward, article-only `j`
+  navigation, and exact list scroll restoration (3476px before/after).
+- CI Terraform plan / live DSQL migration review remains task 6.3; it is not marked complete.
+  No production deployment, manual AWS resources, or Terraform apply occurred. Local API/web
+  review servers use the disposable `sparkle_test` database, never the user's dev database.

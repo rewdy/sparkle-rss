@@ -7,6 +7,8 @@ import {
   createMediaService,
   createOpmlService,
   createReadLaterService,
+  createSavedImagesService,
+  createSavedLibraryService,
   createSettingsService,
   createSubscriptionsService,
   createUsersService,
@@ -27,6 +29,8 @@ export interface Services {
   opml: ReturnType<typeof createOpmlService>;
   ingest: ReturnType<typeof createIngestService>;
   media: ReturnType<typeof createMediaService>;
+  savedImages: ReturnType<typeof createSavedImagesService>;
+  savedLibrary: ReturnType<typeof createSavedLibraryService>;
   readLater: ReturnType<typeof createReadLaterService>;
 }
 
@@ -69,18 +73,26 @@ function createServices(db: NodePgDatabase<typeof schema>): Services {
     store: {
       async put(key, bytes, mimeType) {
         if (!bucket) throw new Error("MEDIA_BUCKET is required");
-        await s3.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            Body: bytes,
-            ContentType: mimeType,
-            CacheControl: "public,max-age=31536000,immutable",
-          }),
-        );
+        await s3
+          .send(
+            new PutObjectCommand({
+              Bucket: bucket,
+              Key: key,
+              Body: bytes,
+              ContentType: mimeType,
+              CacheControl: "public,max-age=31536000,immutable",
+              IfNoneMatch: "*",
+            }),
+          )
+          .catch((error: unknown) => {
+            if (error instanceof Error && error.name === "PreconditionFailed")
+              return;
+            throw error;
+          });
       },
     },
   });
+  const savedImages = createSavedImagesService({ db, media });
   return {
     users: createUsersService(deps),
     folders: createFoldersService(deps),
@@ -93,6 +105,8 @@ function createServices(db: NodePgDatabase<typeof schema>): Services {
     opml: createOpmlService(deps),
     ingest: createIngestService({ ...deps, media: bucket ? media : undefined }),
     media,
+    savedImages,
+    savedLibrary: createSavedLibraryService({ db, images: savedImages }),
     readLater: createReadLaterService(deps),
   };
 }

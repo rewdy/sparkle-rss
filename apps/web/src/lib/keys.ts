@@ -14,6 +14,10 @@ export const qk = {
   ) => ["entries", streamKey(stream), { filter, sort }] as const,
   entry: (id: string) => ["entry", id] as const,
   readLaterCount: ["read-later-count"] as const,
+  saved: (sort: "asc" | "desc") => ["saved", { sort }] as const,
+  savedImage: (id: string) => ["saved-image", id] as const,
+  sourceImages: (source: { kind: "entry" | "read-later"; id: string }) =>
+    ["source-images", source.kind, source.id] as const,
 };
 
 /** Local calendar date as YYYY-MM-DD; rolls over at midnight. */
@@ -98,6 +102,7 @@ export interface RouteInfo {
   stream: StreamDescriptor;
   entryId: string | null;
   storyIndex: number | null;
+  imageId?: string;
 }
 
 const ENTRY_SUFFIX = /\/e\/([^/]+)$/;
@@ -110,6 +115,14 @@ const STORY_SUFFIX = /\/story\/(\d+)$/;
  * Returns null for /settings, /read-later/new, and unknown paths.
  */
 export function parseRoute(pathname: string): RouteInfo | null {
+  const image = /^\/starred\/images\/([0-9a-f-]{36})$/i.exec(pathname);
+  if (image?.[1])
+    return {
+      stream: { kind: "starred" },
+      entryId: null,
+      storyIndex: null,
+      imageId: image[1],
+    };
   const suffix = ENTRY_SUFFIX.exec(pathname);
   const storySuffix = STORY_SUFFIX.exec(pathname);
   const base = suffix

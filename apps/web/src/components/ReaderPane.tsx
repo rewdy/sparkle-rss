@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from "@mantine/core";
 import type { ReactElement } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   LuArrowLeft,
   LuBookmark,
@@ -27,6 +27,7 @@ import {
   useToggleStar,
 } from "../lib/mutations";
 import type { Entry } from "../lib/types";
+import { ArticleImageControls } from "./ArticleImageControls";
 import { EntryMeta } from "./EntryMeta";
 
 export function ReaderPane({
@@ -55,6 +56,10 @@ export function ReaderPane({
   const sub = feedMeta.get(entry.feedId);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const contentMarkup = useMemo(
+    () => ({ __html: entry.contentHtml }),
+    [entry.contentHtml],
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based scroll reset, entry id is the only trigger
   useEffect(() => {
@@ -172,7 +177,13 @@ export function ReaderPane({
           <div
             ref={contentRef}
             className="reading-content"
-            dangerouslySetInnerHTML={{ __html: entry.contentHtml }}
+            dangerouslySetInnerHTML={contentMarkup}
+          />
+          <ArticleImageControls
+            contentRef={contentRef}
+            html={entry.contentHtml}
+            articleUrl={entry.url}
+            source={{ kind: readLater ? "read-later" : "entry", id: entry.id }}
           />
 
           <Group justify="flex-start" py="md" gap="sm">

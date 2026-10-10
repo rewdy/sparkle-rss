@@ -3,7 +3,7 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-10-05)
+## Current state (updated 2026-10-10)
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
@@ -11,7 +11,9 @@ live-verified; conformance suite runs in CI). Everything is done **except**:
 1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
    still pending; until it passes, Phase 4 is "done, pending device verification".
 2. **Phase 6** — the active backlog below (lifecycle cleanup and article splash
-   persistence landed 2026-08-29; read later landed 2026-09-15).
+   persistence landed 2026-08-29; read later landed 2026-09-15). Saved images
+   are implemented and locally verified; the CI migration/infra review and deployment
+   remain pending (OpenSpec `save-article-images`, task 6.3).
 3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
    the app is live and fast enough that this never blocked anything).
 
@@ -227,11 +229,21 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       user-scoped data in the correct order, feeds with no subscribers stop refreshing
       and enter grace-period cleanup, and future media associations have explicit
       ownership rules. This is the prerequisite for article-image persistence. ✅
+- [x] **Save images from articles — implementation and local acceptance** (2026-10-10):
+      reader hover/focus/touch controls, private durable copies with source snapshots,
+      chronological mixed Saved list, preview/removal, independent source retention,
+      and web-only API. Full suite: 292 tests; lint/types/builds and local Postgres/Floci
+      walkthrough pass. See [08-article-images.md](08-article-images.md) and
+      OpenSpec `save-article-images`.
+- [ ] **Saved images release gate**: review CI Terraform plan and additive DSQL migration
+      ordering before deployment. Existing databases migrate before Lambda publication;
+      rollback keeps service cleanup safeguards, schema, and stored images. No production
+      resources changed in this implementation session.
 - [x] **Article splash images** — select the first credible feed image larger than
       256×256, copy accepted images into private reusable media storage, expose
       user-scoped metadata and five-minute presigned delivery URLs to the first-party
-      API, and refresh active web queries before URL expiry. Future user-initiated image
-      saving remains out of scope. Design and phased implementation plan: [08-article-images.md](08-article-images.md). ✅
+      API, and refresh active web queries before URL expiry. User-initiated image
+      saving is tracked separately below. Design and phased implementation plan: [08-article-images.md](08-article-images.md). ✅
 - [ ] **Compose-owned local runtime configuration** — move stable local API and ingest
       settings (including Floci endpoint, bucket, and credentials) into the Docker Compose
       runtime. Keep the root `.env` limited to true machine-specific overrides and secrets;

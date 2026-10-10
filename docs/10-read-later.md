@@ -340,3 +340,12 @@ HTTP. Required before shipping:
 4. **One-off images** — use `og:image` as a remote URL for now. If extraction later moves
    into the ingest worker, that slice should reuse the existing feed image pipeline
    (`findArticleImage` + `media.attachSplash`) rather than introduce a parallel one.
+## Explicit image saving (2026-10-10)
+
+Readers can explicitly save inline images from read-later content to the mixed Saved
+timeline. The API resolves ownership/content server-side, copies the chosen bytes
+into private media storage, and snapshots URL/title/site attribution. Feed-sourced
+queue items resolve to their live entry identity for duplicate suppression. Saved
+images survive removing the queue item or unsubscribing from its feed. This does
+not automatically persist `og:image`, introduce URL-article starring, or add
+read-later/image concepts to Google Reader. See docs 03, 05, and 08.

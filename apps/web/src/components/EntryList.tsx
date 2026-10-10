@@ -159,7 +159,7 @@ function SkeletonList(): ReactElement {
   );
 }
 
-const EntryRow = memo(function EntryRow({
+export const EntryRow = memo(function EntryRow({
   entry,
   active,
   onSelect,

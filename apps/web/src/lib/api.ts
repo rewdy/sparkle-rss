@@ -11,7 +11,10 @@ import type {
   EntryPage,
   EntryStreamDescriptor,
   Folder,
+  ImageSource,
   Me,
+  SavedImage,
+  SavedPage,
   StreamDescriptor,
   Subscription,
   UnreadCounts,
@@ -63,7 +66,13 @@ async function authedFetch(
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await authedFetch(path, init, true);
   if (!res.ok) {
-    throw new ApiError(res.status, `${res.status} ${res.statusText}`);
+    const body = (await res.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new ApiError(
+      res.status,
+      body?.message ?? `${res.status} ${res.statusText}`,
+    );
   }
   return (await res.json()) as T;
 }
@@ -73,6 +82,42 @@ function raw(path: string, init?: RequestInit): Promise<Response> {
 }
 
 export const api = {
+  saved: {
+    list: (opts: {
+      sort: "asc" | "desc";
+      limit?: number;
+      cursor?: string;
+    }): Promise<SavedPage> => {
+      const params = new URLSearchParams({
+        sort: opts.sort,
+        limit: String(opts.limit ?? 50),
+      });
+      if (opts.cursor) params.set("cursor", opts.cursor);
+      return request(`/api/v1/saved?${params}`);
+    },
+  },
+  savedImages: {
+    listForSource: (
+      source: ImageSource,
+    ): Promise<{ items: Array<Pick<SavedImage, "id" | "imageSourceUrl">> }> =>
+      request(
+        `/api/v1/saved-images?${new URLSearchParams({ sourceKind: source.kind, sourceId: source.id })}`,
+      ),
+    get: (id: string): Promise<{ item: SavedImage }> =>
+      request(`/api/v1/saved-images/${id}`),
+    save: (input: {
+      source: ImageSource;
+      imageUrl: string;
+    }): Promise<{ item: SavedImage }> =>
+      request("/api/v1/saved-images", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    remove: (id: string): Promise<void> =>
+      raw(`/api/v1/saved-images/${id}`, { method: "DELETE" }).then(
+        assertNoContent,
+      ),
+  },
   me: (): Promise<Me> => request("/api/v1/me"),
   folders: {
     list: (): Promise<{ folders: Folder[] }> => request("/api/v1/folders"),
