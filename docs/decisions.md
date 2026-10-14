@@ -767,3 +767,24 @@ Both were found by, and are now covered by, tests written for read later.
 - CI Terraform plan / live DSQL migration review remains task 6.3; it is not marked complete.
   No production deployment, manual AWS resources, or Terraform apply occurred. Local API/web
   review servers use the disposable `sparkle_test` database, never the user's dev database.
+
+## 2026-10-13 — Entry-list skeleton spacing (visual review pending)
+
+- Replace generated pseudo-element bars with explicit metadata/title elements in each
+  of the 12 placeholder rows. Use a literal 4px gap rather than the undefined
+  `--mantine-spacing-xxs` token, and a 68px minimum height matching the list's estimate.
+  Preserve the existing widths, colors, rounding, and pulse animation; hide decorative
+  bars from assistive technology and announce loading once through a status element.
+- At the user's request, `FORCE_SKELETON_PREVIEW = true` temporarily forces the entry
+  list to show placeholders for manual review with `pnpm dev`. Visual acceptance and
+  removal of this override remain pending; this chunk is not ready for release.
+- Follow-up: replace the constant override with a temporary absolutely positioned
+  Show articles / Show skeleton button. Its device-local Jotai state starts with the
+  skeleton visible, while actual pending requests still show loading normally.
+- Visual-review follow-up: add a leading date-label and count placeholder using the
+  same Group spacing and xs text line height as the real first date header.
+- Visual-review follow-up: remove the 68px minimum row height and fixed gap. Center
+  bars in slots sized from the actual metadata/title typography, and match the real
+  row padding and metadata margin so single-line rows have the same vertical footprint.
+- User accepted the layout on 2026-10-13. Remove the temporary comparison button and
+  preview atom before committing; the normal query-driven loading behavior is restored.

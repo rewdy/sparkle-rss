@@ -106,8 +106,13 @@ carries the same params so they survive opening and closing an article.
 - Mark-read-on-open (implemented): global toggle in Settings, persisted like the other
   reading prefs. The originally-planned per-stream mark-as-read-on-scroll is deferred.
 - Empty states with subscribe hint and optimistic read/save toggles (implemented).
-  Skeletons on first load (implemented): 12 fixed-height placeholder rows matching the
-  real row footprint replace the old "loading…" row (no list-replacement layout shift).
+  Skeletons on first load (implemented): 12 placeholder rows matching the
+  estimated real row footprint replace the old "loading…" row. Each placeholder has
+  a leading date-label/count placeholder using the real date header's spacing and
+  typography height, followed by explicit metadata/title bars in the DOM, centered
+  inside slots matching the real xs metadata and md title (1.4 line height).
+  Padding and metadata margin match real rows. Decorative bars are hidden from
+  screen readers; one status announces loading.
 - Code-split routes (implemented): `/settings`, the subscribe dialog, and the `?`
   shortcut sheet are `React.lazy` chunks loaded on first open — the first-paint
   critical path stays just the reader shell.

@@ -150,10 +150,28 @@ export function EntryList({
 function SkeletonList(): ReactElement {
   return (
     <Box>
+      <span role="status" className="sr-only">
+        Loading articles…
+      </span>
+      <Group gap="xs" px="sm" pt="sm" pb="xxs" aria-hidden="true">
+        <Text component="span" size="xs" w={72} className="skeleton-line">
+          &nbsp;
+        </Text>
+        <Text component="span" size="xs" w={20} className="skeleton-line">
+          &nbsp;
+        </Text>
+      </Group>
       {Array.from({ length: SKELETON_COUNT }, (_, i) => (
         // Static placeholder rows; index key is stable across renders.
         // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton scaffold
-        <div key={i} className="skeleton-row" />
+        <div key={i} className="skeleton-row" aria-hidden="true">
+          <Group mb="xxs" className="skeleton-meta-slot">
+            <div className="skeleton-line skeleton-line-meta" />
+          </Group>
+          <div className="skeleton-title-slot">
+            <div className="skeleton-line skeleton-line-title" />
+          </div>
+        </div>
       ))}
     </Box>
   );

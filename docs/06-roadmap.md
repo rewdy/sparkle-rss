@@ -3,7 +3,10 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-10-10)
+## Current state (updated 2026-10-13)
+
+Entry-list skeleton spacing is fixed with explicit DOM bars and a date-header placeholder;
+visual review passed and the temporary comparison toggle has been removed.
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
@@ -221,6 +224,9 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
+- [x] **Entry-list skeleton polish** — explicit DOM bars with line slots and padding
+      matching real single-line rows, plus a date-header placeholder. User visual
+      review passed; temporary comparison controls removed (2026-10-13).
 - [x] **Swipe story view** — optional device-local full-screen story presentation with
       native touch/mouse/trackpad scroll snapping, route-backed story position,
       hero-image rendering, favicon fallback, read-state styling, and unchanged
