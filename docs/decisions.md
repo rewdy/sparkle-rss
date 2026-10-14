@@ -820,3 +820,45 @@ Both were found by, and are now covered by, tests written for read later.
   thumbnails use lazy loading and bounded virtual mounting.
 - Validation: all 16 web test files / 120 tests, pnpm lint, pnpm typecheck, and
   pnpm build:web pass. No production deployment or manual AWS changes occurred.
+
+
+## 2026-10-13 — Consolidate List and add distinct Cards presentation
+
+- Replace text-only List with the former Feed thumbnail layout and remove the separate
+  Feed selector choice. The final device-local modes are List, Cards, and Swipe; Cards
+  is a separate grid, and Swipe retains its full-screen scroll-snap interaction.
+- Normalize legacy `sparkle.ui.storyPresentation = feed` to `list` before first paint,
+  preserving other local settings and never storing the selection in account settings.
+- Cards uses the existing theme viewport breakpoints: 3 columns at md and above, 2 at
+  sm through below md, and 1 below sm. Date headers span the grid; row order stays the
+  stream order. A reserved 16:9 media slot uses authorized stored images or a themed
+  decorative newspaper placeholder for missing/failed imagery. Favicons remain small
+  metadata marks. No image derivatives, fallback fetches, or API changes are introduced.
+- Virtualize measured grid rows with five-row overscan and retain focused rows; logical
+  Tab/Shift+Tab traversal mounts offscreen targets. Remeasure only on layout changes,
+  not on page appends or signed-URL refresh, to avoid discarding valid heights.
+- List/Cards stream surfaces remain mounted, hidden, and inert during reading. Keep
+  their layout dimensions rather than using display:none: zero-size measurements caused
+  an observed card-restoration regression. Suspend their pagination observer while
+  hidden. Swipe keeps its existing route-backed remount behavior.
+- Local verification: all 141 web tests pass, including mode migration, card grouping,
+  image failure/renewal, pagination, reader mark-on-open on/off, read-later mutation,
+  j/k, Back/Escape, and Saved isolation. Workspace typecheck, lint, and web build pass.
+  Fixture-backed Chromium checks cover 320/767/768/991/992/1440px, light/dark, long
+  headlines/notes, sidebar and reader states, 60 forward/20 backward focus steps,
+  180-story pagination with bounded mounted cards, renewed signed-image delivery,
+  local reload/migration, and no read writes from scrolling or mode switching.
+  Checks use intercepted local fixtures rather than production data. No deployment.
+
+
+## 2026-10-14 — Archive List/Cards/Swipe consolidation
+
+- All 13 implementation tasks are complete. Synced the four Cards requirements into
+  the new main capability and updated all five existing Feed-presentation requirements
+  to describe List, retaining every existing scenario name and the capability path.
+- Verified both main specs match every delta requirement/scenario and pass strict
+  validation. Archived the change at
+  `openspec/changes/archive/2026-10-14-replace-feed-with-list-and-cards`.
+- The implementation, tests, docs, synced specs, and archive are committed together.
+  Prior checks remain applicable: 141 web tests, workspace typecheck, lint, web build,
+  and local browser fixture acceptance passed. No production deployment in this session.

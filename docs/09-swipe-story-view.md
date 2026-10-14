@@ -1,12 +1,12 @@
 # 09 — Swipe Story View (Planning)
 
-This document plans an alternative presentation for stream/listing pages. The existing
-standard list remains unchanged; users can switch between List, an image-enhanced Feed list, and a full-screen,
+This document plans an alternative presentation for stream/listing pages. Users can
+switch between the image-enhanced List, a responsive Cards grid, and a full-screen,
 TikTok-inspired story viewer on each device.
 
 ## Product decisions
 
-- The header contains a toggle between `list`, `feed`, and `swipe` presentation.
+- The header contains a toggle between `list`, `cards`, and `swipe` presentation.
 - The selected presentation is stored in device-local storage, not account settings.
   A user may therefore use swipe mode on a phone and list mode on a desktop.
 - The active story position is navigation state: story 0 uses the ordinary stream URL,
@@ -61,11 +61,11 @@ that later; the fallback should reflect only imagery already known to Sparkle RS
 
 ## Frontend architecture
 
-Add a sibling component rather than modifying the existing list behavior:
+Add a sibling component with separate components for each presentation:
 
 - `StoryView` owns the full-screen scroll-snap surface; the stream route owns the current
   story index so it survives refresh and participates in browser history.
-- `StreamInner` or the stream shell chooses `EntryList` versus `StoryView` based on a
+- `StreamInner` or the stream shell chooses `EntryList`, `CardsView`, or `StoryView` based on a
   local presentation atom.
 - `Topbar` owns the visible toggle control but not the story state.
 - TanStack Query remains the source of entries, subscriptions, and pagination.
@@ -74,7 +74,7 @@ Add a sibling component rather than modifying the existing list behavior:
 Suggested local state:
 
 ```ts
-type StoryPresentation = "list" | "feed" | "swipe";
+type StoryPresentation = "list" | "cards" | "swipe";
 const storyPresentationAtom = atomWithStorage<StoryPresentation>(
   "sparkle.storyPresentation",
   "list",
@@ -164,8 +164,9 @@ resetting the current story.
 
 1. Extend the entry API/service projection with authorized article-image metadata and
    add API/client contract tests.
-2. Add the device-local presentation atom and header toggle. Verify standard list output
-   is unchanged and the preference survives reload without affecting another device.
+2. Add the device-local presentation atom and header toggle. Verify List uses the
+   thumbnail layout, Cards stays separate from Swipe, and the preference survives
+   reload without affecting another device.
 3. Build the static `StoryView` card using real entry data, hero images, source title,
    favicon fallback, headline, time, and Read navigation.
 4. Add touch/pointer/keyboard navigation, transition guards, pagination-at-the-end, and
@@ -177,8 +178,8 @@ resetting the current story.
 
 ## Exit criteria
 
-- List mode is pixel- and behavior-compatible with the current implementation.
-- Swipe/list selection is device-local and survives reload.
+- List uses the former Feed layout and preserves its reading behavior.
+- List/Cards/Swipe selection is device-local and survives reload.
 - Swipe up/down navigation is deterministic and paginates correctly.
 - Read navigation and read-state behavior match the current setting.
 - Hero images render when available; no-hero stories show the feed favicon when present.
@@ -186,6 +187,10 @@ resetting the current story.
 - Keyboard, touch, mouse, and browser Back/Escape paths work.
 - API authorization prevents cross-user media access.
 
-Feed reuses the standard virtualized list with right-hand article thumbnails and a
+List uses the virtualized layout formerly named Feed with right-hand article thumbnails and a
 consistent left text axis. Saved keeps its dedicated mixed list and does not offer the
 presentation selector; visiting it preserves the selected mode for other streams.
+
+Cards uses a separate responsive 3/2/1-column grid with reserved media placeholders;
+it does not share Swipe's full-screen scroll snapping. Legacy local `feed` selections
+migrate to `list`. See doc 05 for current layout and state details.

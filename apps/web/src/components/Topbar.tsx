@@ -116,7 +116,7 @@ export function Topbar({
             }}
             data={[
               { label: "list", value: "list" },
-              { label: "feed", value: "feed" },
+              { label: "cards", value: "cards" },
               { label: "swipe", value: "swipe" },
             ]}
           />

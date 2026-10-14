@@ -1,14 +1,7 @@
 import { Blockquote, Box, Group, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ReactElement, RefObject } from "react";
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { groupByDay, timeLabel } from "../lib/date-grouping";
 import { useSubscriptionMap } from "../lib/feed-titles";
 import type { Entry } from "../lib/types";
@@ -30,9 +23,7 @@ export function EntryList({
   activeId,
   onSelect,
   scrollRef,
-  presentation = "list",
 }: {
-  presentation?: "list" | "feed";
   entries: Entry[];
   loading: boolean;
   activeId: string | null;
@@ -62,33 +53,17 @@ export function EntryList({
     estimateSize: (index) =>
       rows[index]?.kind === "header"
         ? HEADER_HEIGHT
-        : presentation === "feed" &&
-            rows[index]?.kind === "entry" &&
-            rows[index].entry.articleImage
+        : rows[index]?.kind === "entry" && rows[index].entry.articleImage
           ? 96
           : ENTRY_HEIGHT,
     overscan: OVERSCAN,
-    // Round up Feed's fractional text heights so adjacent rows never overlap.
-    measureElement:
-      presentation === "feed"
-        ? (element) => Math.ceil(element.getBoundingClientRect().height)
-        : undefined,
+    // Round up fractional text heights so adjacent rows never overlap.
+    measureElement: (element) =>
+      Math.ceil(element.getBoundingClientRect().height),
     // Positions of already-mounted rows are written to the DOM directly while
     // scrolling; React only re-renders when the visible range changes.
     directDomUpdates: true,
   });
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mode changes invalidate measured row sizes
-  useLayoutEffect(() => {
-    virtualizer.measure();
-    // Rows whose height did not change will not emit a ResizeObserver event.
-    // Re-measure them too after clearing the previous mode's measurements.
-    for (const node of scrollRef.current?.querySelectorAll<HTMLDivElement>(
-      "[data-index]",
-    ) ?? []) {
-      virtualizer.measureElement(node);
-    }
-  }, [presentation, virtualizer, scrollRef]);
 
   const rowRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -109,7 +84,7 @@ export function EntryList({
     }
   }, [activeId, rows, virtualizer]);
 
-  if (loading) return <SkeletonList presentation={presentation} />;
+  if (loading) return <SkeletonList />;
 
   if (entries.length === 0) {
     return (
@@ -167,7 +142,6 @@ export function EntryList({
               ) : (
                 <EntryRow
                   key={row.entry.id}
-                  presentation={presentation}
                   entry={row.entry}
                   active={row.entry.id === activeId}
                   onSelect={onSelect}
@@ -181,11 +155,7 @@ export function EntryList({
   );
 }
 
-function SkeletonList({
-  presentation,
-}: {
-  presentation: "list" | "feed";
-}): ReactElement {
+function SkeletonList(): ReactElement {
   return (
     <Box>
       <span role="status" className="sr-only">
@@ -204,14 +174,10 @@ function SkeletonList({
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton scaffold
           key={i}
-          className={
-            presentation === "feed" ? "skeleton-row feed-row" : "skeleton-row"
-          }
+          className="skeleton-row feed-row"
           aria-hidden="true"
         >
-          <div
-            className={presentation === "feed" ? "feed-row-text" : undefined}
-          >
+          <div className="feed-row-text">
             <Group mb="xxs" className="skeleton-meta-slot">
               <div className="skeleton-line skeleton-line-meta" />
             </Group>
@@ -219,9 +185,7 @@ function SkeletonList({
               <div className="skeleton-line skeleton-line-title" />
             </div>
           </div>
-          {presentation === "feed" && (
-            <div className="feed-thumbnail skeleton-line" />
-          )}
+          <div className="feed-thumbnail skeleton-line" />
         </div>
       ))}
     </Box>
@@ -232,9 +196,7 @@ export const EntryRow = memo(function EntryRow({
   entry,
   active,
   onSelect,
-  presentation = "list",
 }: {
-  presentation?: "list" | "feed";
   entry: Entry;
   active: boolean;
   onSelect: (entry: Entry) => void;
@@ -242,7 +204,7 @@ export const EntryRow = memo(function EntryRow({
   const feedMeta = useSubscriptionMap();
   const sub = feedMeta.get(entry.feedId);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const image = presentation === "feed" ? entry.articleImage : null;
+  const image = entry.articleImage;
   const content = (
     <>
       <Group justify="space-between" wrap="nowrap" gap="xs" mb="xxs">
@@ -285,9 +247,9 @@ export const EntryRow = memo(function EntryRow({
   );
   return (
     <Box
-      component={presentation === "feed" ? "button" : "div"}
-      type={presentation === "feed" ? "button" : undefined}
-      className={presentation === "feed" ? "entry-row feed-row" : "entry-row"}
+      component="button"
+      type="button"
+      className="entry-row feed-row"
       data-active={active || undefined}
       data-entry-id={entry.id}
       onClick={() => onSelect(entry)}
@@ -295,11 +257,7 @@ export const EntryRow = memo(function EntryRow({
       py="sm"
       style={{ cursor: "pointer" }}
     >
-      {presentation === "feed" ? (
-        <div className="feed-row-text">{content}</div>
-      ) : (
-        content
-      )}
+      <div className="feed-row-text">{content}</div>
       {image?.url && image.url !== failedUrl && (
         <img
           className="feed-thumbnail"

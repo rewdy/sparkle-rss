@@ -78,18 +78,11 @@ function Providers({ children }: { children: ReactNode }): ReactElement {
   );
 }
 
-function Harness({
-  entry = ENTRY,
-  presentation = "list",
-}: {
-  entry?: Entry;
-  presentation?: "list" | "feed";
-}): ReactElement {
+function Harness({ entry = ENTRY }: { entry?: Entry }): ReactElement {
   const scrollRef = useRef<HTMLDivElement>(null);
   return (
     <div ref={scrollRef}>
       <EntryList
-        presentation={presentation}
         entries={[entry]}
         loading={false}
         activeId={null}
@@ -110,25 +103,6 @@ afterEach(() => {
 });
 
 describe("EntryList", () => {
-  it("remeasures mounted rows when presentation changes even without a resize event", () => {
-    const { rerender } = render(
-      <Providers>
-        <Harness />
-      </Providers>,
-    );
-    measurements.reset.mockClear();
-    measurements.row.mockClear();
-    rerender(
-      <Providers>
-        <Harness presentation="feed" />
-      </Providers>,
-    );
-    expect(measurements.reset).toHaveBeenCalled();
-    const nodes = measurements.row.mock.calls.map(([node]) => node);
-    for (const node of document.querySelectorAll("[data-index]"))
-      expect(nodes).toContain(node);
-  });
-
   it("shows the feed icon and site before the author", async () => {
     render(
       <Providers>
@@ -173,16 +147,15 @@ const IMAGE = {
   urlExpiresAtMs: Date.now() + 300000,
 };
 
-describe("Feed rows", () => {
-  it("uses stored imagery only in Feed and retries renewed URLs after failure", async () => {
+describe("List rows", () => {
+  it("uses stored imagery in List and retries renewed URLs after failure", async () => {
     const onSelect = vi.fn();
-    const row = (url: string, presentation: "list" | "feed" = "feed") => (
+    const row = (url: string) => (
       <Providers>
         <EntryRow
           entry={{ ...ENTRY, articleImage: { ...IMAGE, url } }}
           active={false}
           onSelect={onSelect}
-          presentation={presentation}
         />
       </Providers>
     );
@@ -201,8 +174,6 @@ describe("Feed rows", () => {
       "src",
       "https://example.com/renewed.jpg",
     );
-    rerender(row(IMAGE.url, "list"));
-    expect(document.querySelector(".feed-thumbnail")).toBeNull();
   });
 
   it("keeps image-free notes and never extracts HTML images", async () => {
@@ -216,7 +187,6 @@ describe("Feed rows", () => {
           }}
           active={false}
           onSelect={vi.fn()}
-          presentation="feed"
         />
       </Providers>,
     );
@@ -236,7 +206,6 @@ describe("Feed rows", () => {
           entry={{ ...ENTRY, articleImage: IMAGE }}
           active={true}
           onSelect={onSelect}
-          presentation="feed"
         />
       </Providers>,
     );
@@ -249,7 +218,7 @@ describe("Feed rows", () => {
     expect(button.querySelectorAll("button,a,[tabindex]")).toHaveLength(0);
   });
 
-  it("shows a Feed skeleton and accessible loading status", () => {
+  it("shows a List skeleton and accessible loading status", () => {
     function Loading() {
       const scrollRef = useRef<HTMLDivElement>(null);
       return (
@@ -259,7 +228,6 @@ describe("Feed rows", () => {
           activeId={null}
           onSelect={vi.fn()}
           scrollRef={scrollRef}
-          presentation="feed"
         />
       );
     }

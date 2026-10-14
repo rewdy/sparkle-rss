@@ -3,12 +3,12 @@ import { DEFAULT_THEME_ID, type ThemeId } from "../themes";
 import { localDateKey } from "./keys";
 
 export type ColorSchemePref = "light" | "dark" | "system";
-export type StoryPresentation = "list" | "feed" | "swipe";
+export type StoryPresentation = "list" | "cards" | "swipe";
 
 export function isStoryPresentation(
   value: unknown,
 ): value is StoryPresentation {
-  return value === "list" || value === "feed" || value === "swipe";
+  return value === "list" || value === "cards" || value === "swipe";
 }
 
 export function loadLocalUi(): Record<string, unknown> {
@@ -49,6 +49,10 @@ function asStringArray(v: unknown): string[] {
 // Atoms initialize from localStorage at module load (synchronous, pre-mount)
 // so the first paint already uses saved preferences.
 const local = loadLocalUi();
+if (local.storyPresentation === "feed") {
+  local.storyPresentation = "list";
+  persistUiPatch({ storyPresentation: "list" });
+}
 const storyPresentationBaseAtom = atom<StoryPresentation>(
   isStoryPresentation(local.storyPresentation)
     ? local.storyPresentation

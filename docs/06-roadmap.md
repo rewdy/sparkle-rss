@@ -3,11 +3,15 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-10-13)
+## Current state (updated 2026-10-14)
 
-Feed is implemented as a third device-local presentation with right-hand stored-image
-thumbnails and a consistent left text axis. Local browser review and 120 web tests pass;
-the change is ready for the normal deployment pipeline. Entry-list skeleton polish is complete.
+List now uses the former Feed thumbnail layout; the separate Feed choice is removed.
+Cards adds a distinct date-grouped 3/2/1-column grid with themed image placeholders;
+Swipe remains its own full-screen experience. Legacy local Feed preferences migrate
+to List. All 141 web tests, typecheck, lint, and web build pass, with fixture-backed
+browser checks for breakpoints, image renewal, pagination, keyboard focus, and reader
+restoration. OpenSpec `replace-feed-with-list-and-cards` is implemented locally and archived
+with main specs synced (2026-10-14); no deployment in this session. Entry-list skeleton polish is complete.
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
@@ -225,6 +229,12 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
+- [x] **List/Cards/Swipe consolidation** — promote Feed to List and add a separate
+      virtualized Cards grid (3 columns at md, 2 at sm, 1 below sm), fixed-ratio image
+      placeholders, local preference migration, and reader scroll restoration. All
+      141 web tests and browser fixture acceptance pass (2026-10-13); OpenSpec
+      `replace-feed-with-list-and-cards` archived with spec sync (2026-10-14).
+      No deployment in this session.
 - [x] **Feed presentation** — third device-local mode with optional right-hand stored
       article thumbnails, aligned text, image fallback, responsive selector, and shared
       virtualized list/navigation. Browser fixture acceptance and 120 web tests pass

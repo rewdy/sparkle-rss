@@ -540,8 +540,17 @@ export function Shell(): ReactElement {
                 onPrev={() => move(-1)}
               />
             ) : null
-          ) : descriptor.kind === "starred" ? null : (
+          ) : null
+        ) : (
+          <div />
+        )}
+        {descriptor &&
+          descriptor.kind !== "starred" &&
+          !isSettings &&
+          !isSaveArticle &&
+          (routeEntryId === null || presentation !== "swipe") && (
             <StreamInner
+              key={`${streamPath(descriptor)}:${filter}:${sort}`}
               stream={descriptor}
               filter={filter}
               sort={sort}
@@ -551,11 +560,9 @@ export function Shell(): ReactElement {
               onSelect={openEntry}
               presentation={presentation}
               subscriptions={subsQ.data?.subscriptions ?? []}
+              hidden={routeEntryId !== null}
             />
-          )
-        ) : (
-          <div />
-        )}
+          )}
       </AppShell.Main>
 
       {shortcutsOpen && (

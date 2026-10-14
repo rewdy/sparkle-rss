@@ -92,7 +92,7 @@ carries the same params so they survive opening and closing an article.
 - Article opens as a focused single-column reading pane (in-place overlay on desktop,
   full-screen full-bleed on mobile) at `<stream>/e/:id`. Back/Esc returns to the list
   preserving scroll position.
-- Date-grouped card list (Today/Yesterday/This week/Older), **virtualized** with
+- Date-grouped thumbnail list (Today/Yesterday/This week/Older), **virtualized** with
   `@tanstack/react-virtual` (v3, `directDomUpdates`): day-group headers + entries
   flatten into one flat virtualized row list; row heights measured dynamically (titles wrap);
   overscan 15; positions of mounted rows are written to the DOM directly while
@@ -215,9 +215,9 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
   font subset. PWA manifest + service-worker shell deferred to Phase 6 (installability
   without offline complexity).
 
-The stream shell supports device-local `list`, `feed`, and `swipe` presentations. It is
-controlled by `storyPresentationAtom` and the header toggle, and does not alter the
-standard `EntryList`. Swipe stories use the entry's authorized article image when
+The stream shell supports device-local `list`, `cards`, and `swipe` presentations. It is
+controlled by `storyPresentationAtom` and the header toggle, with separate `EntryList`,
+`CardsView`, and `StoryView` renderers. Swipe stories use the entry's authorized article image when
 available, or a theme background with the small feed favicon beside the source title;
 the favicon is never used as the hero image. The swipe surface is a native vertical
 scroll container with mandatory CSS scroll snapping; its settled story index is written
@@ -262,12 +262,12 @@ media dimensions/alt. Create/detail/library include signed `image.url` and
 `image.urlExpiresAtMs`; reader state does not need signed URLs. Missing or foreign
 image IDs return 404, including repeat deletion.
 
-### Feed presentation
+### List presentation
 
-Feed is the date-grouped virtual list with optional stored article thumbnails on the
+List is the date-grouped virtual list with optional stored article thumbnails on the
 right. Headlines and metadata share the same left inset on every row, including rows
 without images or with failed images. Text-only rows recover the image column's width;
-favicons remain small source marks. Feed preserves the list's order, filters, read
+favicons remain small source marks. List preserves the list's order, filters, read
 typography, notes, pagination, and existing reader routes/keyboard actions.
 
 Thumbnails start at 96×72 CSS pixels on desktop and 72×72 below the small-screen
@@ -277,9 +277,41 @@ These are original image bytes displayed at thumbnail size, not generated deriva
 lazy loading and virtualization bound requests, but bandwidth remains a trade-off.
 Failed URLs hide their image slot; a renewed URL can load again.
 
-The header selector offers list/feed/swipe. The existing local
-sparkle.ui.storyPresentation key accepts all three; List remains the fallback.
+The header selector offers list/cards/swipe. The existing local
+sparkle.ui.storyPresentation key accepts all three; List remains the fallback. Legacy `feed` values migrate to
+`list` without changing other preferences; the former text-only List and separate Feed
+choice are removed.
 Saved keeps its dedicated mixed list and leaves the local preference intact.
 On phones the brand uses its sparkles mark to leave room for the three labeled modes,
-navigation, refresh, and theme. Feed rows are native buttons with visible keyboard focus;
+navigation, refresh, and theme. List rows are native buttons with visible keyboard focus;
 thumbnails are decorative and activate the same article as the row.
+
+
+### Cards presentation
+
+Cards is a distinct date-grouped grid, separate from the full-screen Swipe experience.
+`CardsView` uses three columns at the active theme's viewport md breakpoint and above,
+two from sm to below md, and one below sm (currently 992/768 CSS pixels). Date headers
+span the grid. Stories retain their stream order across columns, rows, and pagination.
+Full titles and read-later notes wrap; metadata uses the same source/author components.
+
+Each card is one native activation button with visible focus. A reserved 16:9 top media
+area crops authorized stored article images with object-fit cover. Missing or failed
+images show a quiet theme-colored surface and decorative newspaper icon; favicons stay
+small source marks. No article-HTML image extraction or additional fallback fetch occurs.
+Renewed signed URLs can retry failures through the existing shared query refresh.
+
+Headers and rows of one/two/three cards are dynamically measured with the existing
+virtualizer, with five rows of overscan. Focused rows remain mounted, and Tab/Shift+Tab
+scrolls and focuses the next logical card even outside the mounted range. Width and
+breakpoint changes trigger remeasurement; regrouping retains the visible article anchor.
+Cards use original stored bytes, so lazy loading and bounded mounting limit requests but
+larger visible images still carry the original-image bandwidth cost.
+
+List and Cards keep their stream surface mounted but hidden and inert while the reader
+is open, retaining nonzero layout dimensions so measurements remain valid;
+Back/Escape restores scroll and Cards brings the last opened article into view when it
+remains in loaded data. Stream/filter/sort changes reset that local scroll surface.
+Queries, expiry refresh, pagination, and reader callbacks remain shared in `StreamInner`;
+Jotai stores only the device-local presentation, never entries. Scrolling or switching
+modes does not mark entries read. Saved retains its dedicated mixed library.

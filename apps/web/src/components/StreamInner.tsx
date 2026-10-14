@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 import { qk, streamPath, viewSearch } from "../lib/keys";
 import type { Entry, StreamDescriptor, Subscription } from "../lib/types";
 import type { StoryPresentation } from "../lib/ui-state";
+import { CardsView } from "./CardsView";
 import { EntryList } from "./EntryList";
 import { StoryView } from "./StoryView";
 
@@ -19,6 +20,7 @@ export function StreamInner({
   onSelect,
   presentation,
   subscriptions,
+  hidden = false,
 }: {
   stream: StreamDescriptor;
   filter: "all" | "unread";
@@ -29,6 +31,7 @@ export function StreamInner({
   onSelect: (entry: Entry) => void;
   presentation: StoryPresentation;
   subscriptions: Subscription[];
+  hidden?: boolean;
 }): ReactElement {
   const query = useInfiniteQuery({
     queryKey: qk.entries(stream, filter, sort),
@@ -80,10 +83,19 @@ export function StreamInner({
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastActiveId = useRef<string | null>(null);
+  if (activeEntryId !== null) lastActiveId.current = activeEntryId;
+  const selectEntry = useCallback(
+    (entry: Entry) => {
+      lastActiveId.current = entry.id;
+      onSelect(entry);
+    },
+    [onSelect],
+  );
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!el || hidden) return;
     const io = new IntersectionObserver(
       (observed) => {
         if (
@@ -101,7 +113,7 @@ export function StreamInner({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [query.hasNextPage, query.isFetchingNextPage, query]);
+  }, [query.hasNextPage, query.isFetchingNextPage, query, hidden]);
 
   useEffect(() => {
     if (
@@ -141,30 +153,44 @@ export function StreamInner({
       ref={scrollRef}
       h="calc(100dvh - var(--app-shell-header-offset, 0rem))"
       style={{
+        position: hidden ? "absolute" : undefined,
+        top: hidden ? 0 : undefined,
+        width: "100%",
+        visibility: hidden ? "hidden" : undefined,
         overflowY: presentation === "swipe" ? "hidden" : "auto",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
       data-stream-scroll
+      aria-hidden={hidden || undefined}
+      inert={hidden || undefined}
     >
       {presentation === "swipe" ? (
         <StoryView
           entries={entries}
           subscriptions={subscriptions}
           loading={query.isPending}
-          onRead={onSelect}
+          onRead={selectEntry}
           readHref={(entry) =>
             `${streamPath(stream)}/e/${entry.id}${viewSearch(filter, sort)}`
           }
           activeIndex={storyIndex}
           onActiveIndexChange={handleStoryIndexChange}
         />
+      ) : presentation === "cards" ? (
+        <CardsView
+          entries={entries}
+          loading={query.isPending}
+          activeId={activeEntryId ?? lastActiveId.current}
+          onSelect={selectEntry}
+          scrollRef={scrollRef}
+          visible={!hidden}
+        />
       ) : (
         <EntryList
-          presentation={presentation}
           entries={entries}
           loading={query.isPending}
           activeId={activeEntryId}
-          onSelect={onSelect}
+          onSelect={selectEntry}
           scrollRef={scrollRef}
         />
       )}
