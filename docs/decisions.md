@@ -788,3 +788,35 @@ Both were found by, and are now covered by, tests written for read later.
   row padding and metadata margin so single-line rows have the same vertical footprint.
 - User accepted the layout on 2026-10-13. Remove the temporary comparison button and
   preview atom before committing; the normal query-driven loading behavior is restored.
+
+
+## 2026-10-13 — Feed presentation
+
+- Add Feed alongside List and Swipe using the existing device-local
+  sparkle.ui.storyPresentation key. Existing values stay valid and unknown values
+  fall back to List. Saved remains the mixed library and preserves the preference.
+- Keep article text at the same left inset for every row. Optional thumbnails sit
+  on the right (96×72 desktop, 72×72 mobile), crop with object-fit cover, and disappear
+  without an empty slot after failure. No image extraction, generated derivatives,
+  API/schema/infra, or Google Reader changes are introduced.
+- Share EntryList date grouping, pagination, dynamic virtualization, reader callbacks,
+  and the signed-URL expiry refresh. Feed rows are native keyboard buttons; thumbnail
+  images are decorative. On narrow headers the brand contracts to its sparkles mark.
+- Browser mode-switch review exposed stale estimated positions for unchanged-height
+  rows after clearing measurements. Re-measure all mounted rows before paint on mode
+  changes, and round Feed measurements upward to avoid fractional-pixel overlaps.
+  A regression test covers remeasurement even when no resize event fires.
+- Local acceptance used intercepted disposable fixtures, not production data:
+  light/dark screenshots at 320/390/768/1440 CSS pixels, landscape/portrait/square/wide
+  images, long names/headlines, read/unread text, notes, and failed imagery. Measured
+  headline/metadata left coordinates were identical across mixed rows; no horizontal
+  overflow. Browser review retained the initial thumbnail sizes.
+- Verify Today/All/Unread/folder/subscription/Read later and story deep links,
+  filters/sort, reader j/k, Back/Escape, mark-on-open enabled/disabled, and Saved
+  exclusion. Mode changes do not write read state. Advancing browser time through
+  the five-minute signing window triggered query refresh and replaced a failed URL.
+- A 1,100-entry fixture paginated through entry 1100 with at most 41 mounted article
+  rows in the initial walkthrough. Original-image bandwidth remains a known trade-off;
+  thumbnails use lazy loading and bounded virtual mounting.
+- Validation: all 16 web test files / 120 tests, pnpm lint, pnpm typecheck, and
+  pnpm build:web pass. No production deployment or manual AWS changes occurred.

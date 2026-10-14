@@ -215,7 +215,7 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
   font subset. PWA manifest + service-worker shell deferred to Phase 6 (installability
   without offline complexity).
 
-The stream shell also supports an optional device-local `swipe` presentation. It is
+The stream shell supports device-local `list`, `feed`, and `swipe` presentations. It is
 controlled by `storyPresentationAtom` and the header toggle, and does not alter the
 standard `EntryList`. Swipe stories use the entry's authorized article image when
 available, or a theme background with the small feed favicon beside the source title;
@@ -261,3 +261,25 @@ responses carry source snapshots, availability, save time, original image URL, a
 media dimensions/alt. Create/detail/library include signed `image.url` and
 `image.urlExpiresAtMs`; reader state does not need signed URLs. Missing or foreign
 image IDs return 404, including repeat deletion.
+
+### Feed presentation
+
+Feed is the date-grouped virtual list with optional stored article thumbnails on the
+right. Headlines and metadata share the same left inset on every row, including rows
+without images or with failed images. Text-only rows recover the image column's width;
+favicons remain small source marks. Feed preserves the list's order, filters, read
+typography, notes, pagination, and existing reader routes/keyboard actions.
+
+Thumbnails start at 96×72 CSS pixels on desktop and 72×72 below the small-screen
+breakpoint, crop with object-fit cover, and reserve dimensions while loading. Delivery
+uses the existing authorized articleImage signed URLs and shared query expiry refresh.
+These are original image bytes displayed at thumbnail size, not generated derivatives;
+lazy loading and virtualization bound requests, but bandwidth remains a trade-off.
+Failed URLs hide their image slot; a renewed URL can load again.
+
+The header selector offers list/feed/swipe. The existing local
+sparkle.ui.storyPresentation key accepts all three; List remains the fallback.
+Saved keeps its dedicated mixed list and leaves the local preference intact.
+On phones the brand uses its sparkles mark to leave room for the three labeled modes,
+navigation, refresh, and theme. Feed rows are native buttons with visible keyboard focus;
+thumbnails are decorative and activate the same article as the row.

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "../lib/api";
 import { qk, streamPath, viewSearch } from "../lib/keys";
 import type { Entry, StreamDescriptor, Subscription } from "../lib/types";
+import type { StoryPresentation } from "../lib/ui-state";
 import { EntryList } from "./EntryList";
 import { StoryView } from "./StoryView";
 
@@ -26,7 +27,7 @@ export function StreamInner({
   storyIndex: number;
   onStoryIndexChange: (index: number) => void;
   onSelect: (entry: Entry) => void;
-  presentation: "list" | "swipe";
+  presentation: StoryPresentation;
   subscriptions: Subscription[];
 }): ReactElement {
   const query = useInfiniteQuery({
@@ -159,6 +160,7 @@ export function StreamInner({
         />
       ) : (
         <EntryList
+          presentation={presentation}
           entries={entries}
           loading={query.isPending}
           activeId={activeEntryId}
@@ -167,7 +169,7 @@ export function StreamInner({
         />
       )}
       <div ref={sentinelRef} style={{ height: 1 }} />
-      {presentation === "list" && !query.hasNextPage && entries.length > 0 && (
+      {presentation !== "swipe" && !query.hasNextPage && entries.length > 0 && (
         <Text ta="center" c="dimmed" size="xs" py="md" ff="monospace">
           ∎ end of stream
         </Text>

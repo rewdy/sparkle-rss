@@ -3,7 +3,13 @@ import { DEFAULT_THEME_ID, type ThemeId } from "../themes";
 import { localDateKey } from "./keys";
 
 export type ColorSchemePref = "light" | "dark" | "system";
-export type StoryPresentation = "list" | "swipe";
+export type StoryPresentation = "list" | "feed" | "swipe";
+
+export function isStoryPresentation(
+  value: unknown,
+): value is StoryPresentation {
+  return value === "list" || value === "feed" || value === "swipe";
+}
 
 export function loadLocalUi(): Record<string, unknown> {
   try {
@@ -44,7 +50,9 @@ function asStringArray(v: unknown): string[] {
 // so the first paint already uses saved preferences.
 const local = loadLocalUi();
 const storyPresentationBaseAtom = atom<StoryPresentation>(
-  local.storyPresentation === "swipe" ? "swipe" : "list",
+  isStoryPresentation(local.storyPresentation)
+    ? local.storyPresentation
+    : "list",
 );
 export const storyPresentationAtom = atom(
   (get) => get(storyPresentationBaseAtom),

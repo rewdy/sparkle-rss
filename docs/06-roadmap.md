@@ -5,8 +5,9 @@ explicit exit criteria — do not start the next phase until they pass.
 
 ## Current state (updated 2026-10-13)
 
-Entry-list skeleton spacing is fixed with explicit DOM bars and a date-header placeholder;
-visual review passed and the temporary comparison toggle has been removed.
+Feed is implemented as a third device-local presentation with right-hand stored-image
+thumbnails and a consistent left text axis. Local browser review and 120 web tests pass;
+the change is ready for the normal deployment pipeline. Entry-list skeleton polish is complete.
 
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
@@ -224,6 +225,10 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
+- [x] **Feed presentation** — third device-local mode with optional right-hand stored
+      article thumbnails, aligned text, image fallback, responsive selector, and shared
+      virtualized list/navigation. Browser fixture acceptance and 120 web tests pass
+      (2026-10-13); OpenSpec `add-feed-view`. No deployment in this session.
 - [x] **Entry-list skeleton polish** — explicit DOM bars with line slots and padding
       matching real single-line rows, plus a date-header placeholder. User visual
       review passed; temporary comparison controls removed (2026-10-13).

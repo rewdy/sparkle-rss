@@ -1,12 +1,12 @@
 # 09 — Swipe Story View (Planning)
 
 This document plans an alternative presentation for stream/listing pages. The existing
-standard list remains unchanged; users can switch between it and a full-screen,
+standard list remains unchanged; users can switch between List, an image-enhanced Feed list, and a full-screen,
 TikTok-inspired story viewer on each device.
 
 ## Product decisions
 
-- The header contains a toggle between `list` and `swipe` presentation.
+- The header contains a toggle between `list`, `feed`, and `swipe` presentation.
 - The selected presentation is stored in device-local storage, not account settings.
   A user may therefore use swipe mode on a phone and list mode on a desktop.
 - The active story position is navigation state: story 0 uses the ordinary stream URL,
@@ -74,7 +74,7 @@ Add a sibling component rather than modifying the existing list behavior:
 Suggested local state:
 
 ```ts
-type StoryPresentation = "list" | "swipe";
+type StoryPresentation = "list" | "feed" | "swipe";
 const storyPresentationAtom = atomWithStorage<StoryPresentation>(
   "sparkle.storyPresentation",
   "list",
@@ -185,3 +185,7 @@ resetting the current story.
 - No image or favicon produces a broken-image artifact.
 - Keyboard, touch, mouse, and browser Back/Escape paths work.
 - API authorization prevents cross-user media access.
+
+Feed reuses the standard virtualized list with right-hand article thumbnails and a
+consistent left text axis. Saved keeps its dedicated mixed list and does not offer the
+presentation selector; visiting it preserves the selected mode for other streams.

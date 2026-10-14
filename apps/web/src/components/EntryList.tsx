@@ -1,7 +1,14 @@
 import { Blockquote, Box, Group, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ReactElement, RefObject } from "react";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { groupByDay, timeLabel } from "../lib/date-grouping";
 import { useSubscriptionMap } from "../lib/feed-titles";
 import type { Entry } from "../lib/types";
@@ -23,7 +30,9 @@ export function EntryList({
   activeId,
   onSelect,
   scrollRef,
+  presentation = "list",
 }: {
+  presentation?: "list" | "feed";
   entries: Entry[];
   loading: boolean;
   activeId: string | null;
@@ -51,12 +60,35 @@ export function EntryList({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) =>
-      rows[index]?.kind === "header" ? HEADER_HEIGHT : ENTRY_HEIGHT,
+      rows[index]?.kind === "header"
+        ? HEADER_HEIGHT
+        : presentation === "feed" &&
+            rows[index]?.kind === "entry" &&
+            rows[index].entry.articleImage
+          ? 96
+          : ENTRY_HEIGHT,
     overscan: OVERSCAN,
+    // Round up Feed's fractional text heights so adjacent rows never overlap.
+    measureElement:
+      presentation === "feed"
+        ? (element) => Math.ceil(element.getBoundingClientRect().height)
+        : undefined,
     // Positions of already-mounted rows are written to the DOM directly while
     // scrolling; React only re-renders when the visible range changes.
     directDomUpdates: true,
   });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mode changes invalidate measured row sizes
+  useLayoutEffect(() => {
+    virtualizer.measure();
+    // Rows whose height did not change will not emit a ResizeObserver event.
+    // Re-measure them too after clearing the previous mode's measurements.
+    for (const node of scrollRef.current?.querySelectorAll<HTMLDivElement>(
+      "[data-index]",
+    ) ?? []) {
+      virtualizer.measureElement(node);
+    }
+  }, [presentation, virtualizer, scrollRef]);
 
   const rowRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -77,7 +109,7 @@ export function EntryList({
     }
   }, [activeId, rows, virtualizer]);
 
-  if (loading) return <SkeletonList />;
+  if (loading) return <SkeletonList presentation={presentation} />;
 
   if (entries.length === 0) {
     return (
@@ -134,6 +166,8 @@ export function EntryList({
                 </Group>
               ) : (
                 <EntryRow
+                  key={row.entry.id}
+                  presentation={presentation}
                   entry={row.entry}
                   active={row.entry.id === activeId}
                   onSelect={onSelect}
@@ -147,7 +181,11 @@ export function EntryList({
   );
 }
 
-function SkeletonList(): ReactElement {
+function SkeletonList({
+  presentation,
+}: {
+  presentation: "list" | "feed";
+}): ReactElement {
   return (
     <Box>
       <span role="status" className="sr-only">
@@ -163,14 +201,27 @@ function SkeletonList(): ReactElement {
       </Group>
       {Array.from({ length: SKELETON_COUNT }, (_, i) => (
         // Static placeholder rows; index key is stable across renders.
-        // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton scaffold
-        <div key={i} className="skeleton-row" aria-hidden="true">
-          <Group mb="xxs" className="skeleton-meta-slot">
-            <div className="skeleton-line skeleton-line-meta" />
-          </Group>
-          <div className="skeleton-title-slot">
-            <div className="skeleton-line skeleton-line-title" />
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton scaffold
+          key={i}
+          className={
+            presentation === "feed" ? "skeleton-row feed-row" : "skeleton-row"
+          }
+          aria-hidden="true"
+        >
+          <div
+            className={presentation === "feed" ? "feed-row-text" : undefined}
+          >
+            <Group mb="xxs" className="skeleton-meta-slot">
+              <div className="skeleton-line skeleton-line-meta" />
+            </Group>
+            <div className="skeleton-title-slot">
+              <div className="skeleton-line skeleton-line-title" />
+            </div>
           </div>
+          {presentation === "feed" && (
+            <div className="feed-thumbnail skeleton-line" />
+          )}
         </div>
       ))}
     </Box>
@@ -181,23 +232,19 @@ export const EntryRow = memo(function EntryRow({
   entry,
   active,
   onSelect,
+  presentation = "list",
 }: {
+  presentation?: "list" | "feed";
   entry: Entry;
   active: boolean;
   onSelect: (entry: Entry) => void;
 }): ReactElement {
   const feedMeta = useSubscriptionMap();
   const sub = feedMeta.get(entry.feedId);
-  return (
-    <Box
-      className="entry-row"
-      data-active={active || undefined}
-      data-entry-id={entry.id}
-      onClick={() => onSelect(entry)}
-      px="md"
-      py="sm"
-      style={{ cursor: "pointer" }}
-    >
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const image = presentation === "feed" ? entry.articleImage : null;
+  const content = (
+    <>
       <Group justify="space-between" wrap="nowrap" gap="xs" mb="xxs">
         <EntryMeta
           iconUrl={sub?.iconUrl}
@@ -233,6 +280,37 @@ export const EntryRow = memo(function EntryRow({
         >
           {entry.excerpt}
         </Blockquote>
+      )}
+    </>
+  );
+  return (
+    <Box
+      component={presentation === "feed" ? "button" : "div"}
+      type={presentation === "feed" ? "button" : undefined}
+      className={presentation === "feed" ? "entry-row feed-row" : "entry-row"}
+      data-active={active || undefined}
+      data-entry-id={entry.id}
+      onClick={() => onSelect(entry)}
+      px="md"
+      py="sm"
+      style={{ cursor: "pointer" }}
+    >
+      {presentation === "feed" ? (
+        <div className="feed-row-text">{content}</div>
+      ) : (
+        content
+      )}
+      {image?.url && image.url !== failedUrl && (
+        <img
+          className="feed-thumbnail"
+          src={image.url}
+          alt=""
+          width={96}
+          height={72}
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailedUrl(image.url)}
+        />
       )}
     </Box>
   );

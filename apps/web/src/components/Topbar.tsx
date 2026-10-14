@@ -21,7 +21,11 @@ import { Link } from "wouter";
 import { useMarkAllRead } from "../lib/mutations";
 import type { StreamDescriptor } from "../lib/types";
 import { isEntryStream } from "../lib/types";
-import { useColorSchemeValue } from "../lib/ui-state";
+import {
+  isStoryPresentation,
+  type StoryPresentation,
+  useColorSchemeValue,
+} from "../lib/ui-state";
 
 export function Topbar({
   stream,
@@ -39,8 +43,8 @@ export function Topbar({
   onFilterChange: (f: "all" | "unread") => void;
   navOpened: boolean;
   onToggleNav: () => void;
-  presentation: "list" | "swipe";
-  onPresentationChange: (value: "list" | "swipe") => void;
+  presentation: StoryPresentation;
+  onPresentationChange: (value: StoryPresentation) => void;
 }): ReactElement {
   const qc = useQueryClient();
   // Read later is a queue of saved items, not a subscription stream: the
@@ -58,7 +62,14 @@ export function Topbar({
   }
 
   return (
-    <Group justify="space-between" h="100%" px="md" wrap="nowrap" miw={0}>
+    <Group
+      className="topbar"
+      justify="space-between"
+      h="100%"
+      px={{ base: 8, sm: "md" }}
+      wrap="nowrap"
+      miw={0}
+    >
       <Group gap="sm" wrap="nowrap" miw={0}>
         <Burger
           opened={navOpened}
@@ -72,6 +83,7 @@ export function Topbar({
           fw={700}
           component={Link}
           href="/today"
+          aria-label="Sparkle RSS"
           style={{
             whiteSpace: "nowrap",
             display: "flex",
@@ -81,7 +93,7 @@ export function Topbar({
           className="site-title"
         >
           <LuSparkles size={15} />
-          Sparkle RSS
+          <span className="site-wordmark">Sparkle RSS</span>
         </Text>
         <Divider
           orientation="vertical"
@@ -100,11 +112,11 @@ export function Topbar({
             size="xs"
             value={presentation}
             onChange={(value) => {
-              if (value === "list" || value === "swipe")
-                onPresentationChange(value);
+              if (isStoryPresentation(value)) onPresentationChange(value);
             }}
             data={[
               { label: "list", value: "list" },
+              { label: "feed", value: "feed" },
               { label: "swipe", value: "swipe" },
             ]}
           />
