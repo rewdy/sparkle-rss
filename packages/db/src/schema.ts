@@ -257,9 +257,8 @@ export const userMedia = pgTable(
 export const userSettings = pgTable("user_settings", {
   contentFetchAdmissions: jsonb("content_fetch_admissions")
     .$type<number[]>()
-    .notNull()
     .default(sql`'[]'::jsonb`),
-  contentFetchVersion: integer("content_fetch_version").notNull().default(0),
+  contentFetchVersion: integer("content_fetch_version").default(0),
   userId: uuid("user_id").primaryKey(),
   data: jsonb("data").notNull().default(sql`'{}'::jsonb`),
   updatedAt: timestamp("updated_at", { withTimezone: true })

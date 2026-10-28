@@ -96,3 +96,12 @@ cover persistence, aliases, source deletion, concurrent requests, leases, cooldo
 rate limits, relative images, and article-state isolation. Browser acceptance and
 CI migration review are tracked separately in the OpenSpec tasks and roadmap;
 unit/integration results alone do not establish production deployment.
+
+### Deployment recovery
+
+DSQL rejected the admission-column constraints in 0005 after committing its first
+eight columns. The runtime recovery keeps 0005's checksum intact, adds admission
+columns nullable with defaults set separately, and verifies duplicates on resume.
+0006 aligns Postgres nullability. Legacy NULL admission state is initialized by
+the service. Ship this fix through CI; do not simply rerun the old revision, edit
+its journal, or drop any previously added column.

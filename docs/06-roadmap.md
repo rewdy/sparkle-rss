@@ -5,6 +5,12 @@ explicit exit criteria — do not start the next phase until they pass.
 
 ## Current state (updated 2026-10-28)
 
+Deploy 40684982812 failed on migration 0005's inline DEFAULT/NOT NULL admission
+columns after eight nullable entry columns committed. A local recovery fix retains
+the original checksum, resumes verified nullable additions, sets defaults separately,
+and handles existing NULL admission state. Forward migration 0006 aligns Postgres.
+Production retry is pending; the failure occurred before Lambda publication.
+
 Full-content on-demand and automatic-on-reader-open implementation is local;
 automatic fetching is restricted to original feed text below a named 500-character
 threshold. Longer bodies show the original feed directly with no tabs or fetch

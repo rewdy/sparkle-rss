@@ -918,3 +918,24 @@ stay open in OpenSpec. No production deployment was requested.
 
 Final pre-commit validation: all 371 tests across 43 files pass, including unchanged
 Google Reader conformance; lint and web/Lambda builds pass.
+
+## 2026-10-28 — Recover partially applied full-content migration on DSQL
+
+- Deploy run 40684982812 failed before Lambda publication: migration 0005 statements
+  0–7 committed; statement 8 failed with SQLSTATE 0A000, “ALTER TABLE ADD COLUMN
+  with constraint not supported.” The rejected statement added admission history
+  with inline DEFAULT and NOT NULL; the version column would have the same issue.
+- Keep the original migration file and checksum immutable. The DSQL runner emits
+  nullable ADD followed by SET DEFAULT for these two specific historical columns.
+  Duplicate nullable ADDs on replay are accepted only with a matching catalog type.
+  Wrong types and unrelated errors remain fatal; the journal is written only once
+  all statements succeed.
+- New migration 0006 removes the two NOT NULL constraints on Postgres. The core
+  service handles NULL history/version as empty/zero for old DSQL settings rows.
+- Added recovery tests for fresh/partial databases, interruption between ADD and
+  SET DEFAULT, journaled reruns, wrong-type rejection, and legacy NULL state.
+  Committed the recovery fix and a migration-authoring checklist covering generated
+  SQL review, NULL/default semantics, fresh/existing/partial-schema tests, checksum
+  preservation, and migration-before-code deployment order. All 20 focused tests,
+  affected typechecks, and lint pass. No production SQL, deploy rerun, or manual
+  apply performed.

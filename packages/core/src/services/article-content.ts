@@ -170,15 +170,12 @@ export function createArticleContentService({
         const [locked] = await tx
           .update(schema.userSettings)
           .set({
-            contentFetchVersion: sql`${schema.userSettings.contentFetchVersion} + 1`,
+            contentFetchVersion: sql`coalesce(${schema.userSettings.contentFetchVersion}, 0) + 1`,
           })
           .where(
             and(
               eq(schema.userSettings.userId, userId),
-              eq(
-                schema.userSettings.contentFetchVersion,
-                settings.contentFetchVersion,
-              ),
+              sql`coalesce(${schema.userSettings.contentFetchVersion}, 0) = ${settings.contentFetchVersion ?? 0}`,
             ),
           )
           .returning();
@@ -215,7 +212,7 @@ export function createArticleContentService({
             ? row.contentAutomaticRetryAt
             : row.contentRetryAt
           )?.getTime() ?? 0;
-        const admissions = locked.contentFetchAdmissions.filter(
+        const admissions = (locked.contentFetchAdmissions ?? []).filter(
           (time) => time > at - 3_600_000,
         );
         const budgetAt =

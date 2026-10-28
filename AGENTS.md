@@ -113,6 +113,12 @@ docs/            Source of truth for design
 
 ### Aurora DSQL engine quirks (full list in docs/decisions.md)
 
+- `ALTER TABLE ADD COLUMN` cannot include inline DEFAULT or NOT NULL constraints.
+  Add nullable columns, set defaults separately, and handle preexisting NULL values.
+  Failed nontransactional migrations may leave earlier columns applied; retries must
+  verify existing column types rather than drop/recreate or blindly ignore errors.
+  Review the migration authoring/recovery checklist in `docs/03-data-model.md`;
+  Postgres-only tests cannot establish DSQL DDL compatibility.
 - No FOREIGN KEY constraints, no partial indexes, no DESC index keys, no `serial`,
   identity needs `CACHE 1`, indexes need `CREATE INDEX ASYNC`, no multi-DDL transactions,
   multi-target DROP unreliable, dropped names stay blocked for the cluster's lifetime.

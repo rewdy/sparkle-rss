@@ -19,8 +19,9 @@ these directly. We use **Aurora DSQL** — serverless, IAM-authenticated, no VPC
 - **IAM auth tokens expire every 15 min**; `admin` user requires
   `dsql:DbConnectAdmin` + `getDbConnectAdminAuthToken()` (pool factory caps client lifetime).
 - **No local emulator.** Local dev/tests run vanilla Postgres 16 in Docker with identical
-  migrations. The schema file is valid on both engines; only index DDL gets a runtime
-  rewrite for DSQL (`CREATE INDEX ASYNC`).
+  migrations. The declared schema targets both engines. Index DDL is rewritten for DSQL
+  (`CREATE INDEX ASYNC`); migration 0005 also has a narrowly scoped recovery
+  rewrite for its historical inline column constraints, described below.
 
 ## Migration pipeline
 
@@ -35,6 +36,34 @@ these directly. We use **Aurora DSQL** — serverless, IAM-authenticated, no VPC
     "already exists" acknowledgments, rewrites index DDL to ASYNC at runtime.
 - Forward-only. Dev cycle = fresh TF cluster, never drop/recreate (dropped names stay
   blocked on a cluster).
+
+## Checklist for the next migration
+
+- Review generated SQL before committing it. Local Postgres success does not prove
+  DSQL compatibility. In particular, `ALTER TABLE ... ADD COLUMN` must add a bare
+  nullable column: no inline `DEFAULT` or `NOT NULL`. Set a future-insert default
+  with a separate `ALTER TABLE ... ALTER COLUMN ... SET DEFAULT` statement.
+- Setting a default does not fill existing rows. Define how the application handles
+  NULL, or plan a bounded forward backfill separately. Do not introduce an
+  unsupported NOT NULL alteration to make the generated snapshot look stricter.
+  Keep the Drizzle schema, generated snapshot, and actual engine schema aligned.
+- Separate DDL statements with Drizzle statement breakpoints. Keep migrations
+  extension-free, without foreign keys, partial indexes, or descending index keys
+  under this repository's portability rules. Index ASYNC syntax belongs in the
+  DSQL runner, not portable migration SQL.
+- Test a fresh schema and an upgrade with existing rows. For changes involving
+  nontransactional DDL, also test a partially applied migration and its retry;
+  ensure duplicate/type checks cannot mask a different schema or unrelated error.
+  `packages/db/test/dsql-migrator.test.ts` covers the 0005 recovery behavior.
+- Once a migration has been attempted on a persistent deployment, preserve its SQL
+  and journal checksum. Correct it with forward migrations and, when unavoidable,
+  an explicitly scoped runtime compatibility fix with regression tests. The 0005
+  rewrite is an exception for that historical migration, not an automatic sanitizer
+  for future constrained ADD statements.
+- Keep the deploy order: migrate an existing database before publishing code that
+  reads new columns. Review the CI plan and migration logs. If a run fails, identify
+  committed statements before retrying; never blindly delete journal rows, drop
+  already-created columns, or run a manual production apply to work around it.
 
 ## Design choice: per-user entry rows
 
@@ -190,3 +219,16 @@ owned entry and matching unexpired claim, never upserts a deleted source. Web DT
 add `originalContentHtml` and `fullContent` metadata while preferring extracted
 `contentHtml`; shared Google Reader DTO mapping stays unchanged. Details and response
 examples: [11-full-content-fetch.md](11-full-content-fetch.md).
+
+### DSQL migration 0005 recovery
+
+Deployment 40684982812 stopped after adding the eight nullable full-content entry
+columns. DSQL rejects inline DEFAULT/NOT NULL in ADD COLUMN. Keep 0005 and its hash
+unchanged: the DSQL runner splits only its two admission-column additions into
+nullable ADDs and separate SET DEFAULT statements. On replay, duplicate-column
+errors are accepted only after the supported pg_attribute/pg_class/pg_namespace/pg_type catalogs confirm the requested nullable
+type; mismatches still fail. Migration 0006 drops those admission NOT NULL
+constraints on Postgres so the declared schema matches both engines. Existing
+settings rows may have NULL admission/version values; the service treats these as
+empty history and version zero and initializes them on the first claim. No bulk
+backfill, destructive DDL, or manual production apply is needed.

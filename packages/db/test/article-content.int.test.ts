@@ -150,6 +150,19 @@ describe.skipIf(!url)("article content persistence", () => {
     expect(cached.content.contentHtml).toBe(article.contentHtml);
     expect(extract).toHaveBeenCalledTimes(1);
   });
+  it("initializes nullable admission columns on preexisting settings rows", async () => {
+    await db.insert(schema.userSettings).values({
+      userId: owner,
+      contentFetchAdmissions: null,
+      contentFetchVersion: null,
+      data: { themeId: "blue" },
+    });
+    expect((await service.ensure(owner, id, "manual")).status).toBe(200);
+    const [settings] = await db.select().from(schema.userSettings);
+    expect(settings?.contentFetchVersion).toBe(1);
+    expect(settings?.contentFetchAdmissions).toHaveLength(1);
+    expect(settings?.data).toEqual({ themeId: "blue" });
+  });
   it("authorizes before fetching and refuses URL replacement", async () => {
     await expect(service.ensure(other, id, "manual")).rejects.toMatchObject({
       status: 404,

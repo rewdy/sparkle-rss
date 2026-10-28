@@ -86,3 +86,12 @@ behavior. The existing server-side manual API contract is unchanged.
 The user reviewed and approved the final labels (Fetched article / Original),
 loading behavior, and hidden fetch controls for full feed bodies. Commit this
 implementation with the change left open for its remaining acceptance/release tasks.
+
+### DSQL deployment failure and recovery fix
+
+Deploy 40684982812 failed on 0005 statement 8 after statements 0–7 committed.
+The local fix preserves 0005's checksum, splits the two admission-column DEFAULT/
+NOT NULL additions into nullable ADD and separate SET DEFAULT on DSQL, verifies
+duplicate-column types before resuming, and uses forward migration 0006 plus
+null-safe service reads for existing rows. Release gate 5.3 stays open until the
+fixed revision successfully migrates through CI. No production SQL was run locally.
