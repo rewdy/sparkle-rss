@@ -171,3 +171,13 @@ Everything scales horizontally out of the box. Practical ceilings at personal sc
 DSQL request throughput (irrelevant here), SQS-driven worker concurrency (capped ~10 to be
 polite to feed hosts), and API Gateway account throttles. The design comfortably covers
 tens of users × hundreds of feeds.
+
+## Full-content fetching (web only)
+
+The reading pane invokes the same owned-entry content service as manual Load full
+article. It runs inline with a 10-second total network deadline under the API's
+actual 29-second timeout. Original feed HTML remains authoritative for Google
+Reader; web decoration selects a separate stored body. Database admission/leases
+coordinate tabs and Lambda instances; no ingest queue or new AWS resources are
+needed. The public socket transport is shared with saved-image fetching. See
+[11-full-content-fetch.md](11-full-content-fetch.md) for limits and retries.

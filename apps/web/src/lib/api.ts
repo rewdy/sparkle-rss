@@ -7,6 +7,7 @@ import {
 } from "./auth";
 import { localMidnightIso } from "./keys";
 import type {
+  ContentResult,
   Entry,
   EntryPage,
   EntryStreamDescriptor,
@@ -82,6 +83,24 @@ function raw(path: string, init?: RequestInit): Promise<Response> {
 }
 
 export const api = {
+  articleContent: {
+    fetch: async (
+      id: string,
+      trigger: "manual" | "automatic",
+    ): Promise<ContentResult> => {
+      const response = await raw(`/api/v1/entries/${id}/content`, {
+        method: "POST",
+        body: JSON.stringify({ trigger }),
+      });
+      const data = await response.json();
+      if (![200, 202, 429, 502].includes(response.status) || !data.content)
+        throw new ApiError(
+          response.status,
+          data.message ?? "Full content could not be loaded.",
+        );
+      return data as ContentResult;
+    },
+  },
   saved: {
     list: (opts: {
       sort: "asc" | "desc";

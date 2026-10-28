@@ -192,12 +192,12 @@ describe("fetchAndExtractArticle", () => {
     const huge = `<html><head><title>Big</title></head><body><article><p>${"x".repeat(
       3 * 1024 * 1024,
     )}</p></article></body></html>`;
-    const article = await fetchAndExtractArticle("https://example.com/big", {
-      fetchImpl: async () => htmlResponse(huge),
-      resolve: publicResolve,
-    });
-    // The read stops at the cap instead of buffering the whole document.
-    expect(article.contentHtml.length).toBeLessThan(500_001);
+    await expect(
+      fetchAndExtractArticle("https://example.com/big", {
+        fetchImpl: async () => htmlResponse(huge),
+        resolve: publicResolve,
+      }),
+    ).rejects.toMatchObject({ status: 413 });
   });
 });
 
@@ -209,5 +209,84 @@ describe("extractArticle", () => {
     );
     expect(article.imageUrl).toBe("https://example.com/posts/img/a.png");
     expect(article.title).toBe("example.com");
+  });
+});
+
+describe("strict article limits", () => {
+  it("rejects credentials and mapped private IPv6 before fetching", async () => {
+    for (const url of [
+      "https://user:pass@example.com/a",
+      "http://[::ffff:7f00:1]/a",
+    ]) {
+      await expect(
+        fetchAndExtractArticle(url, {
+          resolve: async (host) =>
+            host.includes("ffff") ? ["::ffff:7f00:1"] : ["93.184.216.34"],
+          fetchImpl: async () => {
+            throw new Error("must not fetch");
+          },
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+    }
+  });
+  it("resolves images against final URL and ignores publisher base tags", async () => {
+    const article = extractArticle(
+      ARTICLE.replace("<head>", '<head><base href="https://evil.example/">'),
+      "https://example.com/final/page",
+    );
+    expect(article.contentHtml).toContain(
+      'src="https://example.com/final/chart.png"',
+    );
+    expect(article.contentHtml).not.toContain("evil.example");
+  });
+  it("rejects unsupported MIME and oversized extracted output", async () => {
+    await expect(
+      fetchAndExtractArticle("https://example.com/a", {
+        resolve: publicResolve,
+        fetchImpl: async () =>
+          new Response("text", { headers: { "content-type": "text/plain" } }),
+      }),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(() =>
+      extractArticle(
+        ARTICLE.replace(
+          "</article>",
+          `<p>${"long sentence. ".repeat(40_000)}</p></article>`,
+        ),
+        "https://example.com/a",
+      ),
+    ).toThrow("too large");
+  });
+});
+
+describe("total network deadline", () => {
+  it("cancels stalled DNS and stalled response streams", async () => {
+    const dnsCancel = new AbortController();
+    const dns = fetchAndExtractArticle("https://example.com/a", {
+      signal: dnsCancel.signal,
+      resolve: () => new Promise(() => {}),
+    });
+    const dnsCheck = expect(dns).rejects.toMatchObject({ status: 502 });
+    dnsCancel.abort();
+    await dnsCheck;
+    const bodyCancel = new AbortController();
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const stalled = fetchAndExtractArticle("https://example.com/a", {
+      signal: bodyCancel.signal,
+      resolve: publicResolve,
+      fetchImpl: async () => {
+        started();
+        return new Response(new ReadableStream({ start() {} }), {
+          headers: { "content-type": "text/html" },
+        });
+      },
+    });
+    const streamCheck = expect(stalled).rejects.toMatchObject({ status: 502 });
+    await ready;
+    bodyCancel.abort();
+    await streamCheck;
   });
 });

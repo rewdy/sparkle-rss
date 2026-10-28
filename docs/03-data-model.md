@@ -177,3 +177,16 @@ orders by save timestamp/type/typed ID, then hydrates one bounded page. Its vers
 base64url cursor includes saved-library scope, sort direction, a UTC timestamp with
 database precision, kind, and ID. Article IDs compare numerically and image IDs as
 UUIDs. Existing Google Reader and `/entries?stream=starred` stay article-only.
+
+## Web full-content storage
+
+Migration 0005 adds nullable full-content HTML, final URL, retrieval time, claim
+token/start, safe failure, and separate retry timestamps to `user_entries`. Null
+fields mean an existing entry has not been attempted; `content_html` is unchanged.
+`user_settings.content_fetch_admissions` holds at most 30 admitted timestamps from
+the last rolling hour and `content_fetch_version` serializes admission transactions.
+Neither belongs to settings preference JSON. Completion conditionally updates the
+owned entry and matching unexpired claim, never upserts a deleted source. Web DTOs
+add `originalContentHtml` and `fullContent` metadata while preferring extracted
+`contentHtml`; shared Google Reader DTO mapping stays unchanged. Details and response
+examples: [11-full-content-fetch.md](11-full-content-fetch.md).

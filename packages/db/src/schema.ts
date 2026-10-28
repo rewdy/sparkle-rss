@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -119,6 +120,18 @@ export const userEntries = pgTable(
     guidHash: text("guid_hash").notNull(),
     title: text("title").notNull().default(""),
     contentHtml: text("content_html").notNull().default(""),
+    fullContentHtml: text("full_content_html"),
+    fullContentUrl: text("full_content_url"),
+    fullContentFetchedAt: timestamp("full_content_fetched_at", {
+      withTimezone: true,
+    }),
+    contentAttemptToken: uuid("content_attempt_token"),
+    contentAttemptAt: timestamp("content_attempt_at", { withTimezone: true }),
+    contentFailure: text("content_failure"),
+    contentRetryAt: timestamp("content_retry_at", { withTimezone: true }),
+    contentAutomaticRetryAt: timestamp("content_automatic_retry_at", {
+      withTimezone: true,
+    }),
     url: text("url").notNull().default(""),
     author: text("author").notNull().default(""),
     publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
@@ -242,6 +255,11 @@ export const userMedia = pgTable(
 );
 
 export const userSettings = pgTable("user_settings", {
+  contentFetchAdmissions: jsonb("content_fetch_admissions")
+    .$type<number[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  contentFetchVersion: integer("content_fetch_version").notNull().default(0),
   userId: uuid("user_id").primaryKey(),
   data: jsonb("data").notNull().default(sql`'{}'::jsonb`),
   updatedAt: timestamp("updated_at", { withTimezone: true })

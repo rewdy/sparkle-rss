@@ -315,3 +315,28 @@ remains in loaded data. Stream/filter/sort changes reset that local scroll surfa
 Queries, expiry refresh, pagination, and reader callbacks remain shared in `StreamInner`;
 Jotai stores only the device-local presentation, never entries. Scrolling or switching
 modes does not mark entries read. Saved retains its dedicated mixed library.
+
+## Full article content
+
+Only `ReaderPane` invokes automatic extraction on an eligible feed article open.
+`fullContent.automaticFetchEligible` restricts this to original feed bodies shorter
+than the core 500-character readable-text constant. At or above that threshold,
+the reader hides the tabs and all fetch/retry actions and shows the original feed
+body, including when an older extracted copy exists.
+The manual retry/control uses the same mutation and owned entry ID, including the
+underlying `entryId` for feed-backed Read Later. List/Card/Swipe rendering and
+prefetching do not initiate extraction. Off-feed URL items are excluded.
+
+React Query owns `['article-content', entryId]` body/status data and mutations.
+Pending claims poll entry detail every two seconds until completion, navigation,
+or lease expiry. Content patches update entry, mixed Saved, and Read Later caches
+without replacing optimistic read/star flags. Late mutation results target their
+original entry, never the active reader. Original/full selection is local UI state;
+image lazy-loading and save controls rebuild when the same entry's HTML changes.
+Mantine outline tabs labeled Fetched article and Original select the body.
+The fetched panel shows an accessible loader immediately on an automatic fetch,
+including before the mutation starts, so feed content never flashes first. Original
+feed remains selectable during requests; longer bodies render directly without
+tabs or fetching controls. Cached results switch without
+refetching, and failure feedback keeps a retry control available. Limits/API fields are in
+[11-full-content-fetch.md](11-full-content-fetch.md).

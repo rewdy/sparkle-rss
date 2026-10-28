@@ -1,135 +1,98 @@
-# 11 — Full Content for Teaser Feeds (Planning / LOE)
+# 11 — Full Article Content
 
-Proposal captured 2026-09-23. **Not approved and not scheduled** — this records a
-level-of-effort estimate so a decision can be made later. Nothing here is committed work;
-the read-later fetcher it proposes to reuse is already shipped (doc 10).
+OpenSpec: `fetch-full-article-on-open`. The September estimate is superseded by
+this implementation and the change's capability spec. The confirmed sequence is
+manual fetching followed by automatic fetching when the reading pane opens; both
+use one core service. Automatic ingestion is outside this change.
 
-## Problem
+## Reader behavior
 
-Some feeds publish only a summary/teaser rather than the full article body. The reader
-renders exactly what the feed supplied, so those articles are unreadable in-app even though
-the source page has the rest of the text.
+Opening a feed article's reading pane automatically requests readable source-page
+content. This includes existing entries, Saved articles, deep links, keyboard
+navigation, and feed-backed Read Later items. Automatic fetching requires a valid HTTP(S) URL and fewer than 500 readable
+characters in the original feed body. Empty content qualifies; exactly 500 or
+more characters skips automatic fetching. `AUTOMATIC_FULL_CONTENT_TEXT_LIMIT` in
+`packages/core/src/article/content-policy.ts` is the single tuning constant. The
+policy ignores markup and script/style/template text, separates block text, decodes
+entities, normalizes whitespace, trims, and counts Unicode characters. At or above the threshold, the reader shows only original feed content and hides
+all content tabs and fetch/retry controls, even if an older fetched copy exists.
+List hydration, prefetching, pagination, and scrolling Swipe stories do not fetch.
+Opening the full reader from a story does. Off-feed URL items keep their existing
+Read Later extraction behavior.
 
-The question this doc answers: given the existing read-later scraper, what would it take to
-fetch and show the full article for feed entries whose feed content is a teaser?
+Mantine outline tabs labeled **Fetched article** and **Original** select the
+reader body. Automatically eligible articles default to Fetched article, which shows
+a loading indicator from the first render until extraction finishes; the original
+body is not briefly rendered underneath it. Original stays selectable during
+loading. Longer articles show original feed content directly without tabs or a
+fetch action. Cached results switch without refetching. Errors show
+actionable feedback and a retry control, with original content still available. Extracted content is preferred on a
+subsequent open. Success is retained indefinitely, without scheduled refresh.
+Publisher paywalls, JavaScript rendering, and extraction quality are not guaranteed;
+the original-site link remains available.
 
-## What already exists and is reusable as-is
+## Storage and compatibility
 
-`packages/core/src/article/fetch-article.ts` is a complete, tested, defensive extractor and
-needs no changes for either option below:
+`user_entries.content_html` remains the original feed body. Separate nullable
+full-content HTML/URL/fetched-at columns hold extraction results. Attempt token/time,
+failure, and manual/automatic retry times coordinate work. Source deletion removes
+this content with its entry; independently saved images retain their existing copies.
 
-- `fetchAndExtractArticle(rawUrl, deps?)` (`fetch-article.ts:279-294`) — SSRF guard
-  (`assertPubliclyFetchable`, `:85-111`), manual redirect loop capped at 5 hops, 10 s
-  timeout, 2 MB `readBounded` body cap, cookie/auth headers never forwarded.
-- `extractArticle(html, url)` (`fetch-article.ts:231-277`) — `@mozilla/readability` on a
-  `linkedom` DOM, with OpenGraph/`<title>`/meta fallback (`metaFallback`, `:186-225`).
-- Output `ExtractedArticle` (`fetch-article.ts:28-40`) includes `contentHtml`, `imageUrl`,
-  `byline`, `publishedAt`, and `extracted: boolean` (true when a real body was found;
-  bodies under `MIN_BODY_CHARS = 250` are rejected).
-- Content is sanitized through the shared `sanitizeEntryHtml` allowlist, the same one feed
-  ingest uses, so rendering via the existing `dangerouslySetInnerHTML` path
-  (`apps/web/src/components/ReaderPane.tsx:175`) adds no new risk.
-- Errors are `AppError` with meaningful status codes (400 bad/blocked URL, 502 upstream,
-  508 redirect loop).
+Only web API decoration selects extracted content. Google Reader still uses the
+original mapper, original body, IDs, timestamps, ordering, and article state.
+Title, author, splash images, read/star/read-later flags, and save timestamps are
+not changed by extraction. Feed-backed Read Later resolves through its entry ID.
 
-It is currently wired only to read later: `createReadLaterService` takes an injectable
-`articleFetcher` defaulting to `fetchAndExtractArticle`
-(`packages/core/src/services/read-later.ts:117-120`) and calls it from
-`saveUrlWithExtraction` (`:414-446`). Nothing about that wiring is specific to read later.
+## API and state
 
-## What is missing for feed entries
+`POST /api/v1/entries/:id/content` accepts only
+`{ "trigger": "manual" | "automatic" }`; the source URL comes from the owned row.
+Missing/foreign IDs return 404 without fetching. Invalid URLs return 400.
 
-1. **Teaser detection.** `packages/core/src/feed/parse.ts:109-110` takes the first of
-   `content:encoded` / `content` / `summary` and stores it as `contentHtml` (`:132`). There
-   is no flag, and `contentSnippet` is read from the parser type but never used. A
-   heuristic is needed (presence of `content:encoded`, body length, summary-equals-content)
-   plus a persisted column so the decision is not recomputed and is available to the API
-   and UI.
-2. **No per-entry content state.** `user_entries` (`packages/db/src/schema.ts:109-142`) has
-   `contentHtml` but no source/status marker. Any fetched-vs-teaser distinction, and any
-   "pending/failed" state for async work, requires new column(s) and a DSQL-safe forward
-   migration (no `serial`, no partial indexes, no multi-DDL transactions; custom runner in
-   `packages/db/src/dsql-migrator.ts`).
-3. **No trigger.** There is no endpoint or queue message that means "go get the full body of
-   this entry". Extraction currently happens inline in `POST /read-later`
-   (`apps/api/src/apps/web-api.ts:393-411`).
-4. **No shared fetch cache.** Fetches are per-user. Two users subscribed to the same teaser
-   feed would each fetch the same URL, and the automated option would multiply this across
-   every entry.
-5. **No retry/backfill machinery** for entries that were ingested before the feature
-   existed, if the automated option is chosen.
+Responses contain `{status, content, retryAfter, message?}`. `content` contains
+`contentHtml`, `originalContentHtml`, and `fullContent` metadata: `status`
+(`idle|pending|ready|error`), `fetchedAtMs`, `finalUrl`, `retryAtMs`,
+`automaticRetryAtMs`, `pendingUntilMs`, `automaticFetchEligible`, and safe `error`, with null absent values.
+200 means ready or an automatic request skipped by the length policy, 202 pending, 429 cooldown/budget, and 502 extraction failure.
+Pending/limited/failure responses include `Retry-After` when applicable.
+Web entry detail/list, Saved article hydration, and feed-backed Read Later carry
+the same body fields. GET never initiates extraction.
 
-## Compatibility constraint
+A database admission transaction serializes requests through a user-settings
+version column and a bounded JSON array of the last hour's admitted attempts.
+The 30/hour budget includes retries and survives source deletion. Preference JSON
+is independent. Cached successes and pending-status reads consume no attempts.
+An entry claim expires after 60 seconds; completion requires the matching token
+and an unexpired claim. Network I/O runs outside transactions. Up to three
+transaction conflict retries do not repeat an already completed outbound fetch.
+Failures permit manual retry after 30 seconds and automatic retry on a subsequent
+open after 15 minutes. A mounted reader does not loop through automatic retries.
 
-`user_entries.contentHtml` is what `/api/greader.php` serves to NetNewsWire as entry
-content (doc 02). Adding columns is safe; changing what `contentHtml` means for an entry
-that has already been synced is only visible to clients on a re-sync, and is fine as long as
-no greader field semantics change. The proof obligation is that
-`apps/api/test/greader.conformance.test.ts` stays green with no edits, per the repo
-invariant.
+## Fetching and images
 
-## Option A — on-demand ("load full article" in the reader)
+The article and saved-image paths share the pinned public-socket transport. URL
+credentials, non-HTTP(S) schemes, and non-public connection addresses are rejected.
+Every redirect is validated, at most five are followed, and a single 10-second
+network deadline spans DNS, redirects, and body reads. Only HTML/XHTML is accepted;
+input exceeding 2 MiB and extracted HTML exceeding 500,000 characters are rejected,
+not truncated. Readability's 250-character prose minimum and nonempty sanitized
+output are required for a full-content success. Bounded DOM parsing is synchronous;
+the network deadline is not a hard CPU timeout.
 
-The reader shows a teaser plus a control that fetches the body for that one entry.
+Links/images resolve against the final URL before sanitization, ignoring publisher
+base tags. Existing image-save controls authorize selected images against either
+retained body. Fetching does not persist images or replace hero thumbnails.
+Read Later still saves a link when its extractor fails.
 
-| Step | Detail | Estimate |
-| --- | --- | --- |
-| Migration + column | e.g. `content_source` (`feed` / `fetched`) plus optionally `content_fetched_at`; DSQL-safe forward migration | 0.5 d |
-| Teaser heuristic | In `parse.ts`, set the new column at ingest; unit-test the cases | 0.5 d |
-| API endpoint | `POST /entries/:id/content` (or similar) — resolve entry, enforce user scoping, call `fetchAndExtractArticle`, persist the body + source flag, return the updated entry; per-user rate limit mirrors the read-later guard | 1–1.5 d |
-| Frontend | Button/banner in `ReaderPane` when `content_source === 'feed'`, mutation with optimistic cache update (mirror `useToggleStar`), loading and error states | 1–1.5 d |
-| Tests | Heuristic unit tests, API integration tests (happy path, blocked URL, upstream failure, cross-user isolation), web component tests | 1 d |
-| Docs | doc 05 (reader affordance), doc 06 (roadmap line), decisions entry when landed | 0.5 d |
-| **Total** | | **4–6 days** |
+## Delivery and verification
 
-Cost and blast radius stay bounded: one fetch per explicit user action, no ingest-path
-changes, no background load.
+Migration `0005_dry_violations.sql` is additive and needs no article backfill.
+Migrate before publishing Lambda code; the existing deploy workflow runs migrations
+before Terraform updates existing Lambdas. Rollback disables the UI/trigger and
+retains additive schema and extracted bodies. Do not reverse migrations.
 
-## Option B — automatic at ingest for teaser-only feeds
-
-Everything in Option A, minus the reader control, plus:
-
-| Additional step | Detail | Estimate |
-| --- | --- | --- |
-| Worker message type | `apps/api/src/entries/worker-lambda.ts:102-123` currently assumes `{feedId}`; make it a discriminated union with a content-fetch job | 1 d |
-| Fanout enqueue | `insertEntriesForUser` (`packages/core/src/services/subscriptions.ts:333-368`) must return inserted ids and enqueue extraction for teaser entries only | 0.5–1 d |
-| Async state handling | `pending`/`ready`/`error` per entry (new column), timeouts, retries, DLQ behaviour | 1 d |
-| URL dedupe / shared fetch | One fetch per URL rather than per user; needs a cache keyed by normalized URL | 1–2 d |
-| Backfill | Fetch bodies for teaser entries already in `user_entries`, rate-limited and resumable | 1–2 d |
-| Observability | Counters and alarms for fetch volume, failure rate, and Lambda duration | 0.5 d |
-| **Total on top of A** | | **8–12 days**, plus ongoing fetch egress and Lambda cost |
-
-## Risks and decisions that gate Option B more than Option A
-
-- **Per-user refetch.** Without a shared cache, N subscribers to one teaser feed means N
-  fetches of the same URL.
-- **robots.txt / ToS / paywalls.** The read-later fetcher does not consult robots today.
-  Doing this automatically across every teaser entry in every feed at ingest scale is a
-  product/legal decision, not just an engineering one. Consider honoring robots.txt and a
-  per-feed opt-out before enabling automation.
-- **Lambda timeouts.** Extraction is bounded at 10 s per URL. Inline extraction in the batch
-  ingest worker risks throttling at scale, which is why Option B routes through the existing
-  queue rather than calling the fetcher directly. doc 10 already sketches this queue path
-  (`docs/10-read-later.md:221-226`).
-- **Volume.** Automatic fetching turns ingest cost into a function of feed content quality,
-  not just feed count. The current CloudWatch/billing tripwire (doc 01, roadmap "Cost &
-  billing") should be armed first.
-- **DSQL migration constraints.** Forward-only; dropped names stay blocked for the
-  cluster's lifetime.
-
-## Recommendation
-
-Ship Option A first (4–6 days), reusing `fetchAndExtractArticle` unchanged. It delivers the
-feature for the users who care about a specific article, with bounded cost and no ingest-path
-risk. Revisit Option B once real teaser-feed volume is known and the robots/ToS question has
-an answer.
-
-## Open questions for the decision
-
-1. On-demand only, or automatic at ingest?
-2. If automatic: honor `robots.txt`? Per-feed opt-out? Global off by default?
-3. Fetch once per URL (shared cache) or once per user?
-4. Backfill existing teaser entries, or only apply going forward?
-5. Image handling: reuse the existing feed image pipeline
-   (`findArticleImage` + `media.attachSplash`, per doc 10's resolved decision 4) or the
-   read-later remote-`og:image` approach?
+Local service, API, hook, reader, and unchanged Google Reader conformance tests
+cover persistence, aliases, source deletion, concurrent requests, leases, cooldowns,
+rate limits, relative images, and article-state isolation. Browser acceptance and
+CI migration review are tracked separately in the OpenSpec tasks and roadmap;
+unit/integration results alone do not establish production deployment.

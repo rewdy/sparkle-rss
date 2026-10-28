@@ -327,3 +327,12 @@ explicitly deferred. The application does not physically erase unreferenced byte
 yet. Original-sized thumbnail delivery has a bandwidth cost; lazy loading is used.
 Controls handle hover, focus, keyboard, touch, pending, success, and retry. Generated
 thumbnail storage and automatic read-later hero persistence remain separate work.
+
+## Images in fetched full article content
+
+Full-content fetching retains original feed HTML and separately stores extracted
+HTML with absolute image URLs based on the final fetched URL. Saved-image source
+authorization accepts images from either retained owned body, including through a
+feed-backed Read Later alias. Provenance continues to identify the original article
+and dedupe uses the existing source identity. Extraction does not replace splashes
+or automatically copy images. Source deletion and saved-copy retention are unchanged.

@@ -285,9 +285,10 @@ export function createWebApiApp(): Hono<Env> {
       publishedFrom: parsed.pubFrom,
     });
     const bucket = process.env.MEDIA_BUCKET;
+    const contentItems = await s.articleContent.decorate(userId, page.items);
     const items = bucket
-      ? await withSignedMediaUrls(s, userId, page.items, bucket)
-      : page.items;
+      ? await withSignedMediaUrls(s, userId, contentItems, bucket)
+      : contentItems;
     return c.json({
       ...page,
       items: await withReadLaterFlags(s, userId, items),
@@ -303,11 +304,36 @@ export function createWebApiApp(): Hono<Env> {
     const [entry] = await s.entries.getByIds(userId, [id]);
     if (!entry) throw new AppError(404, "entry not found");
     const bucket = process.env.MEDIA_BUCKET;
+    const [projected] = await s.articleContent.decorate(userId, [entry]);
+    const webEntry = projected ?? entry;
     const decorated = bucket
-      ? ((await withSignedMediaUrls(s, userId, [entry], bucket)).at(0) ?? entry)
-      : entry;
+      ? ((await withSignedMediaUrls(s, userId, [webEntry], bucket)).at(0) ??
+        webEntry)
+      : webEntry;
     const [flagged] = await withReadLaterFlags(s, userId, [decorated]);
     return c.json({ entry: flagged });
+  });
+
+  app.post("/entries/:id/content", async (c) => {
+    const id = z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(Number.MAX_SAFE_INTEGER)
+      .parse(c.req.param("id"));
+    const body = z
+      .object({ trigger: z.enum(["manual", "automatic"]) })
+      .strict()
+      .parse(await c.req.json());
+    const s = await getServices();
+    const result = await s.articleContent.ensure(
+      await userIdOf(s, c),
+      id,
+      body.trigger,
+    );
+    if (result.retryAfter !== null)
+      c.header("Retry-After", String(result.retryAfter));
+    return c.json(result, result.status);
   });
 
   app.get("/media/:id", async (c) => {
@@ -412,7 +438,8 @@ export function createWebApiApp(): Hono<Env> {
       page.items.map(async (item) => {
         if (item.kind === "image")
           return { ...item, item: await signedImage(s, userId, item.item) };
-        let [entry] = await withReadLaterFlags(s, userId, [item.entry]);
+        const projected = await s.articleContent.decorate(userId, [item.entry]);
+        let [entry] = await withReadLaterFlags(s, userId, projected);
         if (!entry) throw new AppError(404, "entry not found");
         if (process.env.MEDIA_BUCKET)
           [entry] = await withSignedMediaUrls(
@@ -481,10 +508,11 @@ export function createWebApiApp(): Hono<Env> {
     const userId = await userIdOf(s, c);
     const page = await s.readLater.list(userId, parsed);
     const bucket = process.env.MEDIA_BUCKET;
-    if (!bucket) return c.json(page);
+    const projected = await s.articleContent.decorate(userId, page.items);
+    if (!bucket) return c.json({ ...page, items: projected });
     return c.json({
       ...page,
-      items: await withSignedMediaUrls(s, userId, page.items, bucket),
+      items: await withSignedMediaUrls(s, userId, projected, bucket),
     });
   });
 

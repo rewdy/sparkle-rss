@@ -4,13 +4,16 @@ import {
   Button,
   Divider,
   Group,
+  Loader,
   ScrollArea,
   Stack,
+  Tabs,
+  Text,
   Title,
   Tooltip,
 } from "@mantine/core";
 import type { ReactElement } from "react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LuArrowLeft,
   LuBookmark,
@@ -18,6 +21,7 @@ import {
   LuExternalLink,
   LuTrash2,
 } from "react-icons/lu";
+import { useArticleContent } from "../lib/article-content";
 import { useSubscriptionMap } from "../lib/feed-titles";
 import {
   useMarkRead,
@@ -43,6 +47,28 @@ export function ReaderPane({
   onNext: () => void;
   onPrev: () => void;
 }): ReactElement {
+  const article = useArticleContent(entry);
+  const [selection, setSelection] = useState<{
+    id: string;
+    tab: string;
+  } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset the display choice on article navigation only
+  useEffect(() => {
+    setSelection(null);
+  }, [entry.id]);
+  const defaultTab =
+    article.content?.fullContent.status === "ready" ||
+    article.content?.fullContent.automaticFetchEligible
+      ? "fetched"
+      : "original";
+  const activeTab = selection?.id === entry.id ? selection.tab : defaultTab;
+  const original =
+    article.content?.fullContent.automaticFetchEligible === false ||
+    activeTab === "original";
+  const loading = article.eligible && !original && article.pending;
+  const html = original
+    ? (article.content?.originalContentHtml ?? entry.contentHtml)
+    : (article.content?.contentHtml ?? entry.contentHtml);
   const markReadEntry = useMarkRead();
   const markReadSaved = useMarkReadLater();
   const markRead = readLater ? markReadSaved : markReadEntry;
@@ -56,10 +82,7 @@ export function ReaderPane({
   const sub = feedMeta.get(entry.feedId);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const contentMarkup = useMemo(
-    () => ({ __html: entry.contentHtml }),
-    [entry.contentHtml],
-  );
+  const contentMarkup = useMemo(() => ({ __html: html }), [html]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ref-based scroll reset, entry id is the only trigger
   useEffect(() => {
@@ -74,7 +97,7 @@ export function ReaderPane({
       img.loading = "lazy";
       img.decoding = "async";
     });
-  }, [entry.id]);
+  }, [entry.id, html, loading, activeTab]);
 
   return (
     <Box
@@ -173,18 +196,95 @@ export function ReaderPane({
             </Stack>
           )}
 
-          {/* content is sanitized server-side at ingest; stored HTML rendered as-is */}
-          <div
-            ref={contentRef}
-            className="reading-content"
-            dangerouslySetInnerHTML={contentMarkup}
-          />
-          <ArticleImageControls
-            contentRef={contentRef}
-            html={entry.contentHtml}
-            articleUrl={entry.url}
-            source={{ kind: readLater ? "read-later" : "entry", id: entry.id }}
-          />
+          {article.eligible ? (
+            <Tabs
+              variant="outline"
+              value={activeTab}
+              keepMounted={false}
+              onChange={(tab) => {
+                if (!tab) return;
+                setSelection({ id: entry.id, tab });
+                if (
+                  tab === "fetched" &&
+                  article.content?.fullContent.status !== "ready" &&
+                  !article.pending &&
+                  article.canRetry
+                )
+                  article.fetch();
+              }}
+            >
+              <Tabs.List aria-label="Article content source">
+                <Tabs.Tab value="fetched">Fetched article</Tabs.Tab>
+                <Tabs.Tab value="original">Original</Tabs.Tab>
+              </Tabs.List>
+              {["fetched", "original"].map((tab) => (
+                <Tabs.Panel key={tab} value={tab} pt="md">
+                  {tab === "fetched" && loading ? (
+                    <Stack
+                      align="center"
+                      justify="center"
+                      mih={160}
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <Loader aria-hidden="true" />
+                      <Text size="sm" c="dimmed">
+                        Loading article…
+                      </Text>
+                    </Stack>
+                  ) : (
+                    <>
+                      {tab === "fetched" && article.error && (
+                        <Stack gap="xs" mb="md">
+                          <div role="status" aria-live="polite">
+                            {article.error}
+                          </div>
+                          <Button
+                            variant="subtle"
+                            disabled={!article.canRetry}
+                            onClick={article.fetch}
+                          >
+                            retry full article
+                          </Button>
+                        </Stack>
+                      )}
+                      <div
+                        ref={contentRef}
+                        className="reading-content"
+                        dangerouslySetInnerHTML={contentMarkup}
+                      />
+                      <ArticleImageControls
+                        contentRef={contentRef}
+                        html={html}
+                        articleUrl={entry.url}
+                        source={{
+                          kind: readLater ? "read-later" : "entry",
+                          id: entry.id,
+                        }}
+                      />
+                    </>
+                  )}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          ) : (
+            <>
+              <div
+                ref={contentRef}
+                className="reading-content"
+                dangerouslySetInnerHTML={contentMarkup}
+              />
+              <ArticleImageControls
+                contentRef={contentRef}
+                html={html}
+                articleUrl={entry.url}
+                source={{
+                  kind: readLater ? "read-later" : "entry",
+                  id: entry.id,
+                }}
+              />
+            </>
+          )}
 
           <Group justify="flex-start" py="md" gap="sm">
             <Button variant="default" size="compact-sm" onClick={onPrev}>

@@ -1,6 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import {
   createApiTokensService,
+  createArticleContentService,
   createEntriesService,
   createFoldersService,
   createIngestService,
@@ -20,6 +21,7 @@ import { requestRefreshSafe } from "./refresh";
 import { createS3Client } from "./s3";
 
 export interface Services {
+  articleContent: ReturnType<typeof createArticleContentService>;
   users: ReturnType<typeof createUsersService>;
   folders: ReturnType<typeof createFoldersService>;
   subscriptions: ReturnType<typeof createSubscriptionsService>;
@@ -94,6 +96,7 @@ function createServices(db: NodePgDatabase<typeof schema>): Services {
   });
   const savedImages = createSavedImagesService({ db, media });
   return {
+    articleContent: createArticleContentService(deps),
     users: createUsersService(deps),
     folders: createFoldersService(deps),
     subscriptions: createSubscriptionsService(deps, {

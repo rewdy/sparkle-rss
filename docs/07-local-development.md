@@ -148,3 +148,16 @@ objects remain. Downloads are limited to public HTTP(S) targets even in dev mode
 local/private URLs are rejected. API source-state and list/detail ownership can be
 checked using different `X-Dev-User` values. Unit tests inject transport and DNS;
 Postgres integration tests exercise concurrency, retention, and mixed cursors.
+
+## Full-content verification
+
+Apply local migrations before running the updated API. Full content needs no new
+Compose settings or queue. Opening a feed reading pane fetches the owned source URL;
+private/local publisher URLs are intentionally rejected. For deterministic local
+acceptance, use the injected extractor fixtures in `article-content.int.test.ts`
+(core database and API suites) and web `article-content.test.tsx`; do not weaken
+public-address validation for local pages. Run with `TEST_DATABASE_URL` pointing to
+the disposable test database, never the development or production database.
+Verify the loading/failure/original/full controls in the local reader and confirm
+stream browsing does not fetch. Floci remains relevant only when explicitly saving
+images from the extracted body. See doc 11 for retry cooldowns and deployment order.

@@ -30,6 +30,11 @@ export {
   createUsersService,
 } from "./services/api-tokens";
 export {
+  type ContentProjection,
+  createArticleContentService,
+  type FullContent,
+} from "./services/article-content";
+export {
   createEntriesService,
   type EntryDto,
   type ListEntriesQuery,

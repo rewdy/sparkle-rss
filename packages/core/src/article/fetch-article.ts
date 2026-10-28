@@ -1,9 +1,15 @@
 import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 import type { FetchLike } from "../feed/discover";
 import { sanitizeEntryHtml } from "../feed/sanitize";
 import { AppError } from "../services/errors";
+import {
+  beforeDeadline,
+  isPublicImageAddress,
+  publicRequest,
+} from "./public-request";
 
 /**
  * Bounded, best-effort fetch + readable-content extraction for a URL the user
@@ -95,73 +101,109 @@ export async function assertPubliclyFetchable(
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new AppError(400, "unsupported url scheme");
   }
+  if (url.username || url.password)
+    throw new AppError(400, "URL credentials are not supported");
   let addresses: string[];
   try {
-    addresses = await resolve(url.hostname);
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    addresses = isIP(host) ? [host] : await resolve(host);
   } catch {
     throw new AppError(400, "could not resolve that address");
   }
   if (addresses.length === 0) {
     throw new AppError(400, "could not resolve that address");
   }
-  if (addresses.some(isBlockedAddress)) {
+  if (addresses.some((address) => !isPublicImageAddress(address))) {
     throw new AppError(400, "that address is not reachable from here");
   }
   return url;
 }
 
-async function readBounded(response: Response): Promise<string> {
-  const body = response.body;
-  if (!body) {
-    const text = await response.text();
-    return text.slice(0, MAX_CONTENT_CHARS);
+async function readBounded(
+  response: Response,
+  signal: AbortSignal,
+): Promise<string> {
+  if (Number(response.headers.get("content-length")) > MAX_BYTES) {
+    await response.body?.cancel();
+    throw new AppError(413, "article exceeds 2 MiB");
   }
-  const reader = body.getReader();
+  const reader = response.body?.getReader();
+  if (!reader) return "";
   const chunks: Uint8Array[] = [];
   let size = 0;
   try {
-    while (size < MAX_BYTES) {
-      const { done, value } = await reader.read();
+    while (true) {
+      const { done, value } = await beforeDeadline(reader.read(), signal);
       if (done) break;
-      if (!value) continue;
-      chunks.push(value);
       size += value.byteLength;
+      if (size > MAX_BYTES) throw new AppError(413, "article exceeds 2 MiB");
+      chunks.push(value);
     }
   } finally {
-    await reader.cancel().catch(() => undefined);
+    void reader.cancel().catch(() => undefined);
   }
-  return new TextDecoder().decode(Buffer.concat(chunks).subarray(0, MAX_BYTES));
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
 async function fetchWithRedirects(
-  url: URL,
-  fetchImpl: FetchLike,
+  rawUrl: string,
+  fetchImpl: FetchLike | undefined,
   resolve: ResolveHost,
+  cancellation?: AbortSignal,
 ): Promise<{ html: string; finalUrl: string }> {
-  let current = url;
+  const deadline = AbortSignal.timeout(TIMEOUT_MS);
+  const signal = cancellation
+    ? AbortSignal.any([deadline, cancellation])
+    : deadline;
+  const request = publicRequest(
+    resolve,
+    MAX_BYTES,
+    "text/html,application/xhtml+xml",
+  );
+  let current = rawUrl;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const response = await fetchImpl(current.toString(), {
-      redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "text/html,application/xhtml+xml",
-      },
-    });
+    const url = await beforeDeadline(
+      assertPubliclyFetchable(current, resolve),
+      signal,
+    );
+    const response = await beforeDeadline(
+      fetchImpl
+        ? fetchImpl(url.toString(), {
+            redirect: "manual",
+            signal,
+            headers: {
+              "User-Agent": USER_AGENT,
+              Accept: "text/html,application/xhtml+xml",
+            },
+          })
+        : request(url, signal),
+      signal,
+    );
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
-      if (!location) throw new AppError(502, "redirect without a location");
-      // Re-validate every hop: a public host may redirect to a private one.
-      current = await assertPubliclyFetchable(
-        new URL(location, current).toString(),
-        resolve,
-      );
+      await response.body?.cancel();
+      if (!location || hop === MAX_REDIRECTS)
+        throw new AppError(508, "too many or invalid redirects");
+      current = new URL(location, url).toString();
       continue;
     }
     if (!response.ok) {
-      throw new AppError(502, `the site answered ${response.status}`);
+      await response.body?.cancel();
+      throw new AppError(502, "the article could not be downloaded");
     }
-    return { html: await readBounded(response), finalUrl: current.toString() };
+    const mime = response.headers
+      .get("content-type")
+      ?.split(";")[0]
+      ?.trim()
+      .toLowerCase();
+    if (mime !== "text/html" && mime !== "application/xhtml+xml") {
+      await response.body?.cancel();
+      throw new AppError(422, "the source is not an HTML article");
+    }
+    return {
+      html: await readBounded(response, signal),
+      finalUrl: url.toString(),
+    };
   }
   throw new AppError(508, "too many redirects");
 }
@@ -225,12 +267,37 @@ function metaFallback(doc: ParsedDocument, url: string) {
 }
 
 /**
- * Extracts a readable copy of an article. Never throws for content problems:
- * a page without a readable body still yields its metadata.
+ * Extracts a readable copy of an article. An unreadable page yields metadata;
+ * oversized extracted HTML is rejected rather than truncated.
  */
 export function extractArticle(html: string, url: string): ExtractedArticle {
   const { document } = parseHTML(html);
   const fallback = metaFallback(document, url);
+  document
+    .querySelectorAll("base")
+    .forEach(
+      (node: {
+        remove(): void;
+        getAttribute(name: string): string | null;
+        setAttribute(name: string, value: string): void;
+      }) => {
+        node.remove();
+      },
+    );
+  document
+    .querySelectorAll("[href], [src]")
+    .forEach(
+      (node: {
+        remove(): void;
+        getAttribute(name: string): string | null;
+        setAttribute(name: string, value: string): void;
+      }) => {
+        for (const attr of ["href", "src"]) {
+          const value = node.getAttribute(attr);
+          if (value) node.setAttribute(attr, absolute(value, url));
+        }
+      },
+    );
 
   let readable: ReturnType<Readability["parse"]> = null;
   try {
@@ -250,9 +317,9 @@ export function extractArticle(html: string, url: string): ExtractedArticle {
     .replace(/\s+/gu, " ")
     .trim().length;
   const hasBody = bodyChars >= MIN_BODY_CHARS;
-  const contentHtml = hasBody
-    ? sanitizeEntryHtml(rawContent).slice(0, MAX_CONTENT_CHARS)
-    : "";
+  const contentHtml = hasBody ? sanitizeEntryHtml(rawContent) : "";
+  if (contentHtml.length > MAX_CONTENT_CHARS)
+    throw new AppError(413, "extracted article is too large");
   const title = (readable?.title || fallback.title).trim();
   const siteName =
     readable?.siteName || fallback.siteName || new URL(url).hostname;
@@ -272,23 +339,30 @@ export function extractArticle(html: string, url: string): ExtractedArticle {
           return Number.isNaN(parsed.getTime()) ? fallback.publishedAt : parsed;
         })()
       : fallback.publishedAt,
-    extracted: hasBody,
+    extracted:
+      hasBody && contentHtml.replace(/<[^>]*>/gu, " ").trim().length > 0,
   };
 }
 
 /** Fetches a user-supplied URL and returns its readable form. */
 export async function fetchAndExtractArticle(
   rawUrl: string,
-  deps: { fetchImpl?: FetchLike; resolve?: ResolveHost } = {},
+  deps: {
+    fetchImpl?: FetchLike;
+    resolve?: ResolveHost;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<ExtractedArticle> {
-  const url = await assertPubliclyFetchable(
-    rawUrl,
-    deps.resolve ?? defaultResolve,
-  );
-  const { html, finalUrl } = await fetchWithRedirects(
-    url,
-    deps.fetchImpl ?? fetch,
-    deps.resolve ?? defaultResolve,
-  );
-  return extractArticle(html, finalUrl);
+  try {
+    const { html, finalUrl } = await fetchWithRedirects(
+      rawUrl,
+      deps.fetchImpl,
+      deps.resolve ?? defaultResolve,
+      deps.signal,
+    );
+    return extractArticle(html, finalUrl);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError(502, "article could not be fetched; please retry");
+  }
 }

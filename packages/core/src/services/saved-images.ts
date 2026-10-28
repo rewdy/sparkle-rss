@@ -79,7 +79,7 @@ export function createSavedImagesService({
       if (!entry && requested.kind === "entry")
         throw new AppError(404, "source article not found");
       if (entry) {
-        html = entry.contentHtml;
+        html = `${entry.contentHtml}\n${entry.fullContentHtml ?? ""}`;
         url = entry.url;
         title = entry.title;
         feedId = entry.feedId.toString();

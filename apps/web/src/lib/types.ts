@@ -1,3 +1,24 @@
+export interface FullContent {
+  automaticFetchEligible: boolean;
+  status: "idle" | "pending" | "ready" | "error";
+  fetchedAtMs: number | null;
+  finalUrl: string | null;
+  retryAtMs: number | null;
+  automaticRetryAtMs: number | null;
+  pendingUntilMs: number | null;
+  error: string | null;
+}
+export interface ContentProjection {
+  contentHtml: string;
+  originalContentHtml: string;
+  fullContent: FullContent;
+}
+export interface ContentResult {
+  status: number;
+  retryAfter: number | null;
+  content: ContentProjection;
+  message?: string;
+}
 export type ReadLaterSource = "entry" | "url";
 export type ReadLaterStatus = "pending" | "ready" | "error";
 
@@ -8,6 +29,8 @@ export interface Entry {
   url: string;
   author: string;
   contentHtml: string;
+  originalContentHtml?: string;
+  fullContent?: FullContent;
   publishedAtMs: number;
   crawledAtMs: number;
   enclosures: Array<{ href?: string; type?: string; length?: number }>;

@@ -3,7 +3,17 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-10-14)
+## Current state (updated 2026-10-28)
+
+Full-content on-demand and automatic-on-reader-open implementation is local;
+automatic fetching is restricted to original feed text below a named 500-character
+threshold. Longer bodies show the original feed directly with no tabs or fetch
+controls.
+Reader content uses outline Fetched article/Original tabs with an immediate
+loading indicator to prevent feed-body flashes.
+Verification/release gates are tracked in OpenSpec `fetch-full-article-on-open`.
+Final full regression: 371 tests pass; lint and web/Lambda builds pass.
+No production deployment in this session.
 
 List now uses the former Feed thumbnail layout; the separate Feed choice is removed.
 Cards adds a distinct date-grouped 3/2/1-column grid with themed image placeholders;
@@ -291,12 +301,11 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       Adopt the guard and byte cap built for read later (`article/fetch-article.ts`) so feed
       fetching gets the same protections. *Exit: both feed paths reject private/metadata
       addresses and cap response size, with tests.*
-- [ ] **Full content for teaser feeds** (decision pending) — reuse the read-later
-      extractor so articles whose feed only supplies a summary can be read in full. Two
-      scopes are estimated (on-demand ~4-6 days, automatic at ingest ~8-12 days) along with
-      the robots.txt/ToS, cost, and per-user-refetch questions that gate automation. Plan /
-      LOE: [11-full-content-fetch.md](11-full-content-fetch.md). *Exit: decision recorded,
-      then the chosen scope implemented with greader conformance unchanged.*
+- [ ] **Full article content** — manual and automatic-on-reader-open implementation
+      is local, with separate original/extracted bodies, durable claims and retry
+      limits, web-only projection, and image-saving integration. Tests pass; browser
+      acceptance and CI migration/deployment review remain tracked in OpenSpec
+      `fetch-full-article-on-open`. Plan: [11-full-content-fetch.md](11-full-content-fetch.md).
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
       image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse
       PWA criteria met; first-view images lazy-load.*

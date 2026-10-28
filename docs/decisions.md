@@ -862,3 +862,59 @@ Both were found by, and are now covered by, tests written for read later.
 - The implementation, tests, docs, synced specs, and archive are committed together.
   Prior checks remain applicable: 141 web tests, workspace typecheck, lint, web build,
   and local browser fixture acceptance passed. No production deployment in this session.
+
+## 2026-10-27 — Full content uses one service, triggered by reader opens
+
+- Confirmed manual first, then automatic when a reading pane opens; ingestion and
+  story scrolling do not fetch. Both milestones share a durable operation.
+- Preserve feed HTML for Google Reader. Only web responses select separately
+  retained extraction; no existing-data scraping backfill. Automatic eligibility
+  was subsequently narrowed to a readable-text threshold as recorded below.
+- Coordinate attempts with per-entry tokens and bounded per-user admission history.
+  Preserve original content on failure, allow manual retry after 30 seconds and
+  automatic retry on a later open after 15 minutes; successful bodies have no TTL.
+- Share connection-bound public fetch transport with saved images, resolve links
+  before sanitizing, and authorize image saves against either retained body.
+- Local full suite: 358 tests passed, including unchanged Google Reader conformance.
+  Two additional regressions passed in subsequent focused hook/database runs.
+  Browser acceptance and CI deployment review are separate gates; no production
+  resources changed or migrations reversed in this session.
+
+## 2026-10-28 — Limit automatic article fetching to short feed bodies
+
+Automatic-on-open fetching applies only below 500 normalized readable characters
+in the retained original feed HTML. Empty text qualifies; the threshold is strict.
+`AUTOMATIC_FULL_CONTENT_TEXT_LIMIT` in core's `article/content-policy.ts` is the one
+place to tune it. The service computes eligibility, returns it to the web reader,
+and independently skips automatic API requests for longer bodies without admission
+or fetching. Manual fetching remains available at any body length. Markup, image
+URLs, whitespace, and encoded entities do not inflate the readable-text count.
+
+## 2026-10-28 — Reader body tabs and immediate loading feedback
+
+Replace the content-switch button with Mantine outline Fetch article/Original feed
+tabs. Automatically eligible articles initially render a loader in the fetched
+panel, including before the automatic mutation starts, rather than flashing the
+feed body. Original feed remains available during loading. Longer articles start
+on Original feed; choosing Fetch article invokes the existing manual fetch path.
+Cached content switches without network work. Twenty-seven focused reader/hook
+tests pass, including keyboard tab selection, pending switching, and manual fetch.
+
+## 2026-10-28 — Full feed bodies have no reader fetch option
+
+Supersedes the earlier manual-fetch exception for longer bodies: at or above the
+readable-text threshold, hide the content tabs and every fetch/retry control and
+render original feed content directly, even if an older fetched copy is cached.
+Short/empty bodies retain the tabbed reader. This is a reader UI policy; the
+existing internal manual API remains unchanged.
+
+## 2026-10-28 — Approve full-content reader UI for commit
+
+User approved the final reader behavior: Fetched article / Original outline tabs
+for short or empty feed bodies, immediate loading feedback, and no fetch controls
+for bodies at or above the 500-character threshold. Implementation is committed
+locally; remaining browser-scenario acceptance and CI migration/release review
+stay open in OpenSpec. No production deployment was requested.
+
+Final pre-commit validation: all 371 tests across 43 files pass, including unchanged
+Google Reader conformance; lint and web/Lambda builds pass.

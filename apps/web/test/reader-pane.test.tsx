@@ -11,6 +11,7 @@ import type { Entry } from "../src/lib/types";
 // through a fake api so no real network happens.
 vi.mock("../src/lib/api", () => ({
   api: {
+    articleContent: { fetch: vi.fn() },
     savedImages: {
       listForSource: vi.fn(async () => ({ items: [] })),
       save: vi.fn(),
@@ -292,5 +293,150 @@ describe("reader image saving", () => {
       source: { kind: "read-later", id: "url-item" },
       imageUrl: "https://example.com/a.png",
     });
+  });
+});
+
+describe("full article reader controls", () => {
+  const metadata = {
+    automaticFetchEligible: true,
+    status: "ready" as const,
+    fetchedAtMs: 1,
+    finalUrl: ENTRY.url,
+    retryAtMs: null,
+    automaticRetryAtMs: null,
+    pendingUntilMs: null,
+    error: null,
+  };
+  it("switches original and full bodies by keyboard without fetching or moving focus", async () => {
+    renderPane({
+      entry: {
+        ...ENTRY,
+        contentHtml: "Full stored article",
+        originalContentHtml: "Original feed",
+        fullContent: metadata,
+      },
+    });
+    const button = screen.getByRole("tab", { name: "Original" });
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(document.querySelector(".reading-content")).toHaveTextContent(
+      "Original feed",
+    );
+    expect(screen.getByRole("tab", { name: "Original" })).toHaveFocus();
+    await user.keyboard("{ArrowLeft}");
+    expect(document.querySelector(".reading-content")).toHaveTextContent(
+      "Full stored article",
+    );
+    expect(mockApi.articleContent.fetch).not.toHaveBeenCalled();
+  });
+  it("shows a loader instead of flashing feed content and allows the original tab during fetching", async () => {
+    let finish!: (value: {
+      status: number;
+      retryAfter: null;
+      content: {
+        contentHtml: string;
+        originalContentHtml: string;
+        fullContent: typeof metadata;
+      };
+    }) => void;
+    vi.mocked(mockApi.articleContent.fetch).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderPane({
+      entry: { ...ENTRY, fullContent: { ...metadata, status: "idle" } },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("Loading article");
+    expect(document.querySelector(".reading-content")).toBeNull();
+    expect(
+      screen.getByRole("tab", { name: "Fetched article" }),
+    ).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: "Original" }));
+    expect(document.querySelector(".reading-content")).toHaveTextContent(
+      "hello",
+    );
+    await user.click(screen.getByRole("tab", { name: "Fetched article" }));
+    expect(document.querySelector(".reading-content")).toBeNull();
+    expect(mockApi.articleContent.fetch).toHaveBeenCalledTimes(1);
+    finish({
+      status: 200,
+      retryAfter: null,
+      content: {
+        contentHtml: "Fetched article body",
+        originalContentHtml: ENTRY.contentHtml,
+        fullContent: metadata,
+      },
+    });
+    await waitFor(() =>
+      expect(document.querySelector(".reading-content")).toHaveTextContent(
+        "Fetched article body",
+      ),
+    );
+    expect(screen.queryByText("Loading article…")).toBeNull();
+  });
+  it.each(["idle", "ready"] as const)(
+    "hides all fetching controls for a long feed body, even with %s cached content",
+    (status) => {
+      renderPane({
+        entry: {
+          ...ENTRY,
+          contentHtml:
+            status === "ready" ? "Previously fetched body" : ENTRY.contentHtml,
+          originalContentHtml: ENTRY.contentHtml,
+          fullContent: { ...metadata, status, automaticFetchEligible: false },
+        },
+      });
+      expect(screen.queryByRole("tablist")).toBeNull();
+      expect(screen.queryByRole("tab", { name: "Fetched article" })).toBeNull();
+      expect(screen.queryByRole("button", { name: /fetch|retry/i })).toBeNull();
+      expect(document.querySelector(".reading-content")).toHaveTextContent(
+        "hello",
+      );
+      expect(document.querySelector(".reading-content")).not.toHaveTextContent(
+        "Previously fetched body",
+      );
+      expect(mockApi.articleContent.fetch).not.toHaveBeenCalled();
+    },
+  );
+  it("keeps the feed visible and exposes an accessible manual retry after automatic failure", async () => {
+    vi.mocked(mockApi.articleContent.fetch).mockResolvedValue({
+      status: 200,
+      retryAfter: null,
+      content: {
+        contentHtml: "Retried full body",
+        originalContentHtml: ENTRY.contentHtml,
+        fullContent: metadata,
+      },
+    });
+    renderPane({
+      entry: {
+        ...ENTRY,
+        fullContent: {
+          ...metadata,
+          status: "error",
+          error: "Try again or open the original.",
+          retryAtMs: Date.now() - 1,
+          automaticRetryAtMs: Date.now() + 900000,
+        },
+      },
+    });
+    expect(document.querySelector(".reading-content")).toHaveTextContent(
+      "hello",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Try again");
+    await user.click(
+      screen.getByRole("button", { name: "retry full article" }),
+    );
+    await waitFor(() =>
+      expect(document.querySelector(".reading-content")).toHaveTextContent(
+        "Retried full body",
+      ),
+    );
+    expect(mockApi.articleContent.fetch).toHaveBeenCalledWith(
+      ENTRY.id,
+      "manual",
+    );
   });
 });
