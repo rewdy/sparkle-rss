@@ -2,6 +2,7 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -10,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { qk } from "../src/lib/keys";
 import type { Entry } from "../src/lib/types";
 import { markReadOnOpenAtom, storyPresentationAtom } from "../src/lib/ui-state";
 import { Shell } from "../src/pages/Shell";
@@ -30,7 +32,14 @@ vi.mock("../src/lib/mutations", () => ({
 }));
 vi.mock("../src/components/Sidebar", () => ({ Sidebar: () => null }));
 vi.mock("../src/components/ReaderPane", () => ({
-  ReaderPane: ({ entry }: { entry: Entry }) => <div>Reading {entry.id}</div>,
+  ReaderPane: ({ entry, onClose }: { entry: Entry; onClose: () => void }) => (
+    <div>
+      Reading {entry.id}
+      <button type="button" onClick={onClose}>
+        back
+      </button>
+    </div>
+  ),
 }));
 vi.mock("../src/components/CardsView", () => ({
   CardsView: ({
@@ -48,6 +57,32 @@ vi.mock("../src/components/CardsView", () => ({
           Card {entry.id}
         </button>
       ))}
+    </div>
+  ),
+}));
+vi.mock("../src/components/StoryView", () => ({
+  StoryView: ({
+    entries,
+    onRead,
+    onActiveIndexChange,
+    activeIndex,
+  }: {
+    entries: Entry[];
+    onRead: (entry: Entry) => void;
+    onActiveIndexChange: (index: number) => void;
+    activeIndex: number;
+  }) => (
+    <div data-story-position={activeIndex}>
+      <button
+        type="button"
+        disabled={!entries.length}
+        onClick={() => entries[0] && onRead(entries[0])}
+      >
+        read story
+      </button>
+      <button type="button" onClick={() => onActiveIndexChange(0)}>
+        observer callback
+      </button>
     </div>
   ),
 }));
@@ -93,15 +128,13 @@ beforeEach(() => {
   store.set(markReadOnOpenAtom, true);
 });
 afterEach(cleanup);
-function mount() {
+function mount(
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <MantineProvider>
       <Provider store={store}>
-        <QueryClientProvider
-          client={
-            new QueryClient({ defaultOptions: { queries: { retry: false } } })
-          }
-        >
+        <QueryClientProvider client={client}>
           <Shell />
         </QueryClientProvider>
       </Provider>
@@ -127,29 +160,93 @@ describe("Cards reader navigation", () => {
       );
     },
   );
-  it("keeps j/k in stream order and restores Cards through browser Back and Escape", async () => {
+  it.each(["browser", "button", "Escape"])(
+    "returns directly via %s and Forward reopens the final article",
+    async (action) => {
+      mount();
+      fireEvent.click(await screen.findByText("Card 1"));
+      await screen.findByText("Reading 1");
+      fireEvent.keyDown(window, { key: "j" });
+      await screen.findByText("Reading 2");
+      if (action === "browser") window.history.back();
+      else if (action === "button") fireEvent.click(screen.getByText("back"));
+      else fireEvent.keyDown(window, { key: "Escape" });
+      await waitFor(() => expect(window.location.pathname).toBe("/all"));
+      expect(window.location.search).toBe("?filter=unread&sort=asc");
+      expect(store.get(storyPresentationAtom)).toBe("cards");
+      expect(document.querySelector("[data-restored-card]")).toHaveAttribute(
+        "data-restored-card",
+        "2",
+      );
+      window.history.forward();
+      await screen.findByText("Reading 2");
+      fireEvent.keyDown(window, { key: "Escape" });
+      await waitFor(() => expect(window.location.pathname).toBe("/all"));
+    },
+  );
+  it("keyboard opening pushes once and boundary steps do not add entries", async () => {
     mount();
-    fireEvent.click(await screen.findByText("Card 1"));
+    await screen.findByText("Card 1");
+    fireEvent.keyDown(window, { key: "k" });
+    await screen.findByText("Reading 3");
+    const length = window.history.length;
+    fireEvent.keyDown(window, { key: "j" });
+    expect(window.history.length).toBe(length);
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(window.location.pathname).toBe("/all"));
+  });
+  it("direct entry closes to its parent despite unrelated prior history", async () => {
+    window.history.pushState(null, "", "/all/e/2?sort=asc");
+    mount();
+    await screen.findByText("Reading 2");
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(window.location.pathname).toBe("/all"));
+    expect(window.location.search).toBe("?sort=asc");
+  });
+  it("restores Swipe origin after stepping and remount", async () => {
+    window.history.replaceState(null, "", "/all/story/2?sort=asc");
+    store.set(storyPresentationAtom, "swipe");
+    const view = mount();
+    await waitFor(() => expect(screen.getByText("read story")).toBeEnabled());
+    fireEvent.click(screen.getByText("read story"));
     await screen.findByText("Reading 1");
+    expect(window.location.pathname).toBe("/all/e/1");
     fireEvent.keyDown(window, { key: "j" });
     await screen.findByText("Reading 2");
-    fireEvent.keyDown(window, { key: "k" });
-    await screen.findByText("Reading 1");
-    window.history.back();
+    view.unmount();
+    mount();
     await screen.findByText("Reading 2");
     fireEvent.keyDown(window, { key: "Escape" });
-    await screen.findByText("Reading 1");
+    await waitFor(() => expect(window.location.pathname).toBe("/all/story/2"));
+    expect(window.location.search).toBe("?sort=asc");
+    expect(document.querySelector("[data-story-position]")).toHaveAttribute(
+      "data-story-position",
+      "2",
+    );
+  });
+  it("can return when the last viewed article has left the loaded stream", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    mount(client);
+    fireEvent.click(await screen.findByText("Card 2"));
+    await screen.findByText("Reading 2");
+    act(() =>
+      client.setQueryData(qk.entries({ kind: "all" }, "unread", "asc"), {
+        pages: [
+          {
+            items: entries.filter((entry) => entry.id !== "2"),
+            nextCursor: null,
+          },
+        ],
+        pageParams: [undefined],
+      }),
+    );
     fireEvent.keyDown(window, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByText("Reading 1")).toBeNull());
-    expect(window.location.pathname).toBe("/all");
-    expect(store.get(storyPresentationAtom)).toBe("cards");
-    expect(document.querySelector("[data-restored-card]")).toHaveAttribute(
-      "data-restored-card",
-      "1",
-    );
-    expect(document.querySelector("[data-stream-scroll]")).not.toHaveAttribute(
-      "inert",
-    );
+    await waitFor(() => expect(window.location.pathname).toBe("/all"));
+    expect(screen.queryByText("Reading 2")).toBeNull();
+    expect(screen.queryByText("Card 2")).toBeNull();
+    expect(screen.getByText("Card 1")).toBeInTheDocument();
   });
   it("opens read-later cards using the read-later mutation", async () => {
     window.history.replaceState(null, "", "/read-later");

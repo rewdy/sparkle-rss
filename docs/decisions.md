@@ -939,3 +939,14 @@ Google Reader conformance; lint and web/Lambda builds pass.
   preservation, and migration-before-code deployment order. All 20 focused tests,
   affected typechecks, and lint pass. No production SQL, deploy rerun, or manual
   apply performed.
+
+## 2026-11-02 — One history entry per reading session
+
+Opening an article or Saved image from a browsing surface pushes one entry; article
+j/k and next/previous replace it. Browser Back, reader Back, and Escape return to the
+opening surface, retaining filter/sort and Swipe position. Forward reopens the final
+article. A shell-owned navigation helper stores validated, versioned origin metadata
+on history entries so refresh retains the return policy. Direct-link reader close
+replaces with the parent stream rather than guessing from history length; native Back
+remains native. A global React back-handler registry is unnecessary for the current
+shell-owned route tree. No API, persistence, or infrastructure contract changes.

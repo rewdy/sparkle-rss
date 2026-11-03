@@ -88,7 +88,8 @@ the key requirement is that this value is local-only and never sent through
 The existing route-derived open-entry behavior remains authoritative. Clicking `Read`
 navigates to `<stream>/e/:id` using the existing `openEntry` path. Returning with Back or
 Escape returns to the stream/story route that opened the article and preserves the
-selected presentation.
+selected presentation. Article j/k and next/previous replace the reader history entry;
+Back returns to the opening story position, and Forward reopens the final article.
 
 ## Entry and feed data contract
 

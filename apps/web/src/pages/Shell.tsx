@@ -29,6 +29,7 @@ import {
   useToggleReadLater,
   useToggleStar,
 } from "../lib/mutations";
+import { readerNavigation } from "../lib/reader-navigation";
 import { useSavedLibrary } from "../lib/saved-queries";
 import type { Entry, StreamDescriptor } from "../lib/types";
 import { isEntryStream } from "../lib/types";
@@ -106,6 +107,7 @@ export function Shell(): ReactElement {
   // wouter's useLocation returns the path only; the query string (view prefs)
   // is read separately so ?filter=&sort= changes re-render this component.
   const search = useSearch();
+  const readerNav = useMemo(() => readerNavigation(navigate), [navigate]);
   // Mobile navbar drawer: collapsed.mobile is ignored at/above `sm`, so this
   // state only affects phones where the sidebar is hidden until the Burger opens it.
   const [navOpened, { toggle: toggleNav, close: closeNav }] =
@@ -249,31 +251,25 @@ export function Shell(): ReactElement {
     (entry: Entry) => {
       if (!descriptor) return;
       markOpened(entry);
-      navigate(
+      readerNav.open(
         `${streamPath(descriptor)}/e/${entry.id}${viewSearch(filter, sort)}`,
       );
     },
-    [descriptor, filter, sort, markOpened, navigate],
+    [descriptor, filter, sort, markOpened, readerNav],
   );
 
   const closeReader = useCallback((): void => {
     if (!descriptor) return;
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    navigate(`${streamPath(descriptor)}${viewSearch(filter, sort)}`, {
-      replace: true,
-    });
-  }, [descriptor, filter, sort, navigate]);
+    readerNav.close(`${streamPath(descriptor)}${viewSearch(filter, sort)}`);
+  }, [descriptor, filter, sort, readerNav]);
 
   const onStoryIndexChange = useCallback(
     (index: number): void => {
-      if (!descriptor) return;
+      if (!descriptor || routeEntryId !== null || imageId !== null) return;
       const suffix = index > 0 ? `/story/${index}` : "";
       navigate(`${streamPath(descriptor)}${suffix}${viewSearch(filter, sort)}`);
     },
-    [descriptor, filter, navigate, sort],
+    [descriptor, filter, navigate, sort, routeEntryId, imageId],
   );
 
   const move = useCallback(
@@ -289,9 +285,9 @@ export function Shell(): ReactElement {
             : entriesCache.length - 1
           : Math.min(Math.max(idx + delta, 0), entriesCache.length - 1);
       const target = entriesCache[next];
-      if (!target) return;
+      if (!target || target.id === routeEntryId) return;
       markOpened(target);
-      navigate(
+      readerNav.open(
         `${streamPath(descriptor)}/e/${target.id}${viewSearch(filter, sort)}`,
       );
     },
@@ -300,7 +296,7 @@ export function Shell(): ReactElement {
       entriesCache,
       filter,
       markOpened,
-      navigate,
+      readerNav,
       routeEntryId,
       sort,
     ],
@@ -490,7 +486,7 @@ export function Shell(): ReactElement {
             hidden={routeEntryId !== null || imageId !== null}
             onSelectArticle={openEntry}
             onSelectImage={(id) =>
-              navigate(`/starred/images/${id}${viewSearch("all", sort)}`)
+              readerNav.open(`/starred/images/${id}${viewSearch("all", sort)}`)
             }
           />
         )}

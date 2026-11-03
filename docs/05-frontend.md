@@ -41,9 +41,13 @@ redirect `/all`.
 **Routing is the view state (standing requirement).** Every view change in the SPA —
 opening/closing the reading pane, switching streams, stepping between entries — must be
 implemented as a URL route change via wouter `navigate`, so browser back/forward always
-works: selecting an entry pushes `<stream>/e/:id`, `j`/`k` inside the reader push the
-sibling entry's route (back walks them), and closing the reader (back button/Esc) follows
-browser history to the route that opened the reader. Deep links to an entry id render from the loaded list cache or
+works: selecting an entry pushes `<stream>/e/:id`, `j`/`k` and next/previous inside the reader replace that session's article route.
+Browser Back, reader Back, and Escape return directly to the originating stream surface;
+Forward reopens the last article in the session. Namespaced, validated history-entry
+metadata preserves the origin (including Swipe position) across refresh. Reader close
+without a known app origin replaces the route with its parent stream; native browser
+Back keeps its normal behavior for direct links. The shell owns this policy through
+`lib/reader-navigation.ts`, without a component back-handler registry. Deep links to an entry id render from the loaded list cache or
 fetch it via `GET /api/v1/entries/:id`; a 404 closes back to the stream. View preferences
 (`filter`, `sort`) live in the query string (`?filter=unread&sort=asc`) as of a later
 cleanup, so views are shareable deep links and back/forward restores them; the reader URL
@@ -98,7 +102,7 @@ carries the same params so they survive opening and closing an article.
   overscan 15; positions of mounted rows are written to the DOM directly while
   scrolling, React re-renders only when the visible range changes. j/k steps and
   deep links scroll the active entry into view (`scrollToIndex`, align auto).
-- Keyboard (implemented): `j/k` open next/previous (each step is a history entry),
+- Keyboard (implemented): `j/k` open next/previous (one history entry per reading session),
   `m` toggle read, `s` save, `l` read later (inside the read-later stream the same key
   removes the item), `Shift+A` mark stream read, `Esc` back to list, `?`
   shortcut sheet. Planned, not yet built: `Enter/o` open original, `/` search focus,

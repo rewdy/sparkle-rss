@@ -3,7 +3,13 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-10-28)
+## Current state (updated 2026-11-02)
+
+Reader navigation now treats article browsing as one history session: Back/Escape
+returns to its originating stream surface and Forward reopens the final article.
+Implementation and acceptance are archived in OpenSpec
+`2026-11-02-consistent-reader-back` with the reader-navigation spec synced.
+No production deployment in this session.
 
 Deploy 40684982812 failed on migration 0005's inline DEFAULT/NOT NULL admission
 columns after eight nullable entry columns committed. A local recovery fix retains
@@ -245,6 +251,13 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
+- [x] **Reader session Back navigation** (2026-11-02) — opening a reader pushes once;
+      j/k and next/previous replace within the session. Browser Back, reader Back,
+      and Escape return to the opening surface; Forward reopens the last article.
+      Swipe origin and Saved previews follow the same policy. Web tests, lint,
+      typecheck, build, and fixture browser acceptance pass. OpenSpec
+      `2026-11-02-consistent-reader-back` archived with spec sync; no production deployment.
+
 - [x] **List/Cards/Swipe consolidation** — promote Feed to List and add a separate
       virtualized Cards grid (3 columns at md, 2 at sm, 1 below sm), fixed-ratio image
       placeholders, local preference migration, and reader scroll restoration. All
