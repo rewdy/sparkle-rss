@@ -21,11 +21,11 @@ import {
   LuBookmark,
   LuCalendarDays,
   LuClock,
-  LuEllipsisVertical,
   LuFolder,
   LuFolderOpen,
   LuFolderPlus,
   LuInbox,
+  LuListFilter,
   LuLogOut,
   LuMailOpen,
   LuPlus,
@@ -361,15 +361,14 @@ export function Sidebar({
         </Text>
         <Menu position="bottom-end" withinPortal>
           <Menu.Target>
-            <ActionIcon
-              variant="subtle"
-              color="dimmed"
+            <Button
               size="compact-xs"
-              aria-label="feed list options"
+              variant="subtle"
+              leftSection={<LuListFilter size={13} />}
               title="feed list options"
             >
-              <LuEllipsisVertical size={14} />
-            </ActionIcon>
+              filter
+            </Button>
           </Menu.Target>
           <Menu.Dropdown>
             <Group
