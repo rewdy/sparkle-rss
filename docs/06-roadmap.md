@@ -3,7 +3,7 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-02)
+## Current state (updated 2026-11-04)
 
 Reader navigation now treats article browsing as one history session: Back/Escape
 returns to its originating stream surface and Forward reopens the final article.
@@ -35,15 +35,25 @@ browser checks for breakpoints, image renewal, pagination, keyboard focus, and r
 restoration. OpenSpec `replace-feed-with-list-and-cards` is implemented locally and archived
 with main specs synced (2026-10-14); no deployment in this session. Entry-list skeleton polish is complete.
 
+Saved images are deployed and working in production; the CI migration/infra release
+gate is reviewed and closed, completing OpenSpec `save-article-images`.
+
+UI refinement landed: dark-mode accent shades now resolve per color scheme with
+contrast-guarded emphasis text and translucent selected tints, a `persimmon` (orange)
+preset joins the catalog, the root font size scales to 112.5% on viewports of 1600px
+and wider, and the sidebar uses the sans-serif face (user-approved). OpenSpec
+`2026-11-04-refine-ui-typography-and-accent` is archived with `ui-typography` and
+`accent-themes` specs synced.
+
 Phases 0–5 are built and live at https://app.sparklerss.com (greader surface
 live-verified; conformance suite runs in CI). Everything is done **except**:
 
 1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
    still pending; until it passes, Phase 4 is "done, pending device verification".
 2. **Phase 6** — the active backlog below (lifecycle cleanup and article splash
-   persistence landed 2026-08-29; read later landed 2026-09-15). Saved images
-   are implemented and locally verified; the CI migration/infra review and deployment
-   remain pending (OpenSpec `save-article-images`, task 6.3).
+   persistence landed 2026-08-29; read later landed 2026-09-15). Saved images are
+   deployed and functioning; their release gate is closed (OpenSpec
+   `save-article-images`, task 6.3).
 3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
    the app is live and fast enough that this never blocked anything).
 
@@ -285,10 +295,11 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       and web-only API. Full suite: 292 tests; lint/types/builds and local Postgres/Floci
       walkthrough pass. See [08-article-images.md](08-article-images.md) and
       OpenSpec `save-article-images`.
-- [ ] **Saved images release gate**: review CI Terraform plan and additive DSQL migration
-      ordering before deployment. Existing databases migrate before Lambda publication;
-      rollback keeps service cleanup safeguards, schema, and stored images. No production
-      resources changed in this implementation session.
+- [x] **Saved images release gate** (closed 2026-11-04): CI Terraform plan and the
+      additive DSQL migration ordering were reviewed before deployment; existing
+      databases migrate before Lambda publication, and rollback keeps service cleanup
+      safeguards, schema, and stored images. Deployed and confirmed functioning in
+      production, completing OpenSpec `save-article-images`.
 - [x] **Article splash images** — select the first credible feed image larger than
       256×256, copy accepted images into private reusable media storage, expose
       user-scoped metadata and five-minute presigned delivery URLs to the first-party

@@ -37,4 +37,4 @@
 
 - [x] 6.1 Run repository lint/typecheck, affected unit/integration/API/web suites, unchanged Google Reader conformance suite, and web/Lambda builds; verify all pass and images do not leak into native-client fixtures.
 - [x] 6.2 Exercise feed and URL-article image saving against local Postgres/Floci, then unsubscribe/delete source, remove a save, reload a preview, and navigate a paged mixed list with keyboard/touch; verify the two capability specs end to end and record outcomes/limitations in the implementation handoff.
-- [ ] 6.3 Review additive DSQL migration/deploy ordering and Terraform plan through CI; verify rollback preserves saved data, bucket privacy remains enforced, and no manual production apply is required.
+- [x] 6.3 Review additive DSQL migration/deploy ordering and Terraform plan through CI; verify rollback preserves saved data, bucket privacy remains enforced, and no manual production apply is required.

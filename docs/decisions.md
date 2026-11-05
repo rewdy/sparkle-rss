@@ -986,3 +986,12 @@ rem-based, and the mobile 16px input floor is intentionally exempt. The sidebar 
 renders in the sans-serif face (DM Sans) with monospace unread counts — an explicit
 experiment the user reviewed and approved locally on 2026-11-04. Frontend only; no API,
 persistence, or infrastructure contract changes.
+
+## 2026-11-04 — Saved images release gate closed
+
+Saved images are deployed and functioning in production. The CI Terraform plan and the
+additive DSQL migration ordering were reviewed before publication; existing databases
+migrate ahead of Lambda publication, and rollback retains the service cleanup
+safeguards, schema, and stored images. No manual production apply was needed. This
+closes the last open task (6.3) of OpenSpec `save-article-images` and the roadmap's
+Saved-images release gate; the change is ready to archive (spec sync pending there).
