@@ -194,6 +194,21 @@ export function Sidebar({
 
       <NavLink
         component={Link}
+        href="/all"
+        active={isActive(activeStream, (s) => s.kind === "all")}
+        label={
+          <Group justify="space-between" w="100%">
+            <Group gap="xs" wrap="nowrap">
+              <LuInbox size={15} style={{ flexShrink: 0 }} />
+              <Text size="sm">All items</Text>
+            </Group>
+            {unreadBadge(totalUnread)}
+          </Group>
+        }
+        onClick={() => nav("/all")}
+      />
+      <NavLink
+        component={Link}
         href="/today"
         active={isActive(activeStream, (s) => s.kind === "today")}
         label={
@@ -245,21 +260,6 @@ export function Sidebar({
           </Group>
         }
         onClick={() => nav("/read-later")}
-      />
-      <NavLink
-        component={Link}
-        href="/all"
-        active={isActive(activeStream, (s) => s.kind === "all")}
-        label={
-          <Group justify="space-between" w="100%">
-            <Group gap="xs" wrap="nowrap">
-              <LuInbox size={15} style={{ flexShrink: 0 }} />
-              <Text size="sm">All items</Text>
-            </Group>
-            {unreadBadge(totalUnread)}
-          </Group>
-        }
-        onClick={() => nav("/all")}
       />
 
       <Divider my="xs" c="dimmed" flex="none" />

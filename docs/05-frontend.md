@@ -101,7 +101,7 @@ carries the same params so they survive opening and closing an article.
 ```
 
 - Sidebar has three uppercase-headed sections separated by exactly one divider each:
-  **Streams** (the smart groupings Today / All unread / Saved / Read later / All items),
+  **Streams** (the smart groupings All items / Today / All unread / Saved / Read later),
   **Folders**, and **Feeds** (the loose subscriptions). The Folders section — heading,
   rows, and its divider — is omitted entirely when the user has no folders, so no empty
   band or doubled rule appears. The `+ add` button sits beside the **Streams** heading

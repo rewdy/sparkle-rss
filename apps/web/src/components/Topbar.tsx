@@ -82,7 +82,7 @@ export function Topbar({
           size="sm"
           fw={700}
           component={Link}
-          href="/today"
+          href="/all"
           aria-label="Sparkle RSS"
           style={{
             whiteSpace: "nowrap",
