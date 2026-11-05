@@ -152,13 +152,14 @@ export function StreamInner({
     <Box
       ref={scrollRef}
       h="calc(100dvh - var(--app-shell-header-offset, 0rem))"
+      pos={hidden ? "absolute" : undefined}
+      top={hidden ? 0 : undefined}
+      left={hidden ? 0 : undefined}
+      right={hidden ? 0 : undefined}
+      pb="env(safe-area-inset-bottom)"
       style={{
-        position: hidden ? "absolute" : undefined,
-        top: hidden ? 0 : undefined,
-        width: "100%",
         visibility: hidden ? "hidden" : undefined,
         overflowY: presentation === "swipe" ? "hidden" : "auto",
-        paddingBottom: "env(safe-area-inset-bottom)",
       }}
       data-stream-scroll
       aria-hidden={hidden || undefined}
