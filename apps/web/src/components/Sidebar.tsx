@@ -38,6 +38,7 @@ import { logout } from "../lib/auth";
 import { parseRoute, qk, streamPath } from "../lib/keys";
 import type { Folder, StreamDescriptor, Subscription } from "../lib/types";
 import { collapsedFoldersAtom, sidebarUnreadOnlyAtom } from "../lib/ui-state";
+import { fonts } from "../themes";
 import { FeedIcon } from "./FeedIcon";
 import { FeedMenu, FolderCreateModal, FolderMenu } from "./ManageMenus";
 
@@ -144,7 +145,12 @@ export function Sidebar({
   }
 
   return (
-    <Box p="xs" h="100%" style={{ display: "flex", flexDirection: "column" }}>
+    <Box
+      p="xs"
+      h="100%"
+      ff={fonts.sans}
+      style={{ display: "flex", flexDirection: "column" }}
+    >
       {/* The add menu sits with the Streams header: adding a feed, folder, or
           article is a global action, not a property of one section. */}
       <Group justify="space-between" mb="xs" px={4} flex="none">

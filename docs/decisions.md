@@ -964,3 +964,25 @@ carries no color values. Standing policy, documented in `docs/05-frontend.md`
 first; custom CSS rules are a last resort for targets theme configuration cannot
 reach and must never hardcode colors. Light scheme unchanged. No API, persistence,
 or infrastructure contract changes.
+
+## 2026-11-04 — Scheme-aware accent shades, large-screen root scale, sidebar sans experiment
+
+Dark-mode accent rendering was light-first: the theme used a scalar
+`primaryShade: 6`, so emphasis text (NavLink active labels, light buttons, badges)
+sampled a mid-dark shade that measured as low as 2.88:1 (scarlet) on the dark page,
+and selected rows painted flat near-black ramp values (`accent-9`). The theme now
+uses `primaryShade: { light: 6, dark: 4 }` with dark overrides for
+`--mantine-color-accent-filled`/`-filled-hover` (shades 6/7, white text), and the
+resolver emits semantic tokens (`--sparkle-accent-tint-strong`, `--sparkle-accent-tint`,
+`--sparkle-accent-strong`) consumed by `.entry-row`, `.article-card`,
+`.card-placeholder`, and `.site-title:hover`; selected surfaces in dark are 22% accent
+tints over the page instead of flat ramp values. Numeric floors (emphasis ≥ 4.5:1,
+fill ≥ 3:1, selected tint ≥ 1.2:1) are enforced by `apps/web/test/themes.test.ts`.
+Added the `persimmon` (orange) preset without touching stored `themeId` values, and
+Settings swatches now preview each preset in the resolved scheme's emphasis shade.
+On viewports ≥ 1600 CSS px the root font size rises to 112.5% of the user's default
+so all rem-based type, spacing, and shell chrome scale together; article bodies are
+rem-based, and the mobile 16px input floor is intentionally exempt. The sidebar now
+renders in the sans-serif face (DM Sans) with monospace unread counts — an explicit
+experiment the user reviewed and approved locally on 2026-11-04. Frontend only; no API,
+persistence, or infrastructure contract changes.

@@ -1,9 +1,14 @@
+@media (min-width: 100em) {
+  html {
+    font-size: 112.5%;
+  }
+}
 .site-title {
   color: inherit;
   text-decoration: none;
 }
 .site-title:hover {
-  color: light-dark(var(--mantine-color-accent-7), var(--mantine-color-accent-3));
+  color: var(--sparkle-accent-strong);
 }
 .entry-row {
   transition: background-color 80ms ease;
@@ -79,21 +84,15 @@
   }
 }
 .entry-row:hover {
-  background-color: light-dark(
-    var(--mantine-color-accent-0),
-    var(--mantine-color-dark-6)
-  );
+  background-color: var(--sparkle-accent-tint);
 }
 .entry-row[data-active] {
-  background-color: light-dark(
-    var(--mantine-color-accent-1),
-    var(--mantine-color-accent-9)
-  );
-  box-shadow: inset 3px 0 0 var(--mantine-color-accent-6);
+  background-color: var(--sparkle-accent-tint-strong);
+  box-shadow: inset 3px 0 0 var(--sparkle-accent-strong);
 }
 .reading-content {
   font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.7;
 }
 .reading-content img { max-width: 100%; height: auto; }
@@ -202,8 +201,8 @@
   outline-offset: 2px;
 }
 .article-card[data-active] {
-  border-color: var(--mantine-color-accent-6);
-  background: light-dark(var(--mantine-color-accent-0), var(--mantine-color-dark-6));
+  border-color: var(--sparkle-accent-strong);
+  background: var(--sparkle-accent-tint);
 }
 .card-media {
   width: 100%;
@@ -222,8 +221,8 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  color: light-dark(var(--mantine-color-accent-3), var(--mantine-color-accent-7));
-  background: light-dark(var(--mantine-color-accent-0), var(--mantine-color-dark-6));
+  color: var(--sparkle-accent-strong);
+  background: var(--sparkle-accent-tint);
 }
 .card-text {
   min-width: 0;

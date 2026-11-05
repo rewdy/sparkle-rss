@@ -1,5 +1,10 @@
 import type { CSSVariablesResolver, MantineTheme } from "@mantine/core";
-import { createTheme, DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
+import {
+  alpha,
+  createTheme,
+  DEFAULT_THEME,
+  mergeMantineTheme,
+} from "@mantine/core";
 
 export const fonts = {
   mono: '"Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -19,7 +24,13 @@ const neutrals = [
   "#111114",
 ] as const;
 
-export type ThemeId = "scarlet" | "blue" | "steel" | "magenta" | "purple";
+export type ThemeId =
+  | "scarlet"
+  | "blue"
+  | "steel"
+  | "magenta"
+  | "purple"
+  | "persimmon";
 
 // Mantine color ramps are 10-tuples; keeping this fixed makes swaps type-safe.
 export type AccentShades = readonly [
@@ -92,6 +103,22 @@ const themes: Record<ThemeId, ThemeDef> = {
       "#20343f",
     ],
   },
+  persimmon: {
+    id: "persimmon",
+    label: "persimmon",
+    accent: [
+      "#fff5eb",
+      "#ffe8d1",
+      "#ffd0a6",
+      "#fbb673",
+      "#f29a45",
+      "#e8862f",
+      "#d9761f",
+      "#b95f16",
+      "#964a12",
+      "#74380e",
+    ],
+  },
   magenta: {
     id: "magenta",
     label: "magenta",
@@ -137,7 +164,11 @@ export function buildTheme(def: ThemeDef): MantineTheme {
         accent: [...def.accent],
       },
       primaryColor: "accent",
-      primaryShade: 6,
+      // Emphasis text (light buttons, NavLink active, badges) uses the scheme's
+      // primary shade: shade 6 reads well on white, shade 4 clears 4.5:1 on the
+      // dark page for every preset. The dark filled-button override in
+      // cssVariablesResolver keeps primary buttons deep with white text.
+      primaryShade: { light: 6, dark: 4 },
       fontFamily: fonts.mono,
       fontFamilyMonospace: fonts.mono,
       headings: {
@@ -160,13 +191,31 @@ export const THEMES: Record<ThemeId, MantineTheme> = Object.fromEntries(
 
 export const DEFAULT_THEME_ID: ThemeId = "blue";
 
+// The shade used for emphasis text in each scheme (the dark-scheme value matches
+// what `primaryShade.dark` resolves to). Settings previews presets with the
+// emphasis shade so swatches are judged as they render.
+export function presetEmphasisColor(
+  def: ThemeDef,
+  scheme: "light" | "dark",
+): string {
+  return scheme === "dark" ? def.accent[4] : def.accent[6];
+}
+
 export const cssVariablesResolver: CSSVariablesResolver = (theme) => ({
   variables: {},
   light: {
     "--sparkle-surface-code": theme.colors.dark[7],
+    "--sparkle-accent-tint-strong": theme.colors.accent?.[1] ?? "",
+    "--sparkle-accent-tint": theme.colors.accent?.[0] ?? "",
+    "--sparkle-accent-strong": theme.colors.accent?.[7] ?? "",
   },
   dark: {
     "--mantine-color-body": neutrals[8],
     "--sparkle-surface-code": neutrals[7],
+    "--mantine-color-accent-filled": theme.colors.accent?.[6] ?? "",
+    "--mantine-color-accent-filled-hover": theme.colors.accent?.[7] ?? "",
+    "--sparkle-accent-tint-strong": alpha(theme.colors.accent?.[5] ?? "", 0.22),
+    "--sparkle-accent-tint": alpha(theme.colors.accent?.[5] ?? "", 0.14),
+    "--sparkle-accent-strong": theme.colors.accent?.[4] ?? "",
   },
 });

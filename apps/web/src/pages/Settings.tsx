@@ -16,6 +16,7 @@ import {
   Text,
   TextInput,
   Title,
+  useComputedColorScheme,
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtom } from "jotai";
@@ -32,7 +33,7 @@ import {
   useColorSchemeValue,
   useThemeValue,
 } from "../lib/ui-state";
-import { THEME_DEFS } from "../themes";
+import { presetEmphasisColor, THEME_DEFS } from "../themes";
 
 export function SettingsPage(): ReactElement {
   const settingsQ = useQuery({
@@ -41,6 +42,9 @@ export function SettingsPage(): ReactElement {
   });
   const [scheme, setScheme] = useColorSchemeValue();
   const [themeId, setThemeId] = useThemeValue();
+  const computedScheme = useComputedColorScheme(
+    scheme === "system" ? "light" : scheme,
+  );
   const [markOnOpen, setMarkOnOpen] = useMarkOnOpen();
   const [unreadOnly, setUnreadOnly] = useAtom(sidebarUnreadOnlyAtom);
 
@@ -84,7 +88,7 @@ export function SettingsPage(): ReactElement {
               <Stack key={def.id} gap={4} align="center">
                 <ColorSwatch
                   component="button"
-                  color={def.accent[6]}
+                  color={presetEmphasisColor(def, computedScheme)}
                   radius="sm"
                   size={38}
                   aria-label={`${def.label} theme`}
@@ -95,10 +99,10 @@ export function SettingsPage(): ReactElement {
                   }}
                   style={{
                     cursor: "pointer",
-                    color: "#fff",
+                    color: presetEmphasisColor(def, "dark"),
                     boxShadow:
                       themeId === def.id
-                        ? "0 0 0 3px var(--mantine-color-body), 0 0 0 5px var(--mantine-color-accent-5)"
+                        ? "0 0 0 3px var(--mantine-color-body), 0 0 0 5px var(--sparkle-accent-strong)"
                         : undefined,
                   }}
                 >

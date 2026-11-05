@@ -23,6 +23,22 @@ Styling changes MUST attempt Mantine theme configuration first, in this order:
 
 Write a hand-written CSS rule ONLY when no theme mechanism reaches the target — for example raw article HTML (`.reading-content pre`), keyframes, or layout/positioning. Such rules may consume theme tokens (`var(--mantine-color-*)`, `var(--sparkle-*)`) but MUST NOT hardcode color values. If a rule seems to need a hardcoded color, add the color to theme configuration first and reference the token instead.
 
+## Typography
+
+Type, spacing, and shell chrome are rem-based, so they share one lever: the root font
+size. On viewports at least 1600 CSS pixels wide, `styles.css` raises the root font
+size to **112.5% of the user's default** (`@media (min-width: 100em) { html { font-size: 112.5%; } }`),
+scaling everything together — including the sidebar and header, which are sized in
+rem through `AppShell`. The percentage (not a pixel value) preserves users who already
+enlarged browser text. Article bodies (`.reading-content`) are `1rem` and scale with
+it. The only intentional exception is the mobile `input, select, textarea { font-size: 16px }`
+floor, which exists to stop iOS Safari focus zoom, not as a design scale.
+
+The sidebar renders in the sans-serif face (DM Sans), applied once on the sidebar
+container (`ff={fonts.sans}`) so labels, section headings, and actions inherit it;
+unread-count badges stay monospace. Approved by the user on 2026-11-04 after a local
+review.
+
 ## Routes
 
 | Path | View |
@@ -218,11 +234,24 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
 - `pnpm build:web` → static bundle in `apps/web/dist`; CI syncs to S3 and invalidates
 - The active theme is chosen via the `themeIdAtom` and passed to
   `MantineProvider theme={THEMES[themeId]}`. `apps/web/src/themes.ts` defines a
-  `ThemeDef` (id, label, 10-shade `accent` ramp) per preset; each builds a full Mantine
-  theme that swaps only the `accent` palette, so every `--mantine-color-accent-*` usage
-  (component `color="accent"` props, `light-dark()` CSS rules) adapts automatically in
-  both light/dark. Future style settings (e.g. fonts) extend `ThemeDef` and are merged
-  in `buildTheme`, so consumers never change shape.
+  `ThemeDef` (id, label, 10-shade `accent` ramp) per preset — `blue`, `scarlet`,
+  `steel`, `magenta`, `purple`, `persimmon` — and each builds a full Mantine theme
+  that swaps only the `accent` palette, so every `--mantine-color-accent-*` usage
+  adapts automatically in both light/dark. The theme sets
+  `primaryShade: { light: 6, dark: 4 }`: shade 6 is emphasis on white, shade 4 clears
+  4.5:1 on the dark page (`#17171b`) for every preset. Because Mantine's `-filled`
+  variable follows the scheme shade, the `CSSVariablesResolver` overrides
+  `--mantine-color-accent-filled` / `-filled-hover` in dark with shades 6/7 so filled
+  buttons stay deep with white text. The resolver also emits scheme-dependent accent
+  tokens consumed by hand-written CSS: `--sparkle-accent-tint-strong` (selected
+  surfaces: `accent-1` light / `accent-5` at 22% over the page in dark),
+  `--sparkle-accent-tint` (hover: `accent-0` light / 14% in dark), and
+  `--sparkle-accent-strong` (emphasis: `accent-7` light / `accent-4` dark). Numeric
+  floors (emphasis ≥ 4.5:1, fill ≥ 3:1, selected tint ≥ 1.2:1) are guarded by
+  `apps/web/test/themes.test.ts`. Settings previews each preset with the emphasis
+  shade of the resolved scheme (`presetEmphasisColor`). Unrecognized stored `themeId`
+  values fall back to `blue`. Future style settings (e.g. fonts) extend `ThemeDef`
+  and are merged in `buildTheme`, so consumers never change shape.
 - `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
   CloudFront (`/index.html` + hashed assets pattern).
 - `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
