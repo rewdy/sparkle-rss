@@ -199,7 +199,7 @@ describe("Sidebar sections", () => {
       </Providers>,
     );
     expect(await screen.findByText("Read Feed")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "feed list options" }));
+    await user.click(screen.getByRole("button", { name: "filter" }));
     await user.click(await screen.findByLabelText("unread only"));
     await waitFor(() =>
       expect(screen.queryByText("Read Feed")).not.toBeInTheDocument(),

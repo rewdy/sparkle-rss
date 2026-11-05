@@ -5,6 +5,11 @@ explicit exit criteria — do not start the next phase until they pass.
 
 ## Current state (updated 2026-11-05, accent theme persistence fixed)
 
+The sidebar filter interaction test now selects the labeled `filter` button by its
+accessible name after the switch from an icon-only action. Unread-only behavior
+is unchanged. All 426 tests pass against local Postgres; see `decisions.md`
+(2026-11-05).
+
 Appearance settings now persist the accent preset to `user_settings` and survive reload:
 the jotai provider had been given no store, so fetched settings never reached the UI (a
 preset only appeared on the load after it was saved), a hand-written preset allowlist had

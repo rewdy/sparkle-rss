@@ -1028,3 +1028,13 @@ follow the user across devices; device-level prefs (`colorScheme`, `storyPresent
 `sidebarOpen`, `collapsedFolders`) live in `sparkle.ui` localStorage only. `themeId` is
 still cached in localStorage as a first-paint hint, but the fetched value always wins, so
 the DB remains authoritative. Web only; no API, schema, or greader contract change.
+
+## 2026-11-05 — Sidebar filter test follows the visible button label
+
+Changing the sidebar filter trigger from an icon-only action to an icon-and-text
+button changed its accessible name from `feed list options` to `filter`. Updated
+the existing role/name query to match the visible label, retaining the interaction
+assertion that enabling unread-only hides read feeds. No application behavior changed.
+Validation: all 426 tests across 47 files pass with `TEST_DATABASE_URL` set to the
+local Postgres test database, including API and GReader conformance suites; Biome
+passes for the changed test.
