@@ -3,7 +3,7 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-04)
+## Current state (updated 2026-11-04, full content deployed)
 
 Reader navigation now treats article browsing as one history session: Back/Escape
 returns to its originating stream surface and Forward reopens the final article.
@@ -35,8 +35,9 @@ browser checks for breakpoints, image renewal, pagination, keyboard focus, and r
 restoration. OpenSpec `replace-feed-with-list-and-cards` is implemented locally and archived
 with main specs synced (2026-10-14); no deployment in this session. Entry-list skeleton polish is complete.
 
-Saved images are deployed and working in production; the CI migration/infra release
-gate is reviewed and closed, completing OpenSpec `save-article-images`.
+Saved images and full article content are deployed and working in production; both
+release gates are closed, completing OpenSpec `save-article-images` and
+`fetch-full-article-on-open`.
 
 UI refinement landed: dark-mode accent shades now resolve per color scheme with
 contrast-guarded emphasis text and translucent selected tints, a `persimmon` (orange)
@@ -51,9 +52,9 @@ live-verified; conformance suite runs in CI). Everything is done **except**:
 1. **Phase 4 exit gate** — NetNewsWire *device* E2E (doc 02 checklist) is manual and
    still pending; until it passes, Phase 4 is "done, pending device verification".
 2. **Phase 6** — the active backlog below (lifecycle cleanup and article splash
-   persistence landed 2026-08-29; read later landed 2026-09-15). Saved images are
-   deployed and functioning; their release gate is closed (OpenSpec
-   `save-article-images`, task 6.3).
+   persistence landed 2026-08-29; read later landed 2026-09-15). Saved images and
+   full article content are deployed and functioning; their release gates are
+   closed (OpenSpec `save-article-images` and `fetch-full-article-on-open`).
 3. **Phase 0 leftover** — Lambda-side DSQL latency measurement (informational only;
    the app is live and fast enough that this never blocked anything).
 
@@ -331,11 +332,12 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
       Adopt the guard and byte cap built for read later (`article/fetch-article.ts`) so feed
       fetching gets the same protections. *Exit: both feed paths reject private/metadata
       addresses and cap response size, with tests.*
-- [ ] **Full article content** — manual and automatic-on-reader-open implementation
-      is local, with separate original/extracted bodies, durable claims and retry
-      limits, web-only projection, and image-saving integration. Tests pass; browser
-      acceptance and CI migration/deployment review remain tracked in OpenSpec
-      `fetch-full-article-on-open`. Plan: [11-full-content-fetch.md](11-full-content-fetch.md).
+- [x] **Full article content** (closed 2026-11-04) — manual and automatic-on-open
+      fetching shipped: separate original/extracted bodies, durable claims and retry
+      limits, the 500-character automatic threshold, web-only projection, and
+      saved-image integration. Deployed and confirmed functioning in production,
+      completing OpenSpec `fetch-full-article-on-open` (archived). Plan:
+      [11-full-content-fetch.md](11-full-content-fetch.md).
 - [ ] **PWA shell** — manifest + offline shell (installability without offline complexity);
       image lazy-loading pass in the reading pane. *Exit: app is installable; Lighthouse
       PWA criteria met; first-view images lazy-load.*

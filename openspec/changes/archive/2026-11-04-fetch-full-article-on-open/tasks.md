@@ -18,21 +18,21 @@
 
 - [x] 3.1 Add typed API/query/mutation support and bounded pending-status polling; reconcile only content fields across entry/list/Saved/Read Later caches. Test navigation during requests, concurrent optimistic read/star changes, 202 recovery, 429 feedback, failures, and persisted success after reload.
 - [x] 3.2 Add accessible Mantine outline Fetched article/Original tabs, immediate loading feedback without a feed-body flash, and error/retry controls to ReaderPane; use underlying entryId for feed-backed Read Later. Reapply image lazy loading on same-ID content changes. Test keyboard/touch, focus stability, image controls, missing URLs, and exclusion of off-feed URL items.
-- [ ] 3.3 Verify manual milestone locally against migrated Postgres with fixture-backed extraction, concurrency, failure and image saving. Record milestone A in docs 06/decisions while explicitly leaving automatic completion unchecked.
-- [ ] 3.4 Document manual controls, cache ownership, local verification, and original/full selection in docs 05/07; verify the documented workflow in the local reader.
+- [x] 3.3 Verify manual milestone locally against migrated Postgres with fixture-backed extraction, concurrency, failure and image saving. Record milestone A in docs 06/decisions while explicitly leaving automatic completion unchecked.
+- [x] 3.4 Document manual controls, cache ownership, local verification, and original/full selection in docs 05/07; verify the documented workflow in the local reader.
 
 ## 4. Milestone B — automatic on open (required)
 
 - [x] 4.1 Invoke the same content mutation when an eligible reading pane opens with original feed text below the named 500-character threshold (enforced by both web trigger and service, with all reader fetching controls hidden at or above the threshold), including deep links, keyboard navigation, Saved articles, and feed-backed Read Later. Reuse success/pending/cooldown state; test StrictMode/remounts, two tabs, reopen after cooldown, missing URLs, and no repeated retries in an already mounted pane.
-- [ ] 4.2 Verify no extraction on list rendering, pagination, prefetch, presentation changes, or Swipe scrolling; opening the full reader from a story qualifies. Test late results never replace the currently open article and existing mark-on-open semantics remain intact.
-- [ ] 4.3 Exercise automatic acceptance end to end: an old empty-body entry, teaser, full-body feed entry displayed without tabs or fetching controls, redirect with relative images, cached reload, unreachable/unreadable source, manual retry, cooldown, concurrent opens, and source deletion. Do not mark this change complete based on milestone A alone.
-- [ ] 4.4 Update docs 05/06/11 and decisions with automatic-on-open behavior, exclusions, and milestone results; verify documentation matches fixture-backed browser acceptance.
+- [x] 4.2 Verify no extraction on list rendering, pagination, prefetch, presentation changes, or Swipe scrolling; opening the full reader from a story qualifies. Test late results never replace the currently open article and existing mark-on-open semantics remain intact.
+- [x] 4.3 Exercise automatic acceptance end to end: an old empty-body entry, teaser, full-body feed entry displayed without tabs or fetching controls, redirect with relative images, cached reload, unreachable/unreadable source, manual retry, cooldown, concurrent opens, and source deletion. Do not mark this change complete based on milestone A alone.
+- [x] 4.4 Update docs 05/06/11 and decisions with automatic-on-open behavior, exclusions, and milestone results; verify documentation matches fixture-backed browser acceptance.
 
 ## 5. Verification and handoff
 
 - [x] 5.1 Run lint/typecheck, affected extractor/service/database/API/web tests, unchanged Google Reader conformance, and web/Lambda builds. Verify database projection/claim tests against real Postgres and the total API operation budget against Terraform's 29-second timeout; resolve failures before broadening checks.
 - [x] 5.2 Cross-check the documentation delivered with each milestone for consistent limits, lifetime, deployment/rollback, and automatic trigger boundaries; verify it matches the completed acceptance scenarios.
-- [ ] 5.3 Review additive migration ordering in CI before deployment; preserve schema/extracted bodies on rollback and deploy only through the pipeline. Update docs 06 current state and decisions in the implementation commit with both milestone outcomes and any remaining release gates.
+- [x] 5.3 Review additive migration ordering in CI before deployment; preserve schema/extracted bodies on rollback and deploy only through the pipeline. Update docs 06 current state and decisions in the implementation commit with both milestone outcomes and any remaining release gates.
 
 ## Implementation handoff — 2026-10-28
 

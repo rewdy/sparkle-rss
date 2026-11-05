@@ -995,3 +995,15 @@ migrate ahead of Lambda publication, and rollback retains the service cleanup
 safeguards, schema, and stored images. No manual production apply was needed. This
 closes the last open task (6.3) of OpenSpec `save-article-images` and the roadmap's
 Saved-images release gate; the change is ready to archive (spec sync pending there).
+
+## 2026-11-04 — Full article content accepted and release gate closed
+
+Full article content is deployed and functioning in production: manual Load full
+article and automatic-on-open fetching for feed bodies under the 500-character
+readable-text threshold, with cached extraction, cooldowns, per-user budget, original
+content preserved for Google Reader, and saved-image authorization on fetched bodies.
+The user confirmed the deployed behavior, closing the remaining browser-acceptance and
+CI migration/deployment review tasks (3.3–4.4, 5.3) of OpenSpec
+`fetch-full-article-on-open`. The change is archived with its `full-article-content`
+spec synced. The browser-acceptance gate itself was obviated by production
+confirmation; no new release gates remain for this change.
