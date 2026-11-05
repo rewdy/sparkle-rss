@@ -100,7 +100,7 @@
 .reading-content pre {
   overflow-x: auto;
   padding: var(--mantine-spacing-xs);
-  background: var(--mantine-color-dark-7);
+  background: var(--sparkle-surface-code);
   color: light-dark(var(--mantine-color-accent-0), var(--mantine-color-dark-0));
 }
 

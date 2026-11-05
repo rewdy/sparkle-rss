@@ -8,7 +8,7 @@ import { queryClient } from "./lib/query-client";
 import { colorSchemeAtom, themeIdAtom } from "./lib/ui-state";
 import { Login } from "./pages/Login";
 import { Shell } from "./pages/Shell";
-import { THEMES } from "./themes";
+import { cssVariablesResolver, THEMES } from "./themes";
 
 function ThemedApp() {
   const scheme = useAtomValue(colorSchemeAtom);
@@ -29,7 +29,11 @@ function ThemedApp() {
   }, [resolvedScheme]);
 
   return (
-    <MantineProvider theme={THEMES[themeId]} forceColorScheme={resolvedScheme}>
+    <MantineProvider
+      theme={THEMES[themeId]}
+      cssVariablesResolver={cssVariablesResolver}
+      forceColorScheme={resolvedScheme}
+    >
       <Switch>
         <Route path="/login" component={Login} />
         <Route component={Shell} />

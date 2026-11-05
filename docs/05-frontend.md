@@ -13,6 +13,16 @@
 | Styling | Mantine theme tokens + CSS modules for layout specifics; PostCSS preset from Mantine |
 | Forms | Mantine form hooks (settings/subscribe dialogs only) |
 
+## Styling policy
+
+Styling changes MUST attempt Mantine theme configuration first, in this order:
+
+1. **Theme colors and ramps**: add or adjust color values in `apps/web/src/themes.ts` (`createTheme`). This is the single source for every color value in the app.
+2. **Component-level theming**: component props, Mantine `styles`/`classNames` APIs, or theme defaults in `createTheme`.
+3. **Scheme-dependent CSS variables**: a `CSSVariablesResolver` (`apps/web/src/themes.ts`) emits `--mantine-color-*` overrides and `--sparkle-*` semantic tokens per color scheme; components and selectors consume the tokens.
+
+Write a hand-written CSS rule ONLY when no theme mechanism reaches the target — for example raw article HTML (`.reading-content pre`), keyframes, or layout/positioning. Such rules may consume theme tokens (`var(--mantine-color-*)`, `var(--sparkle-*)`) but MUST NOT hardcode color values. If a rule seems to need a hardcoded color, add the color to theme configuration first and reference the token instead.
+
 ## Routes
 
 | Path | View |

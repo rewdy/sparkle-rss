@@ -131,6 +131,9 @@ docs/            Source of truth for design
 
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `chore(infra):`, …).
 - Strict TypeScript, no `any` leaks past package boundaries; ESM everywhere.
+- Web styling is Mantine-theme-first: attempt theme configuration (colors/ramps, component
+  props, `cssVariablesResolver`) before writing any custom CSS, and custom CSS must consume
+  theme tokens rather than hardcode colors — see `docs/05-frontend.md` "Styling policy".
 - Docs live in `docs/` and are updated in the same PR as the change they describe.
   If you change architecture, data model, or any API surface, the matching doc edit is part
   of "done".

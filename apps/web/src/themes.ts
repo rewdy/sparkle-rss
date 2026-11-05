@@ -1,4 +1,4 @@
-import type { MantineTheme } from "@mantine/core";
+import type { CSSVariablesResolver, MantineTheme } from "@mantine/core";
 import { createTheme, DEFAULT_THEME, mergeMantineTheme } from "@mantine/core";
 
 export const fonts = {
@@ -159,3 +159,14 @@ export const THEMES: Record<ThemeId, MantineTheme> = Object.fromEntries(
 ) as Record<ThemeId, MantineTheme>;
 
 export const DEFAULT_THEME_ID: ThemeId = "blue";
+
+export const cssVariablesResolver: CSSVariablesResolver = (theme) => ({
+  variables: {},
+  light: {
+    "--sparkle-surface-code": theme.colors.dark[7],
+  },
+  dark: {
+    "--mantine-color-body": neutrals[8],
+    "--sparkle-surface-code": neutrals[7],
+  },
+});

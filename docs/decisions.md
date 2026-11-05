@@ -950,3 +950,17 @@ on history entries so refresh retains the return policy. Direct-link reader clos
 replaces with the parent stream rather than guessing from history length; native Back
 remains native. A global React back-handler registry is unnecessary for the current
 shell-owned route tree. No API, persistence, or infrastructure contract changes.
+## 2026-11-05 — Dark palette tightening and Mantine-theme-first styling policy
+
+Dark-scheme surfaces moved to the app's `neutrals` ramp: the page background is
+`#17171b` (`neutrals-8`, already the runtime `theme-color`) instead of Mantine's
+default `dark-7` `#242424`, and reading-content code blocks get a semantic
+`--sparkle-surface-code` token (`#242424` light / `#222228` dark) so `<pre>` blocks
+stand out against the page in both schemes. Colors are emitted by a
+`CSSVariablesResolver` in `themes.ts` and wired through `MantineProvider`; the only
+hand-written CSS (`.reading-content pre`, raw article HTML) consumes the token and
+carries no color values. Standing policy, documented in `docs/05-frontend.md`
+"Styling policy" and AGENTS.md: styling MUST go through Mantine theme configuration
+first; custom CSS rules are a last resort for targets theme configuration cannot
+reach and must never hardcode colors. Light scheme unchanged. No API, persistence,
+or infrastructure contract changes.
