@@ -160,6 +160,31 @@ describe("mixed Saved rows", () => {
       cursor: undefined,
     });
   });
+  it("loads with pulsing row skeletons and an accessible status", async () => {
+    let resolveList: (value: { items: []; nextCursor: null }) => void =
+      () => {};
+    vi.mocked(api.saved.list).mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      }),
+    );
+    render(
+      <Providers>
+        <SavedList
+          sort="asc"
+          hidden={false}
+          onSelectArticle={vi.fn()}
+          onSelectImage={vi.fn()}
+        />
+      </Providers>,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Loading saved items");
+    expect(document.querySelectorAll(".skeleton-row")).toHaveLength(10);
+    expect(document.querySelectorAll(".feed-thumbnail")).toHaveLength(10);
+    resolveList({ items: [], nextCursor: null });
+    expect(await screen.findByText("nothing saved yet.")).toBeInTheDocument();
+    expect(document.querySelectorAll(".skeleton-row")).toHaveLength(0);
+  });
   it("keeps the list mounted when a reader opens", async () => {
     vi.mocked(api.saved.list).mockResolvedValue({
       items: [{ kind: "image", id: image.id, savedAtMs, item: image }],

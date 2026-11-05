@@ -1,10 +1,19 @@
-import { Box, Button, Group, Loader, Text } from "@mantine/core";
+import { Box, Button, Group, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { type RefObject, useEffect, useMemo, useRef } from "react";
+import {
+  type ReactElement,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { dayGroup, timeLabel } from "../lib/date-grouping";
 import { useMediaRefresh, useSavedLibrary } from "../lib/saved-queries";
 import type { Entry, SavedItem } from "../lib/types";
+import { useVirtualizerScrollBinding } from "../lib/virtual-list";
 import { EntryRow } from "./EntryList";
+
+const SKELETON_COUNT = 10;
 
 export function SavedRows({
   items,
@@ -33,6 +42,7 @@ export function SavedRows({
     }
     return out;
   }, [items]);
+  useVirtualizerScrollBinding();
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
@@ -196,7 +206,7 @@ export function SavedList({
       style={{ overflowY: "auto", display: hidden ? "none" : undefined }}
     >
       {query.isPending ? (
-        <Loader m="md" aria-label="loading saved items" />
+        <SavedSkeleton />
       ) : query.isError ? (
         <Text p="md" role="alert">
           Could not load saved items.{" "}
@@ -226,6 +236,40 @@ export function SavedList({
           </Button>
         </Group>
       )}
+    </Box>
+  );
+}
+// Mirrors the stream list skeleton so every loading view in the app pulses the
+// same shapes: a group-label placeholder followed by entry rows with a thumb.
+function SavedSkeleton(): ReactElement {
+  return (
+    <Box>
+      <span role="status" className="sr-only">
+        Loading saved items…
+      </span>
+      <Group gap="xs" px="sm" pt="sm" pb="xxs" aria-hidden="true">
+        <Text component="span" size="xs" w={72} className="skeleton-line">
+          &nbsp;
+        </Text>
+      </Group>
+      {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed skeleton scaffold
+          key={i}
+          className="skeleton-row feed-row"
+          aria-hidden="true"
+        >
+          <div className="feed-row-text">
+            <Group mb="xxs" className="skeleton-meta-slot">
+              <div className="skeleton-line skeleton-line-meta" />
+            </Group>
+            <div className="skeleton-title-slot">
+              <div className="skeleton-line skeleton-line-title" />
+            </div>
+          </div>
+          <div className="feed-thumbnail skeleton-line" />
+        </div>
+      ))}
     </Box>
   );
 }

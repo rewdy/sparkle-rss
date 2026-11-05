@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { groupByDay, timeLabel } from "../lib/date-grouping";
 import { useSubscriptionMap } from "../lib/feed-titles";
 import type { Entry } from "../lib/types";
+import { useVirtualizerScrollBinding } from "../lib/virtual-list";
 import { fonts } from "../themes";
 import { EntryMeta } from "./EntryMeta";
 
@@ -47,6 +48,7 @@ export function EntryList({
     return out;
   }, [entries]);
 
+  useVirtualizerScrollBinding();
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
