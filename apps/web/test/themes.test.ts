@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cssVariablesResolver,
   DEFAULT_THEME_ID,
+  isThemeId,
   THEME_DEFS,
   type ThemeDef,
   type ThemeId,
@@ -63,6 +64,16 @@ describe("accent themes", () => {
       for (const shade of def.accent) expect(shade).toMatch(/^#[0-9a-f]{6}$/i);
     }
     expect(DEFAULT_THEME_ID).toBe("blue");
+  });
+
+  it.each(PRESETS)("%s is recognized from stored settings", (id) => {
+    expect(isThemeId(id)).toBe(true);
+  });
+
+  it("rejects ids outside the catalog", () => {
+    for (const bogus of ["red", "", null, 42, "toString", {}]) {
+      expect(isThemeId(bogus)).toBe(false);
+    }
   });
 
   it.each(PRESETS)(

@@ -71,4 +71,14 @@ describe("presentation preference", () => {
       JSON.parse(localStorage.getItem("sparkle.ui") ?? "{}").storyPresentation,
     ).toBe("cards");
   });
+
+  it("restores the accent preset cached for first paint", async () => {
+    localStorage.setItem(
+      "sparkle.ui",
+      JSON.stringify({ themeId: "persimmon" }),
+    );
+    vi.resetModules();
+    const { themeIdAtom } = await import("../src/lib/ui-state");
+    expect(createStore().get(themeIdAtom)).toBe("persimmon");
+  });
 });

@@ -5,7 +5,7 @@ import { Provider as JotaiProvider, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { Route, Switch } from "wouter";
 import { queryClient } from "./lib/query-client";
-import { colorSchemeAtom, themeIdAtom } from "./lib/ui-state";
+import { appStore, colorSchemeAtom, themeIdAtom } from "./lib/ui-state";
 import { Login } from "./pages/Login";
 import { Shell } from "./pages/Shell";
 import { cssVariablesResolver, THEMES } from "./themes";
@@ -45,7 +45,7 @@ function ThemedApp() {
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <JotaiProvider>
+      <JotaiProvider store={appStore}>
         <ThemedApp />
       </JotaiProvider>
     </QueryClientProvider>

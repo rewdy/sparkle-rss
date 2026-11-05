@@ -1,19 +1,20 @@
-import { getDefaultStore } from "jotai";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   applySettings,
+  appStore,
   colorSchemeAtom,
   markReadOnOpenAtom,
   sidebarOpenAtom,
   sidebarUnreadOnlyAtom,
   themeIdAtom,
 } from "../src/lib/ui-state";
+import { THEME_DEFS, type ThemeId } from "../src/themes";
 
-// Each test starts from the shared default store (module-level atoms seed from
-// whatever is in localStorage, which Node lacks — they fall back to defaults).
+// Each test starts from the app's single store (atoms seed from localStorage
+// at module load, which Node lacks — they fall back to defaults).
 describe("applySettings", () => {
   beforeEach(() => {
-    const store = getDefaultStore();
+    const store = appStore;
     store.set(colorSchemeAtom, "dark");
     store.set(themeIdAtom, "blue");
     store.set(markReadOnOpenAtom, true);
@@ -23,14 +24,26 @@ describe("applySettings", () => {
 
   it("applies recognized server settings over the current values", () => {
     applySettings({
-      colorScheme: "system",
       themeId: "steel",
       markReadOnOpen: false,
     });
-    const store = getDefaultStore();
-    expect(store.get(colorSchemeAtom)).toBe("system");
+    const store = appStore;
     expect(store.get(themeIdAtom)).toBe("steel");
     expect(store.get(markReadOnOpenAtom)).toBe(false);
+  });
+
+  it("keeps the device-local color scheme out of server settings", () => {
+    applySettings({ colorScheme: "system", themeId: "purple" });
+    const store = appStore;
+    expect(store.get(colorSchemeAtom)).toBe("dark");
+    expect(store.get(themeIdAtom)).toBe("purple");
+  });
+
+  it("applies every preset the catalog offers", () => {
+    for (const id of Object.keys(THEME_DEFS) as ThemeId[]) {
+      applySettings({ themeId: id });
+      expect(appStore.get(themeIdAtom)).toBe(id);
+    }
   });
 
   it("ignores unknown keys and invalid values", () => {
@@ -40,7 +53,7 @@ describe("applySettings", () => {
       themeId: 42,
       markReadOnOpen: "yes",
     });
-    const store = getDefaultStore();
+    const store = appStore;
     expect(store.get(colorSchemeAtom)).toBe("dark");
     expect(store.get(themeIdAtom)).toBe("blue");
     expect(store.get(markReadOnOpenAtom)).toBe(true);
@@ -50,17 +63,17 @@ describe("applySettings", () => {
 
   it("is a no-op when values are unchanged", () => {
     applySettings({ colorScheme: "dark", themeId: "blue" });
-    const store = getDefaultStore();
+    const store = appStore;
     expect(store.get(colorSchemeAtom)).toBe("dark");
   });
 
   it("applies the sidebar unread-only preference", () => {
     applySettings({ sidebarUnreadOnly: true });
-    expect(getDefaultStore().get(sidebarUnreadOnlyAtom)).toBe(true);
+    expect(appStore.get(sidebarUnreadOnlyAtom)).toBe(true);
   });
 
   it("ignores a non-boolean sidebar unread-only value", () => {
     applySettings({ sidebarUnreadOnly: "yes" });
-    expect(getDefaultStore().get(sidebarUnreadOnlyAtom)).toBe(false);
+    expect(appStore.get(sidebarUnreadOnlyAtom)).toBe(false);
   });
 });

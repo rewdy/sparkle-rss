@@ -28,7 +28,6 @@ import { logout } from "../lib/auth";
 import { qk } from "../lib/keys";
 import {
   markReadOnOpenAtom,
-  persistUiPatch,
   sidebarUnreadOnlyAtom,
   useColorSchemeValue,
   useThemeValue,
@@ -48,8 +47,9 @@ export function SettingsPage(): ReactElement {
   const [markOnOpen, setMarkOnOpen] = useMarkOnOpen();
   const [unreadOnly, setUnreadOnly] = useAtom(sidebarUnreadOnlyAtom);
 
+  // Persists account-level preferences to `user_settings`; the atom setters
+  // already keep the local first-paint cache in sync.
   async function saveSetting(patch: Record<string, unknown>): Promise<void> {
-    persistUiPatch(patch);
     await api.settings.put(patch);
     void settingsQ.refetch();
   }
@@ -69,9 +69,9 @@ export function SettingsPage(): ReactElement {
           <SegmentedControl
             value={scheme}
             onChange={(next) => {
-              const v = next as "light" | "dark" | "system";
-              setScheme(v);
-              void saveSetting({ colorScheme: v });
+              // Light/dark is device-local: the atom setter persists it to
+              // localStorage and nothing is sent to the server.
+              setScheme(next as "light" | "dark" | "system");
             }}
             data={[
               { value: "dark", label: "dark" },

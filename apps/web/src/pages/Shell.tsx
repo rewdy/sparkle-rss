@@ -35,7 +35,6 @@ import type { Entry, StreamDescriptor } from "../lib/types";
 import { isEntryStream } from "../lib/types";
 import {
   applySettings,
-  loadLocalUi,
   markReadOnOpenAtom,
   shortcutsOpenAtom,
   storyPresentationAtom,
@@ -149,11 +148,10 @@ export function Shell(): ReactElement {
     queryFn: api.settings.get,
   });
 
-  // Reconcile server settings (source of truth) over the local first-paint
-  // fallback once the settings have loaded.
+  // Reconcile account-level settings (source of truth) into the atoms once the
+  // fetch lands; `applySettings` ignores device-local keys such as colorScheme.
   useEffect(() => {
-    if (settingsQ.data)
-      applySettings({ ...loadLocalUi(), ...settingsQ.data.data });
+    if (settingsQ.data) applySettings(settingsQ.data.data);
   }, [settingsQ.data]);
 
   // Flat entry list for keyboard navigation / seeding the reader. Reads the

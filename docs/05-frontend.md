@@ -193,14 +193,22 @@ rationale: [10-read-later.md](10-read-later.md)).
   subscription CRUD. Any entry mutation invalidates `['unread-counts']`; read-later
   mutations invalidate the queue and its count.
 - **jotai owns ephemeral UI**: `colorSchemeAtom` (`light` / `dark` / `system`), `themeIdAtom`, `sidebarOpenAtom`,
-  `markReadOnOpenAtom`, `sidebarUnreadOnlyAtom`, `collapsedFoldersAtom` (reading prefs also mirrored into
-  `user_settings.data` via `/api/v1/me/settings` — server = source of truth across
-  devices; local `sparkle.ui` localStorage is the pre-mount first-paint fallback), plus
-  `todayRolloverAtom` (a midnight tick). The **open entry is not UI state**: it is derived
+  `markReadOnOpenAtom`, `sidebarUnreadOnlyAtom`, `collapsedFoldersAtom`, plus
+  `todayRolloverAtom` (a midnight tick). Preference ownership is split on purpose:
+  **account-level** prefs (`themeId`, `markReadOnOpen`, `sidebarUnreadOnly`) are written to
+  `user_settings.data` via `PUT /api/v1/settings` and are the source of truth across
+  devices, while **device-level** prefs (`colorScheme`, `storyPresentation`, `sidebarOpen`,
+  `collapsedFolders`) stay in the `sparkle.ui` localStorage entry. `applySettings` mirrors
+  account settings into the atoms after the first settings fetch and deliberately ignores
+  `colorScheme`, so a server value can never override the local light/dark choice — that
+  would silently undo every topbar toggle, which is local-only. It writes to the single
+  module-level `appStore` that `App.tsx` hands to `<JotaiProvider store>`, because
+  `atom.init` cannot be mutated post-mount and a `<Provider>` without a `store` prop creates
+  a private store that `getDefaultStore()` writes never reach. `sparkle.ui` also caches
+  `themeId` as a pre-mount first-paint hint only; the fetched value always wins, so presets
+  still follow the account across devices. The **open entry is not UI state**: it is derived
   from the URL (`<stream>/e/:id`) by `parseRoute`, so there is no selected-entry atom; the
-  stream `filter`/`sort` are URL query params, not atoms. `applySettings` mirrors server
-  settings into the atoms after the first load via the default store (setting `atom.init`
-  post-mount is a no-op).
+  stream `filter`/`sort` are URL query params, not atoms.
 - No cross-contamination: no server payloads inside atoms, no fetches outside
   react-query. The API client retries a 401 once after token renewal through the auth API.
 
@@ -249,8 +257,10 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
   `--sparkle-accent-strong` (emphasis: `accent-7` light / `accent-4` dark). Numeric
   floors (emphasis ≥ 4.5:1, fill ≥ 3:1, selected tint ≥ 1.2:1) are guarded by
   `apps/web/test/themes.test.ts`. Settings previews each preset with the emphasis
-  shade of the resolved scheme (`presetEmphasisColor`). Unrecognized stored `themeId`
-  values fall back to `blue`. Future style settings (e.g. fonts) extend `ThemeDef`
+  shade of the resolved scheme (`presetEmphasisColor`). `isThemeId` validates stored
+  preset ids against the `THEME_DEFS` catalog itself (never a hand-written list, which
+  dropped a preset in practice) and unrecognized values fall back to `blue`. Future
+  style settings (e.g. fonts) extend `ThemeDef`
   and are merged in `buildTheme`, so consumers never change shape.
 - `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
   CloudFront (`/index.html` + hashed assets pattern).

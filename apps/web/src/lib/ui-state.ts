@@ -1,5 +1,5 @@
-import { atom, getDefaultStore, useAtom } from "jotai";
-import { DEFAULT_THEME_ID, type ThemeId } from "../themes";
+import { atom, createStore, useAtom } from "jotai";
+import { DEFAULT_THEME_ID, isThemeId, type ThemeId } from "../themes";
 import { localDateKey } from "./keys";
 
 export type ColorSchemePref = "light" | "dark" | "system";
@@ -26,16 +26,6 @@ function isColorScheme(v: unknown): v is ColorSchemePref {
   return v === "light" || v === "dark" || v === "system";
 }
 
-function isThemeId(v: unknown): v is ThemeId {
-  return (
-    v === "scarlet" ||
-    v === "blue" ||
-    v === "steel" ||
-    v === "magenta" ||
-    v === "purple"
-  );
-}
-
 function asBool(v: unknown, fallback: boolean): boolean {
   return typeof v === "boolean" ? v : fallback;
 }
@@ -48,6 +38,15 @@ function asStringArray(v: unknown): string[] {
 
 // Atoms initialize from localStorage at module load (synchronous, pre-mount)
 // so the first paint already uses saved preferences.
+/**
+ * The one store the app runs on: `App.tsx` passes it to `<JotaiProvider store>`
+ * and everything outside React (imperative setters, `applySettings`) writes to
+ * the same instance. A `<Provider>` without a `store` prop creates a private
+ * store instead, which silently detaches `getDefaultStore()` writes from the
+ * components that render the atoms.
+ */
+export const appStore = createStore();
+
 const local = loadLocalUi();
 if (local.storyPresentation === "feed") {
   local.storyPresentation = "list";
@@ -77,6 +76,10 @@ export const colorSchemeAtom = atom(
   },
 );
 
+// The accent preset belongs to the account: `user_settings.data.themeId` is the
+// source of truth so it follows the user across devices. The localStorage copy
+// is only a first-paint cache (avoids a flash of the default accent) that
+// `applySettings` overwrites as soon as the settings fetch lands.
 const themeIdBaseAtom = atom<ThemeId>(
   isThemeId(local.themeId) ? local.themeId : DEFAULT_THEME_ID,
 );
@@ -140,19 +143,15 @@ export const todayRolloverAtom = atom<string>(localDateKey());
 export const shortcutsOpenAtom = atom(false);
 
 /**
- * Apply server settings (merged over local) after the first settings fetch.
- * Sets an atom only for keys present with a valid value and different from
- * the current one. Mutating `atom.init` post-mount is a no-op in jotai, so
- * values must be SET through the default store (JotaiProvider uses it).
+ * Apply server-owned settings after the first settings fetch: sets an atom only
+ * for keys present with a valid value and different from the current one.
+ * Mutating `atom.init` post-mount is a no-op in jotai, so values are SET on
+ * `appStore` — the store the provider renders from.
  */
 export function applySettings(data: Record<string, unknown>): void {
-  const store = getDefaultStore();
-  if (
-    isColorScheme(data.colorScheme) &&
-    data.colorScheme !== store.get(colorSchemeBaseAtom)
-  ) {
-    store.set(colorSchemeAtom, data.colorScheme);
-  }
+  const store = appStore;
+  // `colorScheme` is deliberately absent: light/dark is per device, so a server
+  // value must never overwrite the local choice (topbar toggles are local-only).
   if (isThemeId(data.themeId) && data.themeId !== store.get(themeIdBaseAtom)) {
     store.set(themeIdAtom, data.themeId);
   }

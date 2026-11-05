@@ -3,7 +3,14 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-04, full content deployed)
+## Current state (updated 2026-11-05, accent theme persistence fixed)
+
+Appearance settings now persist the accent preset to `user_settings` and survive reload:
+the jotai provider had been given no store, so fetched settings never reached the UI (a
+preset only appeared on the load after it was saved), a hand-written preset allowlist had
+dropped the sixth preset, and a mirrored `colorScheme` key let a stale server value undo
+the device's light/dark choice. Web-only fix; see `decisions.md` (2026-11-05). No
+production deployment in this session.
 
 Reader navigation now treats article browsing as one history session: Back/Escape
 returns to its originating stream surface and Forward reopens the final article.

@@ -1007,3 +1007,24 @@ CI migration/deployment review tasks (3.3–4.4, 5.3) of OpenSpec
 `fetch-full-article-on-open`. The change is archived with its `full-article-content`
 spec synced. The browser-acceptance gate itself was obviated by production
 confirmation; no new release gates remain for this change.
+
+## 2026-11-05 — Preference ownership split (accent theme vs. color scheme)
+
+Accent preset changes appeared not to stick. Three causes, all fixed in the web app.
+`<JotaiProvider>` was mounted without a `store` prop, and jotai's provider creates its own
+store in that case, so `applySettings`' `getDefaultStore()` writes went to a store no
+component subscribed to: fetched settings silently rewrote the `sparkle.ui` cache without
+ever reaching the UI, which is why a preset only appeared on the load *after* it was
+saved, and why settings looked like they refused to save at all on a fresh device. The
+app now runs on one explicit module-level `appStore` handed to the provider.
+`isThemeId` was also a hand-written allowlist listing five of the six presets, so
+`persimmon` (saved correctly to `user_settings.data`) was discarded on every load and the
+app fell back to blue; it now validates against the `THEME_DEFS` catalog itself. Finally,
+`colorScheme` was being written to and read back from `user_settings`, so a stale server
+value overrode the device's local choice and silently undid every topbar light/dark
+toggle; it is now device-local only. Ownership is therefore explicit: account-level
+prefs (`themeId`, `markReadOnOpen`, `sidebarUnreadOnly`) live in `user_settings` and
+follow the user across devices; device-level prefs (`colorScheme`, `storyPresentation`,
+`sidebarOpen`, `collapsedFolders`) live in `sparkle.ui` localStorage only. `themeId` is
+still cached in localStorage as a first-paint hint, but the fetched value always wins, so
+the DB remains authoritative. Web only; no API, schema, or greader contract change.

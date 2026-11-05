@@ -191,6 +191,15 @@ export const THEMES: Record<ThemeId, MantineTheme> = Object.fromEntries(
 
 export const DEFAULT_THEME_ID: ThemeId = "blue";
 
+/**
+ * Runtime guard for preset ids arriving from storage or the settings API.
+ * Derived from the catalog on purpose: a hand-written allowlist silently drops
+ * every preset added after it was written.
+ */
+export function isThemeId(value: unknown): value is ThemeId {
+  return typeof value === "string" && Object.hasOwn(THEME_DEFS, value);
+}
+
 // The shade used for emphasis text in each scheme (the dark-scheme value matches
 // what `primaryShade.dark` resolves to). Settings previews presets with the
 // emphasis shade so swatches are judged as they render.
