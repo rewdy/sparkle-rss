@@ -67,9 +67,23 @@ export function SavedRows({
             }}
           >
             {row.kind === "header" ? (
-              <Text px="md" py="xxs" size="xs" tt="uppercase" c="dimmed">
-                {row.label}
-              </Text>
+              // Mirrors the stream list headers, including the extra top gap on
+              // the first row so the group label clears the top bar.
+              <Group
+                gap="xs"
+                px="sm"
+                pt={virtual.index === 0 ? "sm" : "xs"}
+                pb="xxs"
+              >
+                <Text
+                  size="xs"
+                  tt="uppercase"
+                  c="dimmed"
+                  style={{ letterSpacing: 1.5 }}
+                >
+                  {row.label}
+                </Text>
+              </Group>
             ) : row.item.kind === "article" ? (
               <EntryRow
                 entry={{ ...row.item.entry, publishedAtMs: row.item.savedAtMs }}
