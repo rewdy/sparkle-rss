@@ -1,3 +1,5 @@
+import { loginPath } from "./login-return";
+
 export const devAuthBypassed = import.meta.env.VITE_AUTH_DISABLED === "true";
 
 let activeAccessToken: string | null = null;
@@ -126,7 +128,9 @@ export async function logout(): Promise<void> {
 export function redirectToLogin(): void {
   activeAccessToken = null;
   activeAccessTokenExpiresAt = 0;
-  window.location.assign("/login");
+  window.location.assign(
+    loginPath(window.location.pathname + window.location.search),
+  );
 }
 
 export async function renewToken(): Promise<string> {

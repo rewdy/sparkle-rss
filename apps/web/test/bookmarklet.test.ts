@@ -32,3 +32,36 @@ describe("read later bookmarklet", () => {
     expect(snippet).toContain("'sparkle-read-later','width=530,height=460'");
   });
 });
+
+describe("subscribe bookmarklet", () => {
+  it("executes with lossless source/title encoding and a separate popup", async () => {
+    const { buildSubscribeBookmarklet } = await import(
+      "../src/lib/bookmarklet"
+    );
+    const source = "https://blog.test/post?q=one&next=two#café";
+    const title = "A & B's blog";
+    const opened: unknown[][] = [];
+    const snippet = buildSubscribeBookmarklet("https://sparkle.test");
+    new Function(
+      "location",
+      "document",
+      "window",
+      snippet.slice("javascript:".length),
+    )(
+      { href: source, protocol: "https:" },
+      { title },
+      { open: (...args: unknown[]) => opened.push(args) },
+    );
+    const url = new URL(String(opened[0]?.[0]));
+    expect(url.origin).toBe("https://sparkle.test");
+    expect(url.pathname).toBe("/subscribe");
+    expect(url.searchParams.get("url")).toBe(source);
+    expect(url.searchParams.get("title")).toBe(title);
+    expect(url.searchParams.get("popup")).toBe("1");
+    expect(opened[0]?.slice(1)).toEqual([
+      "sparkle-subscribe",
+      "width=530,height=560",
+    ]);
+    expect(snippet).not.toContain("excerpt");
+  });
+});

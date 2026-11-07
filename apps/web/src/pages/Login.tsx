@@ -13,6 +13,7 @@ import {
 import type { FormEvent, ReactElement } from "react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useSearch } from "wouter/use-browser-location";
 import { PageTitle } from "../components/PageTitle";
 import {
   completeNewPassword,
@@ -20,11 +21,16 @@ import {
   requestPasswordReset,
   signIn,
 } from "../lib/auth";
+import { subscriptionReturnTo } from "../lib/login-return";
 
 type Mode = "sign-in" | "new-password" | "forgot" | "confirm-reset";
 
 export function Login(): ReactElement {
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const destination = subscriptionReturnTo(
+    new URLSearchParams(search).get("returnTo"),
+  );
   const [mode, setMode] = useState<Mode>("sign-in");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -48,10 +54,10 @@ export function Login(): ReactElement {
           setMode("new-password");
           return;
         }
-        navigate("/", { replace: true });
+        navigate(destination, { replace: true });
       } else if (mode === "new-password") {
         await completeNewPassword(username.trim(), newPassword, challenge);
-        navigate("/", { replace: true });
+        navigate(destination, { replace: true });
       } else if (mode === "forgot") {
         await requestPasswordReset(username.trim());
         setMode("confirm-reset");

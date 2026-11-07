@@ -181,3 +181,16 @@ Reader; web decoration selects a separate stored body. Database admission/leases
 coordinate tabs and Lambda instances; no ingest queue or new AWS resources are
 needed. The public socket transport is shared with saved-image fetching. See
 [11-full-content-fetch.md](11-full-content-fetch.md) for limits and retries.
+
+### Web feed discovery
+
+`POST /api/v1/subscriptions/discover` requires the normal Cognito session and accepts
+`{url}`. It returns `{feed: {feedUrl, siteUrl, title}}` (nullable title) without
+creating feed/subscription rows or queuing ingestion. Web discovery checks the supplied
+page and its advertised feeds, then the original origin root once on no-feed/upstream
+failure. Scheme, subdomain, and port are preserved; duplicate targets are skipped.
+The complete attempt has a 20-second deadline, with ten seconds maximum per request,
+including body reads. Invalid URLs return 400, no feed returns 422 when a page was
+inspected, upstream failure returns 502 when none was inspected, and deadline expiry
+returns 502. Final creation still uses `POST /api/v1/subscriptions` with the resolved
+feed URL; Google Reader's single-page discovery contract is unchanged.

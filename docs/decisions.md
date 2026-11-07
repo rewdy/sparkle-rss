@@ -1038,3 +1038,47 @@ assertion that enabling unread-only hides read feeds. No application behavior ch
 Validation: all 426 tests across 47 files pass with `TEST_DATABASE_URL` set to the
 local Postgres test database, including API and GReader conformance suites; Biome
 passes for the changed test.
+
+## 2026-11-07 — Subscribe bookmarklet and web-only origin-root discovery
+
+Added a separate Settings Subscribe bookmarklet opening an app-owned popup. Discovery
+is read-only; only explicit confirmation creates a subscription with the optional
+custom title and owned folder. Success stays visible; Cancel writes nothing and closes
+the window where permitted. The manual Subscribe dialog keeps its single-submit flow,
+now discovering before creation. Both surfaces offer the requested “Use RSSFinder.com”
+label pointing to `https://rssfinder.app/?q=<encoded original source URL>` after feed
+failures; Sparkle does not contact that service automatically.
+
+The new authenticated `POST /api/v1/subscriptions/discover` reuses single-page discovery
+with a web-only wrapper: try the source, then its original origin root on no-feed or
+upstream failure. Preserve scheme/subdomain/port, deduplicate fetched roots/candidates,
+limit each stage to the existing three candidates, and cap the entire attempt at 20
+seconds (ten seconds per request, including response bodies). Google Reader and final
+subscription creation retain their original discovery defaults. A feed disappearing
+after confirmation cannot cause a fallback subscription to a different homepage feed.
+No schema, Terraform, or Google Reader API changes. The existing shared outbound-fetch
+address guard/byte cap backlog remains open.
+
+Authentication preserves a narrowly validated `/subscribe` return destination through
+sign-in and permanent-password setup. Tests found that wouter's public `useSearch`
+partially decodes nested URL values; the new subscription/Login flow uses the raw browser
+search hook to preserve source query parameters and fragments across sign-in.
+
+Browser acceptance used intercepted API/publisher fixtures in Chromium: installed
+bookmarklet opens a 530-by-560 requested popup (530-by-559 measured inner viewport),
+no reader chrome; title/folder confirmation, success/Close, Cancel without writes,
+signed-out return, duplicate feedback, section/homepage feed responses, both RSSFinder
+links with original query/fragment, error clearing/retry, named-window reuse with reset
+fields, keyboard tab order, light and dark layouts, and 375px phone width without
+horizontal overflow all pass. Core/API fixtures separately exercise actual page-first
+and root fallback behavior, deadline cancellation, no preview writes/refresh hook,
+folder ownership, duplicate immutability, and the normal first-fetch hook. Publisher
+CSP/popup policies can still block bookmarklets; no browser-policy bypass is attempted.
+Implementation remains local; no deployment in this session.
+
+Validation: all 473 tests across 50 files pass against disposable Docker Postgres,
+including all 15 Google Reader conformance tests. `pnpm lint`, `pnpm typecheck`,
+`pnpm build:web`, `pnpm build:lambdas`, and `git diff --check` pass. OpenSpec strict
+validation passes; all 17 implementation/acceptance tasks are complete.
+Main `feed-subscription` and `user-auth` specs are synced; OpenSpec change archived as
+`2026-11-07-add-subscribe-bookmarklet`.

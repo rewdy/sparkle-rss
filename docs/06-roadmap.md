@@ -3,7 +3,16 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-05, accent theme persistence fixed)
+## Current state (updated 2026-11-07, subscribe bookmarklet implemented locally)
+
+Subscribe bookmarklet is implemented locally: Settings installation, authenticated
+popup discovery and confirmation with custom title/folder, and RSSFinder recovery in
+both subscription flows. Web discovery tries the supplied page, then its original
+origin root within one 20-second deadline; Google Reader discovery is unchanged.
+Signed-out activation resumes the popup after sign-in with nested URL parameters intact.
+All 473 tests, lint, typecheck, web/Lambda builds, and fixture browser acceptance pass.
+OpenSpec `2026-11-07-add-subscribe-bookmarklet` is archived with specs synced. No production
+deployment in this session; shared outbound-fetch hardening remains separate work.
 
 The sidebar filter interaction test now selects the labeled `filter` button by its
 accessible name after the switch from an icon-only action. Unread-only behavior
@@ -274,6 +283,14 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
+- [x] **Subscribe bookmarklet** (2026-11-07) — discover then confirm in a small
+      authenticated popup with optional title/folder; web-only origin-root fallback,
+      RSSFinder links in popup/manual errors, and sign-in return. Core/API/UI regression
+      and fixture-backed browser acceptance cover priorities, timeouts, scoping,
+      retries, cancellation, named-window reuse, keyboard, and light/dark layouts.
+      OpenSpec `2026-11-07-add-subscribe-bookmarklet` archived with specs synced;
+      implemented locally, no deployment.
+
 - [x] **Reader session Back navigation** (2026-11-02) — opening a reader pushes once;
       j/k and next/previous replace within the session. Browser Back, reader Back,
       and Escape return to the opening surface; Forward reopens the last article.

@@ -5,6 +5,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactElement } from "react";
 import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
+import { useSearch as useRawSearch } from "wouter/use-browser-location";
 import { PageTitle } from "../components/PageTitle";
 import { ReaderPane } from "../components/ReaderPane";
 import { SavedImagePane } from "../components/SavedImagePane";
@@ -60,6 +61,11 @@ const SaveArticleForm = lazy(() =>
     default: m.SaveArticleForm,
   })),
 );
+const SubscribePage = lazy(() =>
+  import("../components/SubscribePage").then((m) => ({
+    default: m.SubscribePage,
+  })),
+);
 
 function streamTitle(
   d: StreamDescriptor,
@@ -106,6 +112,7 @@ export function Shell(): ReactElement {
   // wouter's useLocation returns the path only; the query string (view prefs)
   // is read separately so ?filter=&sort= changes re-render this component.
   const search = useSearch();
+  const rawSearch = useRawSearch();
   const readerNav = useMemo(() => readerNavigation(navigate), [navigate]);
   // Mobile navbar drawer: collapsed.mobile is ignored at/above `sm`, so this
   // state only affects phones where the sidebar is hidden until the Burger opens it.
@@ -401,6 +408,14 @@ export function Shell(): ReactElement {
   }
 
   const APP_NAME = "Sparkle RSS";
+  if (location === "/subscribe") {
+    return (
+      <Suspense fallback={<FullscreenLoader label="loading…" />}>
+        <PageTitle title={`Subscribe · ${APP_NAME}`} />
+        <SubscribePage search={rawSearch} />
+      </Suspense>
+    );
+  }
   const isSettings = location.startsWith("/settings");
   const isSaveArticle = location.startsWith("/read-later/new");
   // The bookmarklet opens the save form in its own popup window. Same route and

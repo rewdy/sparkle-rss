@@ -393,3 +393,38 @@ feed remains selectable during requests; longer bodies render directly without
 tabs or fetching controls. Cached results switch without
 refetching, and failure feedback keeps a retry control available. Limits/API fields are in
 [11-full-content-fetch.md](11-full-content-fetch.md).
+
+## Subscribe bookmarklet and feed discovery
+
+Web subscription discovery uses `POST /api/v1/subscriptions/discover` with `{url}` and
+receives `{feed: {feedUrl, siteUrl, title}}`. It checks the supplied page first, then
+its origin root if no feed is found or fetching fails, preserving scheme, subdomain,
+and port. Duplicate roots/candidates are skipped. A single 20-second deadline covers
+both stages, with ten seconds maximum for each request including body reads.
+Discovery has no feed/subscription or ingestion side effects; final creation posts
+the resolved feed URL to the existing subscriptions endpoint. Native-client discovery
+is unchanged.
+
+Settings offers separate draggable **Read later** and **Subscribe** bookmarklets,
+each with copyable code. Drag Subscribe to the bookmarks bar and activate it on a
+blog page: `/subscribe?url=&title=&popup=1` opens in a small window without reader
+chrome. Discovery runs before “Subscribe to <name>?”; the selected feed URL is shown,
+with optional custom title and folder fields and Cancel/Subscribe buttons. The heading
+uses feed title, then page title, then feed URL. Cancel writes nothing; success and
+already-subscribed states remain visible with Close. Failed creation retains choices.
+React Query owns discovery (`['feed-discovery', sourceUrl]`), folders, and subscription
+mutations; local state holds only form fields and display state. Named-window reuse
+resets form state and cannot display stale discovery results from another source.
+
+The existing Subscribe dialog performs discovery then creation on its single submit.
+Both surfaces offer **Use RSSFinder.com** on discovery/creation failure, linking to
+`https://rssfinder.app/?q=<encoded original URL>` in another tab. The label matches the
+user's preferred tool name; the actual destination is rssfinder.app. Sparkle contacts
+that service only when the user follows the link. Invalid-input, authentication, and
+duplicate states do not offer it. Editing the manual URL clears its error/link.
+
+A signed-out `/subscribe` visit carries an encoded internal `returnTo` through Login
+and any permanent-password challenge, returning to discovery and explicit confirmation.
+Only the exact internal `/subscribe` path is accepted; untrusted destinations fall back
+to `/`. Ordinary sign-in retains its landing behavior. Subscription and Login parameters
+use raw browser search strings so nested URLs survive decoding intact.

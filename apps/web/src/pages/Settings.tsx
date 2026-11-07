@@ -312,6 +312,10 @@ function BookmarkletCard(): ReactElement {
           read later bookmarklet
         </Text>
         <BookmarkletLink showCode={true} />
+        <Text fw={700} size="sm">
+          subscribe bookmarklet
+        </Text>
+        <BookmarkletLink kind="subscribe" showCode={true} />
       </Stack>
     </Card>
   );

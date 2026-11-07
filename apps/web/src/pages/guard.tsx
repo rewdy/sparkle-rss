@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { accessToken, devAuthBypassed, SessionExpiredError } from "../lib/auth";
+import { loginPath } from "../lib/login-return";
 
 /** Guards the app by restoring a first-party session from its HttpOnly cookie. */
 export function useAuthGuard(): "checking" | "authed" | "anon" | "error" {
@@ -32,7 +33,10 @@ export function useAuthGuard(): "checking" | "authed" | "anon" | "error" {
   }, []);
 
   useEffect(() => {
-    if (state === "anon") navigate("/login", { replace: true });
+    if (state === "anon")
+      navigate(loginPath(window.location.pathname + window.location.search), {
+        replace: true,
+      });
   }, [state, navigate]);
 
   return state;

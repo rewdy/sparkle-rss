@@ -154,6 +154,17 @@ export const api = {
       raw(`/api/v1/folders/${id}`, { method: "DELETE" }).then(assertNoContent),
   },
   subscriptions: {
+    discover: (
+      url: string,
+      signal?: AbortSignal,
+    ): Promise<{
+      feed: { feedUrl: string; siteUrl: string; title: string | null };
+    }> =>
+      request("/api/v1/subscriptions/discover", {
+        method: "POST",
+        body: JSON.stringify({ url }),
+        signal,
+      }),
     list: (): Promise<{ subscriptions: Subscription[] }> =>
       request("/api/v1/subscriptions"),
     subscribe: (

@@ -3,7 +3,7 @@ import { guidHash } from "@sparkle/core";
 import * as schema from "@sparkle/db";
 import { eq, inArray, sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 process.env.ALLOW_INSECURE_DEV_AUTH = "true";
 process.env.DATABASE_URL =
@@ -131,6 +131,66 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("api v1 http surface", () => {
     expect(body.subscriptions[0]?.displayTitle).toBe("API Test Feed");
   });
 
+  it("discovers feeds without persisting or subscribing and requires authentication", async () => {
+    const beforeFeeds = await db.select().from(schema.feeds);
+    const beforeSubs = await db.select().from(schema.subscriptions);
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input);
+        return new Response(
+          url.endsWith("/rss")
+            ? '<rss version="2.0"><channel><title>Discovered</title></channel></rss>'
+            : url === "https://discovery.test/"
+              ? '<link rel="alternate" type="application/rss+xml" href="/rss">'
+              : "no feed",
+        );
+      });
+    const discover = (url: string, headers = H) =>
+      app.request("/api/v1/subscriptions/discover", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+    try {
+      const { env } = await import("../src/env");
+      const saved = { ...env };
+      try {
+        env.allowInsecureDevAuth = false;
+        env.cognitoIssuer = "https://auth.test";
+        env.cognitoClientId = "client";
+        const denied = await discover(
+          "https://discovery.test/post",
+          {} as typeof H,
+        );
+        expect(denied.status).toBe(401);
+      } finally {
+        Object.assign(env, saved);
+      }
+      expect(fetcher).not.toHaveBeenCalled();
+      const invalid = await discover("file:///tmp/feed");
+      expect(invalid.status).toBe(400);
+      expect(fetcher).not.toHaveBeenCalled();
+      const result = await discover("https://discovery.test/post");
+      expect(result.status).toBe(200);
+      expect(await result.json()).toEqual({
+        feed: {
+          feedUrl: "https://discovery.test/rss",
+          siteUrl: "https://discovery.test/",
+          title: "Discovered",
+        },
+      });
+      expect(await db.select().from(schema.feeds)).toEqual(beforeFeeds);
+      expect(await db.select().from(schema.subscriptions)).toEqual(beforeSubs);
+      const noFeed = await discover("https://empty.test/post");
+      expect(noFeed.status).toBe(422);
+      fetcher.mockRejectedValue(new Error("offline"));
+      expect((await discover("https://offline.test/post")).status).toBe(502);
+    } finally {
+      fetcher.mockRestore();
+    }
+  });
+
   it("edits and removes a subscription", async () => {
     await db
       .insert(schema.feeds)
@@ -162,6 +222,64 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("api v1 http surface", () => {
       headers: H,
     });
     expect(removed.status).toBe(204);
+  });
+
+  it("keeps creation scoped to the owner and does not replace a failed confirmed feed", async () => {
+    const jsonHeaders = { ...H, "Content-Type": "application/json" };
+    const otherFolderResponse = await app.request("/api/v1/folders", {
+      method: "POST",
+      headers: {
+        "X-Dev-User": "subscription-other-owner",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: "Private folder" }),
+    });
+    const { folder } = (await otherFolderResponse.json()) as {
+      folder: { id: string };
+    };
+    const subscribe = (body: object) =>
+      app.request("/api/v1/subscriptions", {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify(body),
+      });
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(
+        async () => new Response("unavailable", { status: 404 }),
+      );
+    try {
+      expect(
+        (
+          await subscribe({
+            url: "https://api-test.example/rss.xml",
+            folderId: Number(folder.id),
+          })
+        ).status,
+      ).toBe(404);
+      expect(
+        (
+          await subscribe({
+            url: "https://api-test.example/rss.xml",
+            title: "Do not overwrite",
+          })
+        ).status,
+      ).toBe(409);
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(
+        (await subscribe({ url: "https://confirmed.test/feed.xml" })).status,
+      ).toBe(502);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetcher.mock.calls[0]?.[0]).toBe(
+        "https://confirmed.test/feed.xml",
+      );
+      const subscriptions = (await (
+        await app.request("/api/v1/subscriptions", { headers: H })
+      ).json()) as { subscriptions: Array<{ customTitle: string | null }> };
+      expect(subscriptions.subscriptions[0]?.customTitle).toBeNull();
+    } finally {
+      fetcher.mockRestore();
+    }
   });
 
   it("paginates entries newest-first over http", async () => {

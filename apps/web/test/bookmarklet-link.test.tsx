@@ -35,3 +35,15 @@ describe("BookmarkletLink", () => {
     expect(screen.getByText(/window\.open/)).toBeInTheDocument();
   });
 });
+
+it("offers a separate draggable Subscribe link with code", async () => {
+  render(
+    <MantineProvider>
+      <BookmarkletLink kind="subscribe" showCode />
+    </MantineProvider>,
+  );
+  const link = await screen.findByRole("link", { name: "Subscribe" });
+  expect(link).toHaveAttribute("draggable", "true");
+  expect(link.getAttribute("href")).toContain("/subscribe?");
+  expect(screen.getByText(/window.open/)).toBeInTheDocument();
+});

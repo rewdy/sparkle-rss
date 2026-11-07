@@ -188,6 +188,13 @@ export function createWebApiApp(): Hono<Env> {
   });
 
   // --- subscriptions ---------------------------------------------------------
+  app.post("/subscriptions/discover", async (c) => {
+    const s = await getServices();
+    await userIdOf(s, c);
+    const body = z.object({ url: z.string().url() }).parse(await c.req.json());
+    return c.json({ feed: await s.subscriptions.discover(body.url) });
+  });
+
   app.get("/subscriptions", async (c) => {
     const s = await getServices();
     return c.json({

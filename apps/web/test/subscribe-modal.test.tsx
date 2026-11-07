@@ -9,6 +9,9 @@ import { SubscribeModal } from "../src/components/SubscribeModal";
 vi.mock("../src/lib/api", () => ({
   api: {
     subscriptions: {
+      discover: vi.fn(async (url: string) => ({
+        feed: { feedUrl: url, siteUrl: url, title: "Feed" },
+      })),
       subscribe: vi.fn(async ({ url }: { url: string }) => ({
         subscription: { feedId: "x", url },
       })),
@@ -139,3 +142,75 @@ describe("SubscribeModal", () => {
     );
   });
 });
+
+it("uses the discovered homepage feed while preserving folder and title", async () => {
+  vi.mocked(mockApi.subscriptions.discover).mockResolvedValueOnce({
+    feed: {
+      feedUrl: "https://example.com/rss",
+      siteUrl: "https://example.com/",
+      title: "Blog",
+    },
+  });
+  render(
+    <Providers>
+      <SubscribeModal
+        opened
+        folders={[{ id: "7", name: "Blogs", feedCount: 0 } as never]}
+        onClose={vi.fn()}
+      />
+    </Providers>,
+  );
+  await user.type(
+    screen.getByLabelText("feed or site URL"),
+    "https://example.com/post",
+  );
+  await user.type(screen.getByLabelText("custom title (optional)"), "Mine");
+  await user.selectOptions(screen.getByLabelText("folder"), "7");
+  await user.click(screen.getByRole("button", { name: "subscribe" }));
+  await waitFor(() =>
+    expect(mockApi.subscriptions.subscribe).toHaveBeenCalledWith(
+      "https://example.com/rss",
+      { title: "Mine", folderId: 7 },
+    ),
+  );
+});
+
+it("offers RSSFinder for the original failed URL and clears it on edit", async () => {
+  vi.mocked(mockApi.subscriptions.discover).mockRejectedValueOnce({
+    status: 422,
+  });
+  renderModal();
+  const url = "https://example.com/post?q=one&other=two#comments";
+  await user.type(screen.getByLabelText("feed or site URL"), url);
+  await user.click(screen.getByRole("button", { name: "subscribe" }));
+  const link = await screen.findByRole("link", { name: "Use RSSFinder.com" });
+  expect(new URL(link.getAttribute("href") ?? "").searchParams.get("q")).toBe(
+    url,
+  );
+  expect(mockApi.subscriptions.subscribe).not.toHaveBeenCalled();
+  await user.type(screen.getByLabelText("feed or site URL"), "x");
+  expect(
+    screen.queryByRole("link", { name: "Use RSSFinder.com" }),
+  ).not.toBeInTheDocument();
+});
+
+it.each([401, 409])(
+  "does not offer RSSFinder for status %s",
+  async (status) => {
+    vi.mocked(mockApi.subscriptions.subscribe).mockRejectedValueOnce({
+      status,
+    });
+    renderModal();
+    await user.type(
+      screen.getByLabelText("feed or site URL"),
+      "https://example.com/feed",
+    );
+    await user.click(screen.getByRole("button", { name: "subscribe" }));
+    await screen.findByText(
+      status === 409 ? "Already subscribed to this feed" : "Could not add feed",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Use RSSFinder.com" }),
+    ).not.toBeInTheDocument();
+  },
+);

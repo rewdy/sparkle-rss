@@ -1,7 +1,10 @@
 import { Button, Code, CopyButton, Group, Stack, Text } from "@mantine/core";
 import type { ReactElement } from "react";
 import { useEffect, useRef } from "react";
-import { buildBookmarklet } from "../lib/bookmarklet";
+import {
+  buildBookmarklet,
+  buildSubscribeBookmarklet,
+} from "../lib/bookmarklet";
 
 /**
  * The draggable "read later" bookmarklet, used by the settings card.
@@ -11,10 +14,15 @@ import { buildBookmarklet } from "../lib/bookmarklet";
  */
 export function BookmarkletLink({
   showCode = false,
+  kind = "read-later",
 }: {
   showCode?: boolean;
+  kind?: "read-later" | "subscribe";
 }): ReactElement {
-  const snippet = buildBookmarklet(window.location.origin);
+  const label = kind === "subscribe" ? "Subscribe" : "Read later";
+  const snippet = (
+    kind === "subscribe" ? buildSubscribeBookmarklet : buildBookmarklet
+  )(window.location.origin);
   const anchorRef = useRef<HTMLAnchorElement>(null);
 
   // React refuses to render a `javascript:` href (it swaps in a throw-stub as
@@ -35,7 +43,7 @@ export function BookmarkletLink({
           draggable={true}
           onClick={(event) => event.preventDefault()}
         >
-          Read later
+          {label}
         </Button>
         <CopyButton value={snippet}>
           {({ copied, copy }) => (
@@ -51,9 +59,15 @@ export function BookmarkletLink({
         </Code>
       )}
       <Text size="xs" c="dimmed">
-        drag the “Read later” button onto your bookmarks bar. On any page, it
-        opens this form in a small window with the address, title, and any
-        selected text prefilled.
+        {kind === "subscribe" ? (
+          "Drag the “Subscribe” button onto your bookmarks bar. On a blog page, it opens a small window to find its feed and confirm your subscription."
+        ) : (
+          <>
+            drag the “Read later” button onto your bookmarks bar. On any page,
+            it opens this form in a small window with the address, title, and
+            any selected text prefilled.
+          </>
+        )}
       </Text>
     </Stack>
   );

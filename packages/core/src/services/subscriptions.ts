@@ -3,6 +3,7 @@ import * as schema from "@sparkle/db";
 import { and, eq, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { discoverFeed, type FetchLike } from "../feed/discover";
+import { discoverWebFeed } from "../feed/discover-web";
 import { AppError } from "./errors";
 
 export interface ServicesDeps {
@@ -54,6 +55,10 @@ export function createSubscriptionsService(
   }
 
   return {
+    discover(inputUrl: string, fetchImpl?: FetchLike) {
+      return discoverWebFeed(inputUrl, fetchImpl);
+    },
+
     async list(userId: string): Promise<SubscriptionDto[]> {
       const rows = await db
         .select({

@@ -19,3 +19,13 @@ export function buildBookmarklet(origin: string): string {
     "})()",
   ].join("");
 }
+
+/** Captures only the page address/title; discovery and writes run in Sparkle. */
+export function buildSubscribeBookmarklet(origin: string): string {
+  const target = JSON.stringify(`${new URL(origin).origin}/subscribe?`);
+  return (
+    "javascript:(function(){if(!/^https?:$/.test(location.protocol))return;" +
+    "var q=new URLSearchParams({url:location.href,title:document.title,popup:'1'});" +
+    `window.open(${target}+q,'sparkle-subscribe','width=530,height=560');})()`
+  );
+}
