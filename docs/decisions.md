@@ -1082,3 +1082,19 @@ including all 15 Google Reader conformance tests. `pnpm lint`, `pnpm typecheck`,
 validation passes; all 17 implementation/acceptance tasks are complete.
 Main `feed-subscription` and `user-auth` specs are synced; OpenSpec change archived as
 `2026-11-07-add-subscribe-bookmarklet`.
+
+## 2026-11-11 — Main-app icons reuse the public-site favicon
+
+The reader's HTML now links an exact copy of the marketing-site SVG, a multi-size
+16/32/48px ICO fallback, and a 180px Apple touch icon. The web manifest supplies
+Sparkle RSS branding, root scope/start URL, standalone display, 192/512px PNG icons,
+and a separate 512px maskable icon. Raster assets were rendered directly from the
+SVG with Sharp; touch/app icons flatten onto the original `#111114` background.
+The maskable variant scales the artwork to 80% with a centered 6.4-unit inset in
+the original 64-unit viewBox, keeping all foreground artwork inside the safe circle.
+No new dependency or service worker is needed; the offline-shell backlog stays open.
+
+Validation: visually inspected the maskable asset; checked generated dimensions,
+opaque app/touch backgrounds, ICO entries, source SVG equality, and built asset
+references. `pnpm lint`, `pnpm build:web`, and `git diff --check` pass.
+Implemented locally; no deployment in this session.

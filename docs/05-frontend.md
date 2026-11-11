@@ -265,8 +265,14 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
 - `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
   CloudFront (`/index.html` + hashed assets pattern).
 - `index.html` sets `<meta name="theme-color">`, viewport, and preloads the app shell
-  font subset. PWA manifest + service-worker shell deferred to Phase 6 (installability
-  without offline complexity).
+  font subset. Browser icons and home-screen metadata live in `public/`: the exact
+  marketing-site `apps/site/public/favicon.svg`, a 16/32/48px ICO fallback, an opaque
+  180px Apple touch icon, and 192/512px PNG app icons. `site.webmanifest` names the app,
+  starts at `/`, and requests standalone display. Its separate 512px maskable icon
+  scales the original artwork to 80% over the source's `#111114` background to keep
+  the mark inside the safe circle. Raster assets are rendered from the source SVG;
+  update these together when the brand changes. The service-worker/offline shell
+  remains deferred to Phase 6.
 
 The stream shell supports device-local `list`, `cards`, and `swipe` presentations. It is
 controlled by `storyPresentationAtom` and the header toggle, with separate `EntryList`,

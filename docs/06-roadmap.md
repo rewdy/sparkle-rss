@@ -3,7 +3,12 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-07, subscribe bookmarklet implemented locally)
+## Current state (updated 2026-11-11, app icons implemented locally)
+
+The main app now reuses the public site's favicon artwork for SVG/ICO browser icons,
+an Apple touch icon, and standard/maskable home-screen icons with a web manifest.
+Lint and the web build pass; no production deployment in this session. The offline
+shell remains deferred.
 
 Subscribe bookmarklet is implemented locally: Settings installation, authenticated
 popup discovery and confirmation with custom title/folder, and RSSFinder recovery in
@@ -283,6 +288,10 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
+- [x] **Main-app icons** (2026-11-11) — reuse the public-site SVG for browser
+      favicons, Apple touch icon, and 192/512px app icons with a separate maskable
+      variant and web manifest. Lint and web build pass; implemented locally.
+
 - [x] **Subscribe bookmarklet** (2026-11-07) — discover then confirm in a small
       authenticated popup with optional title/folder; web-only origin-root fallback,
       RSSFinder links in popup/manual errors, and sign-in return. Core/API/UI regression
