@@ -6,9 +6,36 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
-import type { ContentProjection, Entry, EntryPage, SavedPage } from "./types";
+import type {
+  ContentProjection,
+  Entry,
+  EntryPage,
+  SavedPage,
+  Subscription,
+} from "./types";
 
-function patchContentCaches(
+function guardContent(
+  qc: QueryClient,
+  feedId: string,
+  content: ContentProjection,
+): ContentProjection {
+  const sub = qc
+    .getQueryData<{ subscriptions: Subscription[] }>(["subscriptions"])
+    ?.subscriptions.find((s) => s.feedId === feedId);
+  return sub?.fetchFullArticles === false
+    ? {
+        ...content,
+        contentHtml: content.originalContentHtml,
+        fullContent: {
+          ...content.fullContent,
+          fetchEnabled: false,
+          automaticFetchEligible: false,
+        },
+      }
+    : content;
+}
+
+export function patchContentCaches(
   qc: QueryClient,
   id: string,
   content: ContentProjection,
@@ -19,7 +46,7 @@ function patchContentCaches(
         ? item.entryId === id
         : item.source !== "url" && item.id === id
     )
-      ? { ...item, ...content }
+      ? { ...item, ...guardContent(qc, item.feedId, content) }
       : item;
   qc.setQueriesData<{ pages: EntryPage[] }>(
     { queryKey: ["entries"] },
@@ -54,7 +81,7 @@ function patchContentCaches(
 }
 
 /** Patch only body fields: concurrent optimistic article flags remain authoritative. */
-export function useArticleContent(entry: Entry) {
+export function useArticleContent(entry: Entry, subscriptionEnabled?: boolean) {
   const qc = useQueryClient();
   const id =
     entry.source === "url"
@@ -62,9 +89,8 @@ export function useArticleContent(entry: Entry) {
       : entry.source === "entry"
         ? entry.entryId
         : entry.id;
-  const eligible =
+  const urlEligible =
     !!id &&
-    !!entry.fullContent?.automaticFetchEligible &&
     /^https?:\/\//i.test(entry.url) &&
     !(() => {
       try {
@@ -92,10 +118,38 @@ export function useArticleContent(entry: Entry) {
       };
     },
     initialData: seed || undefined,
-    enabled: false,
+    enabled: !!id && !!entry.fullContent,
+    staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
-  const content = query.data ?? (seed || undefined);
+  const rawContent = query.data ?? (seed || undefined);
+  const fetchEnabled =
+    subscriptionEnabled !== false &&
+    rawContent?.fullContent.fetchEnabled !== false;
+  const content =
+    rawContent && !fetchEnabled
+      ? {
+          ...rawContent,
+          contentHtml: rawContent.originalContentHtml,
+          fullContent: {
+            ...rawContent.fullContent,
+            fetchEnabled: false,
+            automaticFetchEligible: false,
+          },
+        }
+      : rawContent;
+  const eligible =
+    urlEligible &&
+    fetchEnabled &&
+    !!content?.fullContent.automaticFetchEligible;
+  // A re-enabled subscription needs a fresh projection before considering a new attempt.
+  const previousPreference = useRef(subscriptionEnabled);
+  useEffect(() => {
+    const previous = previousPreference.current;
+    previousPreference.current = subscriptionEnabled;
+    if (previous === false && subscriptionEnabled === true)
+      void query.refetch();
+  }, [subscriptionEnabled, query.refetch]);
   const [clock, setClock] = useState(Date.now);
   const retryAt = content?.fullContent.retryAtMs ?? 0;
   useEffect(() => {
@@ -108,7 +162,8 @@ export function useArticleContent(entry: Entry) {
   }, [retryAt]);
   const pendingUntil = content?.fullContent.pendingUntilMs ?? 0;
   useEffect(() => {
-    if (content?.fullContent.status !== "pending" || !id) return;
+    if (!fetchEnabled || content?.fullContent.status !== "pending" || !id)
+      return;
     const until = pendingUntil;
     let stopped = false;
     const timer = window.setInterval(() => {
@@ -124,11 +179,17 @@ export function useArticleContent(entry: Entry) {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [content?.fullContent.status, id, pendingUntil, query.refetch]);
+  }, [
+    fetchEnabled,
+    content?.fullContent.status,
+    id,
+    pendingUntil,
+    query.refetch,
+  ]);
   useEffect(() => {
-    if (!content || !id) return;
-    patchContentCaches(qc, id, content);
-  }, [content, id, qc]);
+    if (!rawContent || !id) return;
+    patchContentCaches(qc, id, rawContent);
+  }, [rawContent, id, qc]);
   const mutation = useMutation({
     mutationKey: ["fetch-article-content", id],
     mutationFn: ({
@@ -136,11 +197,13 @@ export function useArticleContent(entry: Entry) {
       trigger,
     }: {
       entryId: string;
+      feedId: string;
       trigger: "manual" | "automatic";
     }) => api.articleContent.fetch(entryId, trigger),
     onSuccess: (result, variables) => {
-      qc.setQueryData(["article-content", variables.entryId], result.content);
-      patchContentCaches(qc, variables.entryId, result.content);
+      const guarded = guardContent(qc, variables.feedId, result.content);
+      qc.setQueryData(["article-content", variables.entryId], guarded);
+      patchContentCaches(qc, variables.entryId, guarded);
     },
     retry: false,
   });
@@ -148,6 +211,7 @@ export function useArticleContent(entry: Entry) {
   const startingAutomatically = !!(
     id &&
     eligible &&
+    !query.isFetching &&
     opened.current !== id &&
     content?.fullContent.automaticFetchEligible &&
     content.fullContent.status !== "ready" &&
@@ -155,7 +219,8 @@ export function useArticleContent(entry: Entry) {
     (content.fullContent.automaticRetryAtMs ?? 0) <= Date.now()
   );
   useEffect(() => {
-    if (!id || !eligible || opened.current === id) return;
+    if (!fetchEnabled) opened.current = null;
+    if (!id || !eligible || query.isFetching || opened.current === id) return;
     opened.current = id;
     if (
       !content?.fullContent.automaticFetchEligible ||
@@ -165,17 +230,26 @@ export function useArticleContent(entry: Entry) {
     )
       return;
     void mutation
-      .mutateAsync({ entryId: id, trigger: "automatic" })
+      .mutateAsync({ entryId: id, feedId: entry.feedId, trigger: "automatic" })
       .catch(() => undefined);
-  }, [id, eligible, content, mutation.mutateAsync]);
+  }, [
+    id,
+    entry.feedId,
+    eligible,
+    fetchEnabled,
+    query.isFetching,
+    content,
+    mutation.mutateAsync,
+  ]);
   return {
     content,
     eligible,
     canRetry: retryAt <= Math.max(clock, Date.now()),
     pending:
-      startingAutomatically ||
-      (mutation.isPending && mutation.variables?.entryId === id) ||
-      content?.fullContent.status === "pending",
+      fetchEnabled &&
+      (startingAutomatically ||
+        (mutation.isPending && mutation.variables?.entryId === id) ||
+        content?.fullContent.status === "pending"),
     error:
       mutation.error?.message ??
       (mutation.data && mutation.data.status >= 400
@@ -183,6 +257,8 @@ export function useArticleContent(entry: Entry) {
         : null) ??
       content?.fullContent.error,
     fetch: () =>
-      eligible && id && mutation.mutate({ entryId: id, trigger: "manual" }),
+      eligible &&
+      id &&
+      mutation.mutate({ entryId: id, feedId: entry.feedId, trigger: "manual" }),
   };
 }

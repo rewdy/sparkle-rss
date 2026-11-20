@@ -11,6 +11,7 @@ vi.mock("../src/lib/api", () => ({
   api: { articleContent: { fetch: vi.fn() }, entries: { get: vi.fn() } },
 }));
 const idle = {
+  fetchEnabled: true,
   automaticFetchEligible: true,
   status: "idle" as const,
   fetchedAtMs: null,
@@ -223,4 +224,78 @@ it("offers no automatic or manual reader fetching for long feed bodies", async (
     view.result.current.fetch();
   });
   expect(api.articleContent.fetch).not.toHaveBeenCalled();
+});
+
+it("uses server opt-out before subscriptions load and rehydrates on re-enable", async () => {
+  vi.mocked(api.entries.get).mockResolvedValue({
+    entry: { ...entry, ...ready },
+  });
+  const disabled = {
+    ...entry,
+    contentHtml: "feed",
+    fullContent: {
+      ...idle,
+      fetchEnabled: false,
+      automaticFetchEligible: false,
+    },
+  };
+  const view = renderHook(
+    ({ enabled }) => useArticleContent(disabled, enabled),
+    {
+      wrapper,
+      initialProps: { enabled: undefined as boolean | undefined },
+    },
+  );
+  expect(view.result.current.eligible).toBe(false);
+  expect(api.articleContent.fetch).not.toHaveBeenCalled();
+  view.rerender({ enabled: false });
+  view.rerender({ enabled: true });
+  await waitFor(() =>
+    expect(view.result.current.content?.contentHtml).toBe("full"),
+  );
+  expect(api.entries.get).toHaveBeenCalledWith("1");
+  expect(api.articleContent.fetch).not.toHaveBeenCalled();
+});
+
+it("keeps late extraction hidden after opt-out and preserves cached flags", async () => {
+  let finish!: (value: {
+    status: number;
+    retryAfter: null;
+    content: ContentProjection;
+  }) => void;
+  vi.mocked(api.articleContent.fetch).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  qc.setQueryData(["entries", "all"], {
+    pages: [{ items: [{ ...entry, isStarred: true, isRead: true }] }],
+  });
+  const view = renderHook(({ enabled }) => useArticleContent(entry, enabled), {
+    wrapper,
+    initialProps: { enabled: true },
+  });
+  await waitFor(() =>
+    expect(api.articleContent.fetch).toHaveBeenCalledTimes(1),
+  );
+  qc.setQueryData(["subscriptions"], {
+    subscriptions: [{ feedId: "1", fetchFullArticles: false }],
+  });
+  view.rerender({ enabled: false });
+  expect(view.result.current.content?.contentHtml).toBe("feed");
+  expect(view.result.current.pending).toBe(false);
+  await act(async () =>
+    finish({ status: 200, retryAfter: null, content: ready }),
+  );
+  await waitFor(() =>
+    expect(view.result.current.content?.fullContent.status).toBe("ready"),
+  );
+  expect(view.result.current.content?.contentHtml).toBe("feed");
+  expect(view.result.current.eligible).toBe(false);
+  expect(qc.getQueryData(["entries", "all"])).toMatchObject({
+    pages: [
+      { items: [{ contentHtml: "feed", isStarred: true, isRead: true }] },
+    ],
+  });
 });

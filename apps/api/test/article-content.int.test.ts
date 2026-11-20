@@ -54,6 +54,9 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         .insert(schema.feeds)
         .values({ url: "https://example.com/feed" })
         .returning();
+      await db
+        .insert(schema.subscriptions)
+        .values({ userId, feedId: feed?.id ?? 0 });
       const [entry] = await db
         .insert(schema.userEntries)
         .values({
@@ -124,6 +127,69 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       });
       expect(response.status).toBe(400);
       expect(extract).toHaveBeenCalledTimes(1);
+    });
+    it("persists feed opt-out and enforces both content triggers", async () => {
+      const [entry] = await db
+        .select()
+        .from(schema.userEntries)
+        .where(eq(schema.userEntries.id, id));
+      const path = `/api/v1/subscriptions/${entry?.feedId}`;
+      const patch = (body: unknown, headers = H) =>
+        app.request(path, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify(body),
+        });
+      expect((await patch({ fetchFullArticles: "false" })).status).toBe(400);
+      expect(
+        (
+          await patch(
+            { fetchFullArticles: false },
+            { ...H, "X-Dev-User": "foreign-preference" },
+          )
+        ).status,
+      ).toBe(404);
+      const saved = await patch({ fetchFullArticles: false });
+      expect(saved.status).toBe(200);
+      expect(await saved.json()).toMatchObject({
+        subscription: { fetchFullArticles: false },
+      });
+      const before = (
+        await db
+          .select()
+          .from(schema.userSettings)
+          .where(eq(schema.userSettings.userId, userId))
+      )[0]?.contentFetchAdmissions;
+      for (const trigger of ["manual", "automatic"]) {
+        const response = await post(id, { trigger });
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({
+          content: {
+            contentHtml: "teaser",
+            fullContent: { fetchEnabled: false, automaticFetchEligible: false },
+          },
+        });
+      }
+      const detail = await (
+        await app.request(`/api/v1/entries/${id}`, { headers: H })
+      ).json();
+      expect(detail).toMatchObject({ entry: { contentHtml: "teaser" } });
+      expect(
+        (
+          await db
+            .select()
+            .from(schema.userSettings)
+            .where(eq(schema.userSettings.userId, userId))
+        )[0]?.contentFetchAdmissions,
+      ).toEqual(before);
+      expect(extract).toHaveBeenCalledTimes(1);
+      expect((await patch({ title: "Title only" })).status).toBe(200);
+      expect(
+        await (
+          await app.request("/api/v1/subscriptions", { headers: H })
+        ).json(),
+      ).toMatchObject({ subscriptions: [{ fetchFullArticles: false }] });
+      await patch({ fetchFullArticles: true });
     });
     it("returns pending and failure cooldown contracts with Retry-After", async () => {
       await db

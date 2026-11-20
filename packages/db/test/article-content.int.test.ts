@@ -6,6 +6,7 @@ import {
   createReadLaterService,
   createSavedImagesService,
   createSettingsService,
+  createSubscriptionsService,
 } from "@sparkle/core";
 import * as schema from "@sparkle/db";
 import { and, eq, sql } from "drizzle-orm";
@@ -69,6 +70,7 @@ describe.skipIf(!url)("article content persistence", () => {
       .values({ url: "https://example.com/feed" })
       .returning();
     feedId = feed?.id ?? 0;
+    await db.insert(schema.subscriptions).values({ userId: owner, feedId });
     const [entry] = await db
       .insert(schema.userEntries)
       .values({
@@ -85,6 +87,108 @@ describe.skipIf(!url)("article content persistence", () => {
     at = Date.now();
     extract.mockReset().mockResolvedValue(article);
     service = createArticleContentService({ db, extract, now: () => at });
+  });
+  it("normalizes legacy NULL, preserves preference edits and isolates subscribers", async () => {
+    const subs = createSubscriptionsService({ db });
+    expect((await subs.list(owner))[0]?.fetchFullArticles).toBe(true);
+    await db.update(schema.subscriptions).set({ fetchFullArticles: null });
+    expect((await subs.list(owner))[0]?.fetchFullArticles).toBe(true);
+    await db.insert(schema.subscriptions).values({ userId: other, feedId });
+    await subs.edit(owner, feedId, { fetchFullArticles: false });
+    await subs.edit(owner, feedId, { title: "Renamed", categoryId: null });
+    await subs.subscribeDirect(owner, "https://example.com/feed");
+    expect((await subs.list(owner))[0]?.fetchFullArticles).toBe(false);
+    expect((await subs.list(other))[0]?.fetchFullArticles).toBe(true);
+    await expect(
+      subs.edit(randomUUID(), feedId, { fetchFullArticles: false }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect((await service.get(owner, id)).fullContent.fetchEnabled).toBe(false);
+  });
+  it.each(["automatic", "manual"] as const)(
+    "skips opted-out %s requests without attempts or budget",
+    async (trigger) => {
+      await db.update(schema.subscriptions).set({ fetchFullArticles: false });
+      const result = await service.ensure(owner, id, trigger);
+      expect(result).toMatchObject({
+        status: 200,
+        retryAfter: null,
+        content: {
+          contentHtml: "Original",
+          fullContent: { fetchEnabled: false, automaticFetchEligible: false },
+        },
+      });
+      expect(extract).not.toHaveBeenCalled();
+      expect(await db.select().from(schema.userSettings)).toHaveLength(0);
+      expect(
+        (await db.select().from(schema.userEntries))[0]?.contentAttemptToken,
+      ).toBeNull();
+      await expect(service.ensure(other, id, trigger)).rejects.toMatchObject({
+        status: 404,
+      });
+    },
+  );
+  it("retains successful extraction through opt-out and re-enable across projections", async () => {
+    await service.ensure(owner, id, "manual");
+    const subs = createSubscriptionsService({ db });
+    await subs.edit(owner, feedId, { fetchFullArticles: false });
+    expect((await service.get(owner, id)).contentHtml).toBe("Original");
+    const decorated = await service.decorate(owner, [
+      { id: String(id), contentHtml: "old" },
+      { id: "alias", source: "entry", entryId: String(id), contentHtml: "old" },
+      { id: "url", source: "url", contentHtml: "URL body" },
+    ]);
+    expect(decorated.map((item) => item.contentHtml)).toEqual([
+      "Original",
+      "Original",
+      "URL body",
+    ]);
+    expect(
+      (await service.ensure(owner, id, "manual")).content.fullContent.status,
+    ).toBe("ready");
+    expect(
+      (await db.select().from(schema.userEntries))[0]?.fullContentHtml,
+    ).toBe(article.contentHtml);
+    await subs.edit(owner, feedId, { fetchFullArticles: true });
+    expect(
+      (await service.ensure(owner, id, "automatic")).content.contentHtml,
+    ).toBe(article.contentHtml);
+    expect(extract).toHaveBeenCalledTimes(1);
+  });
+  it("does not restore fetched display when an admitted request finishes after opt-out", async () => {
+    let finish!: (value: typeof article) => void;
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    extract.mockImplementationOnce(() => {
+      started();
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    });
+    const request = service.ensure(owner, id, "automatic");
+    await ready;
+    await createSubscriptionsService({ db }).edit(owner, feedId, {
+      fetchFullArticles: false,
+    });
+    expect((await service.ensure(owner, id, "manual")).status).toBe(200);
+    finish(article);
+    expect(await request).toMatchObject({
+      status: 200,
+      content: {
+        contentHtml: "Original",
+        fullContent: { fetchEnabled: false },
+      },
+    });
+    expect(extract).toHaveBeenCalledTimes(1);
+  });
+  it("fails closed when an owned entry has no subscription", async () => {
+    await db.delete(schema.subscriptions);
+    expect(
+      (await service.ensure(owner, id, "manual")).content.fullContent
+        .fetchEnabled,
+    ).toBe(false);
+    expect(extract).not.toHaveBeenCalled();
   });
   it("defaults old entries to idle, preserves original and preferences, projects aliases and caches success", async () => {
     expect((await service.get(owner, id)).fullContent.status).toBe("idle");

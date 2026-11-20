@@ -98,6 +98,7 @@ export const subscriptions = pgTable(
     feedId: bigint("feed_id", { mode: "number" }).notNull(),
     categoryId: bigint("category_id", { mode: "number" }),
     title: text("title"),
+    fetchFullArticles: boolean("fetch_full_articles").default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

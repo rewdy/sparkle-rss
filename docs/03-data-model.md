@@ -232,3 +232,23 @@ constraints on Postgres so the declared schema matches both engines. Existing
 settings rows may have NULL admission/version values; the service treats these as
 empty history and version zero and initializes them on the first claim. No bulk
 backfill, destructive DDL, or manual production apply is needed.
+
+
+## Per-subscription article fetching
+
+Migration 0007 adds nullable `subscriptions.fetch_full_articles` with a separately
+assigned true default (DSQL-safe ADD COLUMN followed by SET DEFAULT). Legacy NULL
+means enabled; no row backfill is needed. The first-party subscription DTO returns
+`fetchFullArticles`, and `PATCH /api/v1/subscriptions/:feedId` accepts an optional
+boolean of the same name. Omission preserves the setting, including title/folder
+edits from native clients and duplicate OPML imports. Ownership is the existing
+(user_id, feed_id) pair; unsubscribing removes the preference. A new subscription
+defaults to enabled. OPML does not serialize this web preference.
+
+Content projections join the owned subscription in one bounded query. Opt-out
+returns original feed content and `fullContent.fetchEnabled = false`, suppresses
+automatic eligibility, and blocks both content request triggers before any claim
+or budget writes. Extracted HTML remains stored for reuse after re-enabling.
+Missing subscriptions fail closed. Google Reader mappings remain unchanged.
+The DSQL runner verifies duplicate nullable boolean additions as catalog type `bool`
+so an interrupted 0007 default assignment can resume safely.

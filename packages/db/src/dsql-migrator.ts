@@ -41,7 +41,7 @@ async function existingAddedColumn(
 ): Promise<boolean> {
   if ((error as { code?: string }).code !== "42701") return false;
   const add =
-    /^\s*ALTER TABLE "([a-z_]+)" ADD COLUMN "([a-z_]+)" (text|uuid|timestamp with time zone|jsonb|integer);?\s*$/u.exec(
+    /^\s*ALTER TABLE "([a-z_]+)" ADD COLUMN "([a-z_]+)" (text|uuid|timestamp with time zone|jsonb|integer|boolean);?\s*$/u.exec(
       statement,
     );
   if (!add) return false;
@@ -57,7 +57,9 @@ async function existingAddedColumn(
         ? "timestamptz"
         : type === "integer"
           ? "int4"
-          : type) &&
+          : type === "boolean"
+            ? "bool"
+            : type) &&
     result.rows[0]?.not_null === false
   );
 }

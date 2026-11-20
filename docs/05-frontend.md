@@ -434,3 +434,39 @@ and any permanent-password challenge, returning to discovery and explicit confir
 Only the exact internal `/subscribe` path is accepted; untrusted destinations fall back
 to `/`. Ordinary sign-in retains its landing behavior. Subscription and Login parameters
 use raw browser search strings so nested URLs survive decoding intact.
+
+
+## Feed fetching preferences and short-body links
+
+Edit feed offers **Fetch full articles**, a server-backed per-subscription toggle,
+with helper text explaining that disabling it shows original feed content. Save
+updates title and preference together; pending saves disable the toggle, and errors
+keep the draft open with feedback. Feed menu and editor portal clicks stop
+propagation so they cannot activate the surrounding sidebar navigation link.
+The subscription DTO uses `fetchFullArticles`.
+
+React Query owns the preference and content state. Successful preference edits update
+the subscription cache, suppress fetching/display in matching entry/detail/Saved
+caches immediately, and invalidate entry, Saved, and separate article-content queries.
+Feed-backed Read Later aliases use their underlying entry ID. The reader applies the
+current subscription setting as a guard against late fetch results; server projections
+provide the initial policy when a deep link opens before subscription hydration.
+Re-enabling refreshes content status before another automatic attempt. Unrelated
+optimistic read/star flags are preserved. Other devices pick up changes on normal
+query refresh/reload; no real-time subscription is used.
+
+ReaderPane places a centered filled Mantine button/link, **View full post…**, between
+rendered content/image controls and previous/next navigation. It uses the active
+primary/accent theme in light/dark mode. Visibility measures the selected displayed
+body, independently of fetch eligibility: fewer than 500 normalized readable Unicode
+characters, including empty content. Switching between a long fetched body and its
+short Original tab updates visibility. Loading alone hides it. Missing/invalid,
+non-HTTP(S), and credential-bearing destinations hide the button. Valid stored article
+URLs open with `_blank` and `noopener noreferrer`; the corner icon remains.
+Browser/server classification parity fixtures pin normalization and the threshold.
+
+
+Reader navigation history correlation IDs use `crypto.getRandomValues`, which is
+available on HTTP LAN development origins. They do not require the secure-context-only
+`crypto.randomUUID` API; otherwise article clicks throw before route navigation when
+opening the dev server from another device over plain HTTP.

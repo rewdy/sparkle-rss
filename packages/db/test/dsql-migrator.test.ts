@@ -46,7 +46,9 @@ function engine(partial = true) {
                       ? "timestamptz"
                       : type === "integer"
                         ? "int4"
-                        : type,
+                        : type === "boolean"
+                          ? "bool"
+                          : type,
                   not_null: false,
                 },
               ]
@@ -134,4 +136,23 @@ describe("DSQL migration recovery", () => {
     );
     expect(db.journaled()).toBe(false);
   });
+});
+
+it("recovers the feed preference migration after ADD succeeded but SET DEFAULT failed", async () => {
+  const sql = readFileSync(
+    new URL("../drizzle/0007_careful_freak.sql", import.meta.url),
+    "utf8",
+  ).split("--> statement-breakpoint");
+  vi.mocked(readMigrationFiles).mockReturnValue([
+    { sql, hash: "feed-preference", folderMillis: 2, bps: true },
+  ]);
+  const fake = engine(false);
+  fake.failNextDefault();
+  await expect(migrateDsql(fake.client, "ignored")).rejects.toThrow(
+    "connection interrupted",
+  );
+  expect(fake.journaled()).toBe(false);
+  await migrateDsql(fake.client, "ignored");
+  expect(fake.columns.get("subscriptions.fetch_full_articles")).toBe("boolean");
+  expect(fake.journaled()).toBe(true);
 });

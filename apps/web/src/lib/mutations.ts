@@ -5,7 +5,15 @@ import {
 } from "@tanstack/react-query";
 import { api } from "./api";
 import { qk } from "./keys";
-import type { Entry, EntryStreamDescriptor, ImageSource } from "./types";
+import type {
+  ContentProjection,
+  Entry,
+  EntryPage,
+  EntryStreamDescriptor,
+  ImageSource,
+  SavedPage,
+  Subscription,
+} from "./types";
 
 /**
  * Read-state toggle, optimistically applied across entry caches. Saved
@@ -182,8 +190,91 @@ export function useSubscriptionEdit() {
       changes,
     }: {
       feedId: string;
-      changes: { title?: string | null; folderId?: number | null };
+      changes: {
+        title?: string | null;
+        folderId?: number | null;
+        fetchFullArticles?: boolean;
+      };
     }) => api.subscriptions.edit(feedId, changes),
+    onSuccess: ({ subscription }, { changes }) => {
+      qc.setQueryData<{ subscriptions: Subscription[] }>(
+        qk.subscriptions,
+        (data) =>
+          data && {
+            ...data,
+            subscriptions: data.subscriptions.map((sub) =>
+              sub.feedId === subscription.feedId ? subscription : sub,
+            ),
+          },
+      );
+      if (changes.fetchFullArticles === undefined) return;
+      const ids = new Set<string>();
+      const patch = (item: Entry): Entry => {
+        if (item.source === "url" || item.feedId !== subscription.feedId)
+          return item;
+        const id = item.source === "entry" ? item.entryId : item.id;
+        if (id) ids.add(id);
+        if (subscription.fetchFullArticles || !item.fullContent) return item;
+        return {
+          ...item,
+          contentHtml: item.originalContentHtml ?? item.contentHtml,
+          fullContent: {
+            ...item.fullContent,
+            fetchEnabled: false,
+            automaticFetchEligible: false,
+          },
+        };
+      };
+      qc.setQueriesData<{ pages: EntryPage[] }>(
+        { queryKey: ["entries"] },
+        (data) =>
+          data && {
+            ...data,
+            pages: data.pages.map((page) => ({
+              ...page,
+              items: page.items.map(patch),
+            })),
+          },
+      );
+      qc.setQueriesData<{ entry: Entry }>(
+        { queryKey: ["entry"] },
+        (data) => data && { ...data, entry: patch(data.entry) },
+      );
+      qc.setQueriesData<{ pages: SavedPage[] }>(
+        { queryKey: ["saved"] },
+        (data) =>
+          data && {
+            ...data,
+            pages: data.pages.map((page) => ({
+              ...page,
+              items: page.items.map((item) =>
+                item.kind === "article"
+                  ? { ...item, entry: patch(item.entry) }
+                  : item,
+              ),
+            })),
+          },
+      );
+      if (!subscription.fetchFullArticles)
+        for (const id of ids) {
+          qc.setQueryData<ContentProjection>(
+            ["article-content", id],
+            (content) =>
+              content && {
+                ...content,
+                contentHtml: content.originalContentHtml,
+                fullContent: {
+                  ...content.fullContent,
+                  fetchEnabled: false,
+                  automaticFetchEligible: false,
+                },
+              },
+          );
+        }
+      for (const prefix of ["entries", "entry", "saved", "article-content"]) {
+        void qc.invalidateQueries({ queryKey: [prefix] });
+      }
+    },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: qk.subscriptions });
       void qc.invalidateQueries({ queryKey: qk.folders });

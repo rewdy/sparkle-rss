@@ -298,6 +298,7 @@ describe("reader image saving", () => {
 
 describe("full article reader controls", () => {
   const metadata = {
+    fetchEnabled: true,
     automaticFetchEligible: true,
     status: "ready" as const,
     fetchedAtMs: 1,
@@ -307,6 +308,66 @@ describe("full article reader controls", () => {
     pendingUntilMs: null,
     error: null,
   };
+  it("shows the prominent publisher link for short displayed content and retains the corner link", () => {
+    renderPane({
+      entry: {
+        ...ENTRY,
+        contentHtml: "Extracted",
+        originalContentHtml: "Short original",
+        fullContent: {
+          ...metadata,
+          fetchEnabled: false,
+          automaticFetchEligible: false,
+        },
+      },
+    });
+    expect(document.querySelector(".reading-content")).toHaveTextContent(
+      "Short original",
+    );
+    expect(screen.queryByRole("tablist")).toBeNull();
+    const link = screen.getByRole("link", { name: "View full post…" });
+    expect(link).toHaveAttribute("href", ENTRY.url);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveAttribute("data-variant", "filled");
+    expect(
+      screen.getByRole("link", { name: "open original" }),
+    ).toBeInTheDocument();
+    expect(mockApi.articleContent.fetch).not.toHaveBeenCalled();
+  });
+  it("classifies the selected body instead of the original teaser alone", async () => {
+    renderPane({
+      entry: {
+        ...ENTRY,
+        contentHtml: "a".repeat(500),
+        originalContentHtml: "Short original",
+        fullContent: metadata,
+      },
+    });
+    expect(screen.queryByRole("link", { name: "View full post…" })).toBeNull();
+    await user.click(screen.getByRole("tab", { name: "Original" }));
+    expect(
+      screen.getByRole("link", { name: "View full post…" }),
+    ).toBeInTheDocument();
+  });
+  it.each([
+    "",
+    "javascript:alert(1)",
+    "https://user:pass@example.com",
+    "invalid",
+  ])("hides the button for unsupported URL %s", (url) => {
+    renderPane({ entry: { ...ENTRY, url } });
+    expect(screen.queryByRole("link", { name: "View full post…" })).toBeNull();
+  });
+  it("shows the button for a short off-feed saved URL", () => {
+    renderPane({
+      readLater: true,
+      entry: { ...ENTRY, source: "url", id: "saved-url" },
+    });
+    expect(
+      screen.getByRole("link", { name: "View full post…" }),
+    ).toBeInTheDocument();
+  });
   it("switches original and full bodies by keyboard without fetching or moving focus", async () => {
     renderPane({
       entry: {
@@ -350,6 +411,7 @@ describe("full article reader controls", () => {
     });
     expect(screen.getByRole("status")).toHaveTextContent("Loading article");
     expect(document.querySelector(".reading-content")).toBeNull();
+    expect(screen.queryByRole("link", { name: "View full post…" })).toBeNull();
     expect(
       screen.getByRole("tab", { name: "Fetched article" }),
     ).toHaveAttribute("aria-selected", "true");

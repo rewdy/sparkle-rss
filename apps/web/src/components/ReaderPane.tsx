@@ -30,6 +30,7 @@ import {
   useToggleReadLater,
   useToggleStar,
 } from "../lib/mutations";
+import { isShortBody, validArticleUrl } from "../lib/short-body";
 import type { Entry } from "../lib/types";
 import { ArticleImageControls } from "./ArticleImageControls";
 import { EntryMeta } from "./EntryMeta";
@@ -47,7 +48,9 @@ export function ReaderPane({
   onNext: () => void;
   onPrev: () => void;
 }): ReactElement {
-  const article = useArticleContent(entry);
+  const feedMeta = useSubscriptionMap();
+  const sub = feedMeta.get(entry.feedId);
+  const article = useArticleContent(entry, sub?.fetchFullArticles);
   const [selection, setSelection] = useState<{
     id: string;
     tab: string;
@@ -63,6 +66,7 @@ export function ReaderPane({
       : "original";
   const activeTab = selection?.id === entry.id ? selection.tab : defaultTab;
   const original =
+    article.content?.fullContent.fetchEnabled === false ||
     article.content?.fullContent.automaticFetchEligible === false ||
     activeTab === "original";
   const loading = article.eligible && !original && article.pending;
@@ -78,8 +82,6 @@ export function ReaderPane({
   // Saved URLs have no entry behind them: read state is per-item and
   // star/read-later toggles do not apply.
   const isSavedUrl = readLater && entry.source === "url";
-  const feedMeta = useSubscriptionMap();
-  const sub = feedMeta.get(entry.feedId);
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const contentMarkup = useMemo(() => ({ __html: html }), [html]);
@@ -284,6 +286,21 @@ export function ReaderPane({
                 }}
               />
             </>
+          )}
+
+          {!loading && validArticleUrl(entry.url) && isShortBody(html) && (
+            <Group justify="center" py="md">
+              <Button
+                component="a"
+                href={entry.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="filled"
+                color="accent"
+              >
+                View full post…
+              </Button>
+            </Group>
           )}
 
           <Group justify="flex-start" py="md" gap="sm">

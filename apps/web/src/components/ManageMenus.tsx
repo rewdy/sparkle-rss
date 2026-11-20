@@ -6,6 +6,8 @@ import {
   Modal,
   NativeSelect,
   Stack,
+  Switch,
+  Text,
   TextInput,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -193,6 +195,9 @@ export function FeedMenu({
     useDisclosure(false);
   const [unsubOpen, setUnsubOpen] = useState(false);
   const [title, setTitle] = useState(sub.displayTitle);
+  const [fetchFullArticles, setFetchFullArticles] = useState(
+    sub.fetchFullArticles,
+  );
   const [folderChoice, setFolderChoice] = useState(sub.categoryId ?? "");
   const [newFolderName, setNewFolderName] = useState("");
 
@@ -203,7 +208,7 @@ export function FeedMenu({
       return;
     }
     edit.mutate(
-      { feedId: sub.feedId, changes: { title: trimmed } },
+      { feedId: sub.feedId, changes: { title: trimmed, fetchFullArticles } },
       { onSuccess: closeRename },
     );
   }
@@ -252,11 +257,13 @@ export function FeedMenu({
             <LuEllipsisVertical size={14} />
           </ActionIcon>
         </Menu.Target>
-        <Menu.Dropdown>
+        <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
           <Menu.Item
             leftSection={<LuPencil size={14} />}
             onClick={() => {
               setTitle(sub.customTitle ?? sub.feedTitle);
+              setFetchFullArticles(sub.fetchFullArticles);
+              edit.reset();
               openRename();
             }}
           >
@@ -287,6 +294,7 @@ export function FeedMenu({
         opened={renameOpened}
         onClose={closeRename}
         title="edit feed"
+        onClick={(event) => event.stopPropagation()}
         size="xs"
         centered
       >
@@ -304,6 +312,20 @@ export function FeedMenu({
             readOnly={true}
             disabled={true}
           />
+          <Switch
+            label="Fetch full articles"
+            description="Turn off to show the original feed content."
+            checked={fetchFullArticles}
+            onChange={(event) =>
+              setFetchFullArticles(event.currentTarget.checked)
+            }
+            disabled={edit.isPending}
+          />
+          {edit.error && (
+            <Text role="alert" c="red">
+              {edit.error.message}
+            </Text>
+          )}
           <Button
             onClick={submitRename}
             loading={edit.isPending}

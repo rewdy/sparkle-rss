@@ -11,6 +11,7 @@ import { AppError } from "./errors";
 
 type Row = typeof schema.userEntries.$inferSelect;
 export interface FullContent {
+  fetchEnabled: boolean;
   automaticFetchEligible: boolean;
   status: "idle" | "pending" | "ready" | "error";
   fetchedAtMs: number | null;
@@ -25,16 +26,24 @@ export interface ContentProjection {
   originalContentHtml: string;
   fullContent: FullContent;
 }
-function project(row: Row, now: number): ContentProjection {
+function project(
+  row: Row,
+  now: number,
+  fetchEnabled: boolean,
+): ContentProjection {
   const until =
     row.contentAttemptToken && row.contentAttemptAt
       ? row.contentAttemptAt.getTime() + 60_000
       : null;
   return {
-    contentHtml: row.fullContentHtml ?? row.contentHtml,
+    contentHtml: fetchEnabled
+      ? (row.fullContentHtml ?? row.contentHtml)
+      : row.contentHtml,
     originalContentHtml: row.contentHtml,
     fullContent: {
-      automaticFetchEligible: shouldAutomaticallyFetchContent(row.contentHtml),
+      fetchEnabled,
+      automaticFetchEligible:
+        fetchEnabled && shouldAutomaticallyFetchContent(row.contentHtml),
       status:
         row.fullContentHtml !== null
           ? "ready"
@@ -87,12 +96,27 @@ export function createArticleContentService({
   const scope = (userId: string, id: number) =>
     and(eq(schema.userEntries.userId, userId), eq(schema.userEntries.id, id));
   async function get(userId: string, id: number) {
-    const [row] = await db
-      .select()
+    const [result] = await db
+      .select({
+        entry: schema.userEntries,
+        subscriptionFeedId: schema.subscriptions.feedId,
+        fetchFullArticles: schema.subscriptions.fetchFullArticles,
+      })
       .from(schema.userEntries)
+      .leftJoin(
+        schema.subscriptions,
+        and(
+          eq(schema.subscriptions.userId, schema.userEntries.userId),
+          eq(schema.subscriptions.feedId, schema.userEntries.feedId),
+        ),
+      )
       .where(scope(userId, id));
-    if (!row) throw new AppError(404, "entry not found");
-    return project(row, now());
+    if (!result) throw new AppError(404, "entry not found");
+    return project(
+      result.entry,
+      now(),
+      result.subscriptionFeedId !== null && result.fetchFullArticles !== false,
+    );
   }
   return {
     get,
@@ -116,18 +140,39 @@ export function createArticleContentService({
         );
       if (!ids.length) return items;
       const rows = await db
-        .select()
+        .select({
+          entry: schema.userEntries,
+          subscriptionFeedId: schema.subscriptions.feedId,
+          fetchFullArticles: schema.subscriptions.fetchFullArticles,
+        })
         .from(schema.userEntries)
+        .leftJoin(
+          schema.subscriptions,
+          and(
+            eq(schema.subscriptions.userId, schema.userEntries.userId),
+            eq(schema.subscriptions.feedId, schema.userEntries.feedId),
+          ),
+        )
         .where(
           and(
             eq(schema.userEntries.userId, userId),
             inArray(schema.userEntries.id, ids),
           ),
         );
-      const byId = new Map(rows.map((row) => [row.id, row]));
+      const byId = new Map(rows.map((row) => [row.entry.id, row]));
       return items.map((item) => {
         const row = byId.get(idOf(item) ?? 0);
-        return row ? { ...item, ...project(row, now()) } : item;
+        return row
+          ? {
+              ...item,
+              ...project(
+                row.entry,
+                now(),
+                row.subscriptionFeedId !== null &&
+                  row.fetchFullArticles !== false,
+              ),
+            }
+          : item;
       });
     },
     async ensure(
@@ -143,18 +188,34 @@ export function createArticleContentService({
       const token = randomUUID();
       const admission = await transaction(async (tx) => {
         // Authorize before allocating admission state, and never accept a URL from the caller.
-        const [owned] = await tx
-          .select()
+        const [ownedResult] = await tx
+          .select({
+            entry: schema.userEntries,
+            subscriptionFeedId: schema.subscriptions.feedId,
+            fetchFullArticles: schema.subscriptions.fetchFullArticles,
+          })
           .from(schema.userEntries)
+          .leftJoin(
+            schema.subscriptions,
+            and(
+              eq(schema.subscriptions.userId, schema.userEntries.userId),
+              eq(schema.subscriptions.feedId, schema.userEntries.feedId),
+            ),
+          )
           .where(scope(userId, id));
-        if (!owned) throw new AppError(404, "entry not found");
+        if (!ownedResult) throw new AppError(404, "entry not found");
+        const owned = ownedResult.entry;
+        const fetchEnabled =
+          ownedResult.subscriptionFeedId !== null &&
+          ownedResult.fetchFullArticles !== false;
         if (
-          trigger === "automatic" &&
-          !shouldAutomaticallyFetchContent(owned.contentHtml)
+          !fetchEnabled ||
+          (trigger === "automatic" &&
+            !shouldAutomaticallyFetchContent(owned.contentHtml))
         ) {
           return {
             status: 200 as const,
-            content: project(owned, now()),
+            content: project(owned, now(), fetchEnabled),
             retryAfter: null,
           };
         }
@@ -190,7 +251,7 @@ export function createArticleContentService({
           .where(scope(userId, id));
         if (!row) throw new AppError(404, "entry not found");
         const at = now();
-        const content = project(row, at);
+        const content = project(row, at, fetchEnabled);
         if (content.fullContent.status === "ready")
           return { status: 200 as const, content, retryAfter: null };
         if (content.fullContent.status === "pending")
@@ -284,14 +345,23 @@ export function createArticleContentService({
       const content = await get(userId, id);
       return {
         status:
-          content.fullContent.status === "ready" ? 200 : failure ? 502 : 202,
-        retryAfter: failure
-          ? 30
-          : content.fullContent.status === "pending"
-            ? 2
-            : null,
+          !content.fullContent.fetchEnabled ||
+          content.fullContent.status === "ready"
+            ? 200
+            : failure
+              ? 502
+              : 202,
+        retryAfter: !content.fullContent.fetchEnabled
+          ? null
+          : failure
+            ? 30
+            : content.fullContent.status === "pending"
+              ? 2
+              : null,
         content,
-        ...(failure ? { message: failure } : {}),
+        ...(failure && content.fullContent.fetchEnabled
+          ? { message: failure }
+          : {}),
       };
     },
   };

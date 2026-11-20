@@ -230,6 +230,7 @@ export function createWebApiApp(): Hono<Env> {
     if (!Number.isInteger(feedId)) throw new AppError(400, "invalid feed id");
     const body = z
       .object({
+        fetchFullArticles: z.boolean().optional(),
         title: z.string().max(300).nullable().optional(),
         folderId: z.number().int().positive().nullable().optional(),
       })
@@ -240,6 +241,7 @@ export function createWebApiApp(): Hono<Env> {
       feedId,
       {
         title: body.title,
+        fetchFullArticles: body.fetchFullArticles,
         categoryId: body.folderId,
       },
     );

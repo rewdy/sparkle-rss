@@ -1098,3 +1098,46 @@ Validation: visually inspected the maskable asset; checked generated dimensions,
 opaque app/touch backgrounds, ICO entries, source SVG equality, and built asset
 references. `pnpm lint`, `pnpm build:web`, and `git diff --check` pass.
 Implemented locally; no deployment in this session.
+
+
+## 2026-11-20 — Feed fetching opt-out and short-body publisher action
+
+- Confirmed per-user/per-feed scope: `subscriptions.fetch_full_articles`, nullable
+  with separate true default and NULL-as-enabled semantics. Migration 0007 is
+  forward-only; boolean duplicate recovery verifies catalog type `bool`.
+- Disable both manual and automatic on-demand fetching before claims/budget writes;
+  always display original RSS content, retaining extracted copies for re-enable.
+  An already-admitted request may finish, but its completion projection rechecks policy.
+- Use the existing Edit feed modal and React Query state, including article-content
+  cache refresh and a subscription guard against late successes. Native clients,
+  ingestion, and off-feed Read Later extraction retain existing behavior.
+- Proposed and implemented short-body threshold: fewer than 500 readable Unicode
+  characters in the body actually displayed, including empty content. Center the
+  filled primary/accent “View full post…” link below content; keep the corner link.
+- Verification: all 517 tests pass with Docker Postgres, including unchanged Google
+  Reader conformance; lint, typecheck, and production web/Lambda builds pass.
+  Headless Chromium confirms opt-out persistence, retained-content re-enable,
+  Saved/Read Later consistency, dark/light and purple accent, and mobile touch.
+- Browser acceptance caught portal click bubbling into the sidebar navigation link.
+  Isolate feed menu/edit-dialog clicks without preventing their native control
+  behavior; a nested-link editor regression test covers it. No deployment.
+
+
+## 2026-11-20 — Article navigation on HTTP LAN development URLs
+
+Testing from another device exposed a pre-existing navigation dependency on
+`crypto.randomUUID`, unavailable on plain HTTP LAN origins. Clicking an article threw
+before changing the route, while localhost (a secure-context exception) worked.
+Use 128 random bits from `crypto.getRandomValues` for the history correlation ID;
+this preserves reader-session semantics without requiring HTTPS for local testing.
+A regression test removes randomUUID and verifies opening and distinct session IDs.
+
+
+## 2026-11-20 — Feed fetching release approval
+
+User acceptance passed for feed opt-out and the short-body publisher button, including
+the HTTP LAN navigation follow-up. Synced `feed-subscription` and `full-article-content`
+main specs and archived the completed 14-task change at
+`openspec/changes/archive/2026-11-20-disable-feed-article-fetching`.
+Release authorized through the main-branch CI pipeline; migration 0007 must complete
+before existing Lambda code updates. No manual production Terraform apply.

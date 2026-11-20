@@ -11,6 +11,7 @@ export interface ServicesDeps {
 }
 
 export interface SubscriptionDto {
+  fetchFullArticles: boolean;
   feedId: string;
   url: string;
   siteUrl: string;
@@ -64,6 +65,7 @@ export function createSubscriptionsService(
         .select({
           feedId: schema.subscriptions.feedId,
           customTitle: schema.subscriptions.title,
+          fetchFullArticles: schema.subscriptions.fetchFullArticles,
           categoryId: schema.subscriptions.categoryId,
           categoryName: schema.categories.name,
           url: schema.feeds.url,
@@ -94,6 +96,7 @@ export function createSubscriptionsService(
 
       return rows.map((r) => ({
         feedId: r.feedId.toString(),
+        fetchFullArticles: r.fetchFullArticles ?? true,
         url: r.url,
         siteUrl: r.siteUrl,
         iconUrl: r.iconUrl,
@@ -293,10 +296,16 @@ export function createSubscriptionsService(
     async edit(
       userId: string,
       feedId: number,
-      changes: { title?: string | null; categoryId?: number | null },
+      changes: {
+        title?: string | null;
+        categoryId?: number | null;
+        fetchFullArticles?: boolean;
+      },
     ): Promise<SubscriptionDto> {
       const patch: Partial<typeof schema.subscriptions.$inferInsert> = {};
       if (changes.title !== undefined) patch.title = changes.title;
+      if (changes.fetchFullArticles !== undefined)
+        patch.fetchFullArticles = changes.fetchFullArticles;
       if (changes.categoryId !== undefined)
         patch.categoryId = changes.categoryId;
       if (Object.keys(patch).length === 0)

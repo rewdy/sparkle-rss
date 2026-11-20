@@ -49,7 +49,12 @@ export function readerNavigation(navigate: Navigate) {
       const from = currentUrl();
       const state = record(window.history.state);
       if (surface(from) !== null) {
-        const surfaceId = crypto.randomUUID();
+        // This is a history correlation ID, not a credential. getRandomValues
+        // remains available on HTTP LAN dev origins where randomUUID is absent.
+        const surfaceId = Array.from(
+          crypto.getRandomValues(new Uint32Array(4)),
+          (part) => part.toString(16).padStart(8, "0"),
+        ).join("-");
         navigate(from, {
           replace: true,
           state: {

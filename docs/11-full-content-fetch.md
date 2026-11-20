@@ -9,7 +9,7 @@ use one core service. Automatic ingestion is outside this change.
 
 Opening a feed article's reading pane automatically requests readable source-page
 content. This includes existing entries, Saved articles, deep links, keyboard
-navigation, and feed-backed Read Later items. Automatic fetching requires a valid HTTP(S) URL and fewer than 500 readable
+navigation, and feed-backed Read Later items. Automatic fetching requires the subscription’s Fetch full articles setting to be enabled, a valid HTTP(S) URL and fewer than 500 readable
 characters in the original feed body. Empty content qualifies; exactly 500 or
 more characters skips automatic fetching. `AUTOMATIC_FULL_CONTENT_TEXT_LIMIT` in
 `packages/core/src/article/content-policy.ts` is the single tuning constant. The
@@ -51,7 +51,7 @@ Missing/foreign IDs return 404 without fetching. Invalid URLs return 400.
 
 Responses contain `{status, content, retryAfter, message?}`. `content` contains
 `contentHtml`, `originalContentHtml`, and `fullContent` metadata: `status`
-(`idle|pending|ready|error`), `fetchedAtMs`, `finalUrl`, `retryAtMs`,
+(`idle|pending|ready|error`), `fetchEnabled`, `fetchedAtMs`, `finalUrl`, `retryAtMs`,
 `automaticRetryAtMs`, `pendingUntilMs`, `automaticFetchEligible`, and safe `error`, with null absent values.
 200 means ready or an automatic request skipped by the length policy, 202 pending, 429 cooldown/budget, and 502 extraction failure.
 Pending/limited/failure responses include `Retry-After` when applicable.
@@ -105,3 +105,25 @@ columns nullable with defaults set separately, and verifies duplicates on resume
 0006 aligns Postgres nullability. Legacy NULL admission state is initialized by
 the service. Ship this fix through CI; do not simply rerun the old revision, edit
 its journal, or drop any previously added column.
+
+
+## Feed opt-out and publisher link
+
+Edit feed includes **Fetch full articles**, enabled by default and persisted per
+user/subscription across devices. Turning it off shows original RSS content directly,
+without content tabs, loading, or retry controls, even if a fetched copy exists.
+Both manual and automatic API requests return 200 with the original projection,
+`fetchEnabled: false`, and `automaticFetchEligible: false`, without consuming budget
+or creating an attempt. Already-admitted requests can finish and retain their result,
+but completion rechecks the preference before projecting content. Re-enabling reuses
+retained successes and preserves retry/budget limits. Off-feed Read Later extraction
+and feed ingestion are unchanged.
+
+The reader shows a centered, filled primary/accent **View full post…** link below
+content and above navigation when the body actually displayed contains fewer than
+500 normalized readable Unicode characters, including an empty body. The rule uses
+the same normalization as automatic fetching; exactly 500 characters hides the link.
+It works on Original, fetched/fallback bodies, and off-feed saved URLs, independently
+of opt-out. A loading indicator alone does not show it. The stored article URL must
+be valid HTTP(S) without credentials; it opens in a new tab with `noopener noreferrer`.
+The corner original-site link remains available.

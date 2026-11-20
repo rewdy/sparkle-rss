@@ -177,7 +177,11 @@ export const api = {
       }),
     edit: (
       feedId: string,
-      changes: { title?: string | null; folderId?: number | null },
+      changes: {
+        title?: string | null;
+        folderId?: number | null;
+        fetchFullArticles?: boolean;
+      },
     ): Promise<{ subscription: Subscription }> =>
       request(`/api/v1/subscriptions/${feedId}`, {
         method: "PATCH",

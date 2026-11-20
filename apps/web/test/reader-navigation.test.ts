@@ -62,3 +62,24 @@ it("Saved images get the same session policy", () => {
   expect(back).toHaveBeenCalledOnce();
   back.mockRestore();
 });
+
+it("opens articles without the secure-context-only randomUUID API", () => {
+  const descriptor = Object.getOwnPropertyDescriptor(crypto, "randomUUID");
+  Object.defineProperty(crypto, "randomUUID", {
+    configurable: true,
+    value: undefined,
+  });
+  try {
+    readerNavigation(navigate).open("/feed/5/e/1?sort=asc");
+    expect(window.location.pathname).toBe("/feed/5/e/1");
+    const first = window.history.state[key].surfaceId;
+    expect(first).toMatch(/^[0-9a-f]{8}(?:-[0-9a-f]{8}){3}$/);
+    expect(window.history.state[key].origin).toBe("/feed/5/story/12?sort=asc");
+    navigate("/all");
+    readerNavigation(navigate).open("/all/e/2");
+    expect(window.history.state[key].surfaceId).not.toBe(first);
+  } finally {
+    if (descriptor) Object.defineProperty(crypto, "randomUUID", descriptor);
+    else Reflect.deleteProperty(crypto, "randomUUID");
+  }
+});

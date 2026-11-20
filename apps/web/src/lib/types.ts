@@ -1,4 +1,5 @@
 export interface FullContent {
+  fetchEnabled: boolean;
   automaticFetchEligible: boolean;
   status: "idle" | "pending" | "ready" | "error";
   fetchedAtMs: number | null;
@@ -101,6 +102,7 @@ export interface Folder {
 }
 
 export interface Subscription {
+  fetchFullArticles: boolean;
   feedId: string;
   url: string;
   siteUrl: string;
