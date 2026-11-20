@@ -3,7 +3,7 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-20, feed fetching opt-out approved for release)
+## Current state (updated 2026-11-20, feed fetching opt-out deployed)
 
 LAN dev testing also uncovered a pre-existing `crypto.randomUUID` dependency that
 prevented article clicks over HTTP network addresses. Reader history IDs now use
@@ -11,14 +11,15 @@ prevented article clicks over HTTP network addresses. Reader history IDs now use
 
 
 OpenSpec `2026-11-20-disable-feed-article-fetching` is archived with main specs
-synced; user acceptance passed and release through CI is authorized. Implemented: DSQL-safe nullable
+synced; user acceptance passed and release `126b340` is deployed. Implemented: DSQL-safe nullable
 subscription preference, owned fetch admission/projection, Edit feed toggle, and the
 short-body publisher link. All 517 tests pass against Docker Postgres, including
 unchanged Google Reader conformance; lint, typecheck, and web/Lambda builds pass.
 Headless Chromium acceptance covers opt-out/reload/re-enable, Saved/Read Later,
 light/dark with an alternate accent, and mobile touch. Feed editor portal clicks
-are isolated from sidebar navigation. Production deployment will run on the release
-commit push to main.
+are isolated from sidebar navigation. [Production deployment](https://github.com/rewdy/sparkle-rss/actions/runs/44768874750)
+succeeded, including migration 0007 before Lambda update; live shell/new UI bundle
+returned HTTP 200 and contained both feature controls.
 
 
 The main app now reuses the public site's favicon artwork for SVG/ICO browser icons,

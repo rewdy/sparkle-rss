@@ -11,3 +11,5 @@
 - Screenshots were inspected at `/tmp/sparkle-optout-desktop-dark.png`, `/tmp/sparkle-optout-desktop-light.png`, and `/tmp/sparkle-optout-mobile-dark.png`.
 - Initial verification was local; no production changes at that time. User subsequently confirmed acceptance and authorized archive, spec sync, and shipping through the main-branch deployment pipeline.
 - Follow-up: article clicks tested on both localhost and HTTP LAN origins after replacing secure-context-only randomUUID with getRandomValues for history IDs; 22 navigation tests, lint, and web build pass.
+
+- Production release `126b340`: [deployment run](https://github.com/rewdy/sparkle-rss/actions/runs/44768874750) succeeded, including the pre-Lambda migration, Terraform apply, and asset publication. Live shell and its new JavaScript returned 200; both feature controls were verified in the served bundle. User acceptance preceded release.

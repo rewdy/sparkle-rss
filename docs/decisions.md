@@ -1141,3 +1141,9 @@ main specs and archived the completed 14-task change at
 `openspec/changes/archive/2026-11-20-disable-feed-article-fetching`.
 Release authorized through the main-branch CI pipeline; migration 0007 must complete
 before existing Lambda code updates. No manual production Terraform apply.
+
+
+Release `126b340` deployed successfully through [CI](https://github.com/rewdy/sparkle-rss/actions/runs/44768874750).
+Migration 0007 completed before Lambda updates, then web assets were published.
+The live production shell and JavaScript returned 200; the deployed bundle contains
+both Fetch full articles and View full post controls. No manual production apply.
