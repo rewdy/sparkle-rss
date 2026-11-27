@@ -1,14 +1,7 @@
 import { randomUUID } from "node:crypto";
-import {
-  createArticleContentService,
-  createEntriesService,
-  createMediaService,
-  createReadLaterService,
-  createSavedImagesService,
-  createSettingsService,
-  createSubscriptionsService,
-} from "@sparkle/core";
+import { fileURLToPath } from "node:url";
 import * as schema from "@sparkle/db";
+import { createLocalPool } from "@sparkle/db";
 import { and, eq, sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -21,7 +14,15 @@ import {
   it,
   vi,
 } from "vitest";
-import { createLocalPool } from "../src/client";
+import {
+  createArticleContentService,
+  createEntriesService,
+  createMediaService,
+  createReadLaterService,
+  createSavedImagesService,
+  createSettingsService,
+  createSubscriptionsService,
+} from "../src/index";
 
 const url = process.env.TEST_DATABASE_URL;
 describe.skipIf(!url)("article content persistence", () => {
@@ -51,7 +52,9 @@ describe.skipIf(!url)("article content persistence", () => {
     await db.execute(sql`CREATE SCHEMA public`);
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     await migrate(db, {
-      migrationsFolder: new URL("../drizzle", import.meta.url).pathname,
+      migrationsFolder: fileURLToPath(
+        new URL("../../db/drizzle", import.meta.url),
+      ),
     });
   });
   afterAll(async () => {

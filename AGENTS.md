@@ -79,7 +79,8 @@ docs/            Source of truth for design
 ## Testing expectations
 
 - Unit tests for codecs/time/parsers (pure functions) — fast, no I/O.
-- Integration tests run against Dockerized Postgres with real migrations.
+- Integration tests run against Dockerized Postgres with real migrations. Core service suites
+  live in `packages/core/test`. Database schema and migration suites live in `packages/db/test`.
 - The greader conformance suite is part of CI; golden fixtures updated only alongside doc 02.
 - NetNewsWire E2E (doc 02 checklist) is manual and required before any release that touches
   the greader surface.
@@ -104,7 +105,7 @@ docs/            Source of truth for design
 - Drizzle does not parenthesize raw SQL chunks: inside `and(...)`, an unparenthesized
   `or` escapes the surrounding condition. Keyset-cursor tie-breakers must wrap their own
   parens or they can page in another user's rows (this was a real leak; regression tests
-  live in `packages/db/test/services.int.test.ts`).
+  live in `packages/core/test/services.int.test.ts`).
 - React 19 refuses to render `javascript:` hrefs (swaps in a throw-stub), so a bookmarklet
   link has to be written onto the DOM node after mount.
 - The Vitest `include` patterns must cover `apps/*/test/**/*.test.ts` as well as `.tsx`;

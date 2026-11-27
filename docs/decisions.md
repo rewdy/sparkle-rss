@@ -1175,3 +1175,11 @@ stream's canonical URL so reader history can record a concrete origin.
 The sidebar promotes that stream while preserving the relative order of other
 links. A successful save updates the shared settings cache immediately, and
 successful sign-in clears any settings cached before the new session.
+
+## 2026-11-27 — Keep service integration tests with core
+
+pnpm rejected the workspace typecheck cycle between core and db in both CI and
+deploy. Core imports the schema and database types from db. The only reverse
+dependency came from db-hosted integration tests that exercised core services.
+Those four suites now live in core and still run against the db package's real
+migrations. Schema and migration tests remain in db.

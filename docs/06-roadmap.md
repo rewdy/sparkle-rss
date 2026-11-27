@@ -3,7 +3,13 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-27, configurable home implemented locally)
+## Current state (updated 2026-11-27, workspace typecheck cycle removed locally)
+
+Core service integration suites now live in `packages/core/test`. The database
+package no longer depends on core, so plain `pnpm typecheck` can order the workspace
+tasks. The CI and deploy workflows use the same quality gate.
+
+### Configurable home (2026-11-27)
 
 Settings lets each account choose All, Unread, or Today as its home view. The
 selected stream moves to the top of the sidebar, and the logo and ordinary sign-in
@@ -205,7 +211,7 @@ decisions.md. Lambda↔DSQL latency measurement still open for Phase 2.)
 - [x] `/api/v1`: me, folders CRUD, subscribe/unsubscribe, rename/move,
       entry listing with cursors, read/star toggles, mark-all-read, unread-counts,
       settings, OPML, API-token mint/revoke. Zod-validated, AppError-mapped.
-- [x] Integration suites: service layer (`packages/db/test`) + HTTP contract
+- [x] Integration suites: service layer (`packages/core/test`) + HTTP contract
       (`apps/api/test/api.int.test.ts`) against Dockerized Postgres; migrations
       verified on DSQL (spike + pipeline migrate step).
 

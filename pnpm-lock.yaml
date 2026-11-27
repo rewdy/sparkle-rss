@@ -402,9 +402,6 @@ importers:
         specifier: ^8.16.3
         version: 8.23.0
     devDependencies:
-      '@sparkle/core':
-        specifier: workspace:*
-        version: link:../core
       '@sparkle/tooling':
         specifier: workspace:*
         version: link:../tooling

@@ -1,4 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import * as schema from "@sparkle/db";
+import { createLocalPool } from "@sparkle/db";
+import { eq, inArray, sql } from "drizzle-orm";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   AppError,
   createApiTokensService,
@@ -12,12 +18,7 @@ import {
   createUsersService,
   encodeCursor,
   guidHash,
-} from "@sparkle/core";
-import * as schema from "@sparkle/db";
-import { eq, inArray, sql } from "drizzle-orm";
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { createLocalPool } from "../src/client";
+} from "../src/index";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 type Db = NodePgDatabase<typeof schema>;
@@ -61,7 +62,9 @@ describe.skipIf(!databaseUrl)("core services (docker Postgres)", () => {
     await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
     const { migrate } = await import("drizzle-orm/node-postgres/migrator");
     await migrate(db, {
-      migrationsFolder: new URL("../drizzle", import.meta.url).pathname,
+      migrationsFolder: fileURLToPath(
+        new URL("../../db/drizzle", import.meta.url),
+      ),
     });
     await db
       .insert(schema.users)
