@@ -171,40 +171,14 @@ resource "aws_iam_role_policy" "deploy" {
   policy = data.aws_iam_policy_document.deploy.json
 }
 
-# --- Read-only plan role ------------------------------------------------------
-#
-# PRs can't assume the deploy role (it is scoped to refs/heads/main for good
-# reason — it can write). To show a real `terraform plan` on every pull request
-# we add a second role that is only readable: it can refresh/plan against the
-# state and read the managed services, but can change nothing. Same OIDC
-# provider, one extra trust scope for pull_request refs.
+# Keep the existing role in state with trust closed until the ownership handoff.
 data "aws_iam_policy_document" "github_plan_trust" {
   statement {
-    effect  = "Allow"
+    effect  = "Deny"
     actions = ["sts:AssumeRoleWithWebIdentity"]
     principals {
       type        = "Federated"
       identifiers = [var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
-      values   = ["sts.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:repository"
-      values   = [var.github_repo]
-    }
-    condition {
-      test     = "StringLike"
-      variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_repo}:ref:refs/heads/main",
-        "repo:${var.github_repo}:pull",
-        "repo:*@*/${local.repo_name}@*:ref:refs/heads/main",
-        "repo:*@*/${local.repo_name}@*:pull",
-      ]
     }
   }
 }

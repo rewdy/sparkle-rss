@@ -58,6 +58,11 @@ Conventions:
 
 ## CI/CD (GitHub Actions)
 
+Live pull request plans are suspended during the plan-role handoff. After the
+trust closure deploy completes, allow existing role sessions to expire before
+transferring ownership to the shared infrastructure stack. Ordinary pull request
+checks continue with offline Terraform validation.
+
 OIDC role per repo (`gh-oidc/sparkle-rss-deploy`) with permissions limited to the
 resources Terraform manages; no static AWS keys anywhere.
 
@@ -69,13 +74,6 @@ ci.yaml (pull_request + push to main — no deploy)
                            # greader conformance suites (service Postgres)
   pnpm build               # web + lambda bundles + static marketing site (uploaded as artifact)
   tf: terraform fmt -check -recursive && init -backend=false && validate
-  plan job (pull_request only): OIDC-assumes the read-only `sparkle-rss-github-plan`
-    role, runs `terraform plan` against live state, and publishes the diff to the
-    job summary so every PR shows exactly what a merge will change. The plan role
-    trusts `pull_request` refs and is strictly read-only; the deploy role stays
-    pinned to `refs/heads/main`. (Bootstrap: the role is created by this same
-    `github-oidc` module on the next normal deploy; until the repo variable
-    `TF_PLAN_ROLE_ARN` is set the plan job logs and skips.)
 
 deploy.yaml (push to main; `paths-ignore: docs/**, *.md` — docs-only pushes skip it)
   pnpm install --frozen-lockfile
