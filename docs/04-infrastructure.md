@@ -80,7 +80,8 @@ Configure `TF_PLAN_ROLE_ARN` and the operator's age or SSH public key in
 `TF_PLAN_DIAGNOSTICS_RECIPIENT` as environment variables. The job summary
 reports the Terraform exit code. Download the encrypted diagnostics artifact
 and run `age --decrypt -i <identity> <diagnostics.age>` locally for details.
-Terraform failures still fail the job. Keep the decryption identity with
+The GitHub Actions run name includes the reviewed commit, so you can match the
+downloaded diagnostics to that run. Terraform failures still fail the job. Keep the decryption identity with
 authorized operators. To pause live planning, close OIDC trust from the shared
 infrastructure stack.
 
