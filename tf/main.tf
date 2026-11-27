@@ -4,10 +4,11 @@ terraform {
   # State backend is configured inline — no -backend-config flags or env vars
   # needed. Forks change these four values to point at their own bucket.
   backend "s3" {
-    bucket       = "drewmey--devops-tf-state"
-    key          = "sparkle-rss/prod/terraform.tfstate"
-    region       = "us-east-1"
-    use_lockfile = true
+    bucket               = "drewmey--devops-tf-state"
+    key                  = "sparkle-rss/prod/terraform.tfstate"
+    region               = "us-east-1"
+    use_lockfile         = true
+    workspace_key_prefix = "sparkle-rss/workspaces"
   }
 }
 
@@ -190,11 +191,6 @@ output "db_endpoint" {
 output "deploy_role_arn" {
   value       = module.github_oidc.deploy_role_arn
   description = "Assume this from GitHub Actions to deploy"
-}
-
-output "plan_role_arn" {
-  value       = module.github_oidc.plan_role_arn
-  description = "Read-only role PRs assume to render `terraform plan` output"
 }
 
 output "cognito_issuer" {

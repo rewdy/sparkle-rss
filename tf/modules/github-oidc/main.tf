@@ -171,83 +171,18 @@ resource "aws_iam_role_policy" "deploy" {
   policy = data.aws_iam_policy_document.deploy.json
 }
 
-# Keep the existing role in state with trust closed until the ownership handoff.
-data "aws_iam_policy_document" "github_plan_trust" {
-  statement {
-    effect  = "Deny"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-    principals {
-      type        = "Federated"
-      identifiers = [var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn]
-    }
+removed {
+  from = aws_iam_role_policy.plan
+
+  lifecycle {
+    destroy = false
   }
 }
 
-locals {
-  plan_read_actions = [
-    "dsql:GetCluster",
-    "dsql:ListClusters",
-    "lambda:GetFunction",
-    "lambda:ListFunctions",
-    "lambda:GetFunctionConfiguration",
-    "apigateway:GET",
-    "cognito-idp:*",
-    "sqs:GetQueueAttributes",
-    "sqs:ListQueues",
-    "scheduler:GetSchedule",
-    "scheduler:ListSchedules",
-    "logs:DescribeLogGroups",
-    "logs:DescribeLogStreams",
-    "logs:ListTagsLogGroup",
-    "cloudfront:GetDistribution",
-    "cloudfront:ListDistributions",
-    "cloudfront:GetCloudFrontOriginAccessIdentity",
-    "cloudfront:ListCloudFrontOriginAccessIdentities",
-    "acm:DescribeCertificate",
-    "acm:ListCertificates",
-    "cloudwatch:DescribeAlarms",
-    "sns:GetTopicAttributes",
-    "sns:ListTopics",
-    "secretsmanager:GetSecretValue",
-    "secretsmanager:DescribeSecret",
-    "secretsmanager:ListSecrets",
-    "iam:GetRole",
-    "iam:ListRoles",
-    "iam:GetPolicy",
-    "iam:GetPolicyVersion",
-    "iam:ListAttachedRolePolicies",
-    "iam:ListRolePolicies",
-    "route53:ListHostedZones",
-    "route53:GetHostedZone",
-    "route53:ListResourceRecordSets",
-    "route53:GetChange",
-    "sts:GetCallerIdentity",
-  ]
-}
+removed {
+  from = aws_iam_role.plan
 
-data "aws_iam_policy_document" "plan" {
-  statement {
-    sid       = "ReadServices"
-    effect    = "Allow"
-    actions   = local.plan_read_actions
-    resources = ["*"]
+  lifecycle {
+    destroy = false
   }
-
-  statement {
-    sid       = "StateRead"
-    effect    = "Allow"
-    actions   = ["s3:GetObject", "s3:ListBucket"]
-    resources = concat(var.state_bucket_arns, [for arn in var.state_bucket_arns : "${arn}/*"])
-  }
-}
-
-resource "aws_iam_role" "plan" {
-  name               = "sparkle-rss-github-plan"
-  assume_role_policy = data.aws_iam_policy_document.github_plan_trust.json
-  tags               = var.tags
-}
-
-resource "aws_iam_role_policy" "plan" {
-  role   = aws_iam_role.plan.name
-  policy = data.aws_iam_policy_document.plan.json
 }
