@@ -3,7 +3,19 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-27, Swipe removal implemented locally)
+## Current state (updated 2026-11-27, channel end view implemented locally)
+
+Today, Unread, and All now show **You’re at the end!** when the reader advances past
+the last article. Next and j load remaining cursor pages and offer retry on failure.
+The return link restores the originating List or Cards view. Chromium fixtures
+verified keyboard focus, scroll restoration, and history at desktop and 320px widths
+in light and dark themes. All 545 tests pass against Docker Postgres, including
+Google Reader conformance. Lint, package typechecks, and the web build pass.
+The typecheck used `pnpm_config_ignore_workspace_cycles=true` for the existing
+core/db workspace cycle. User acceptance passed. OpenSpec
+`2026-11-27-add-channel-end-view` is archived with the reader-navigation spec synced.
+
+### Swipe removal (2026-11-27)
 
 The web reader offers List and Cards. Existing Swipe preferences migrate to List, and
 old story links and browser history entries resolve to their parent streams with the
@@ -313,6 +325,9 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
   immediately and persists across devices.*
 
 **Remaining (in suggested order):**
+- [x] **Channel end view** (2026-11-27) — a reader completion screen for Today,
+      Unread, and All after confirmed pagination exhaustion. Returns through the
+      existing reader session and preserves the channel view.
 - [x] **Main-app icons** (2026-11-11) — reuse the public-site SVG for browser
       favicons, Apple touch icon, and 192/512px app icons with a separate maskable
       variant and web manifest. Lint and web build pass; implemented locally.

@@ -102,6 +102,7 @@ export interface RouteInfo {
   stream: StreamDescriptor;
   entryId: string | null;
   imageId?: string;
+  endAfterId?: string;
 }
 
 const ENTRY_SUFFIX = /\/e\/([^/]+)$/;
@@ -113,6 +114,12 @@ const ENTRY_SUFFIX = /\/e\/([^/]+)$/;
  * Returns null for /settings, /read-later/new, and unknown paths.
  */
 export function parseRoute(pathname: string): RouteInfo | null {
+  const end = /^\/(all|today|unread)\/e\/(\d+)\/end$/.exec(pathname);
+  if (end?.[2]) {
+    const kind =
+      end[1] === "today" ? "today" : end[1] === "unread" ? "unread" : "all";
+    return { stream: { kind }, entryId: null, endAfterId: end[2] };
+  }
   const image = /^\/starred\/images\/([0-9a-f-]{36})$/i.exec(pathname);
   if (image?.[1])
     return {
@@ -145,7 +152,7 @@ export function legacyStoryStream(pathname: string): StreamDescriptor | null {
   const suffix = /\/story\/\d+$/.exec(pathname);
   if (!suffix) return null;
   const route = parseRoute(pathname.slice(0, suffix.index));
-  return route && route.entryId === null && !route.imageId
+  return route && route.entryId === null && !route.imageId && !route.endAfterId
     ? route.stream
     : null;
 }

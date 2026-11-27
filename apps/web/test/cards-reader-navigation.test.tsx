@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../src/lib/api";
 import { qk } from "../src/lib/keys";
 import type { Entry } from "../src/lib/types";
 import {
@@ -35,12 +36,30 @@ vi.mock("../src/lib/mutations", () => ({
 }));
 vi.mock("../src/components/Sidebar", () => ({ Sidebar: () => null }));
 vi.mock("../src/components/ReaderPane", () => ({
-  ReaderPane: ({ entry, onClose }: { entry: Entry; onClose: () => void }) => (
+  ReaderPane: ({
+    entry,
+    onClose,
+    onNext,
+    nextStatus,
+  }: {
+    entry: Entry;
+    onClose: () => void;
+    onNext: () => void;
+    nextStatus: string;
+  }) => (
     <div>
       Reading {entry.id}
       <button type="button" onClick={onClose}>
         back
       </button>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={nextStatus === "loading"}
+      >
+        {nextStatus === "error" ? "Retry next" : "Next"}
+      </button>
+      <span role="status">{nextStatus}</span>
     </div>
   ),
 }));
@@ -81,17 +100,20 @@ const entries: Entry[] = ["1", "2", "3"].map((id) => ({
   isReadLater: false,
   articleImage: null,
 }));
+const requests = vi.hoisted(() => ({ list: vi.fn(), get: vi.fn() }));
 vi.mock("../src/lib/api", () => ({
-  ApiError: Error,
+  ApiError: class ApiError extends Error {
+    constructor(public status: number) {
+      super();
+    }
+  },
   api: {
     subscriptions: { list: async () => ({ subscriptions: [] }) },
     folders: { list: async () => ({ folders: [] }) },
     settings: { get: async () => ({ data: {} }) },
     entries: {
-      list: async () => ({ items: entries, nextCursor: null }),
-      get: async (id: string) => ({
-        entry: entries.find((entry) => entry.id === id),
-      }),
+      list: requests.list,
+      get: requests.get,
     },
     saved: { list: async () => ({ items: [], nextCursor: null }) },
   },
@@ -99,6 +121,12 @@ vi.mock("../src/lib/api", () => ({
 let store: ReturnType<typeof createStore>;
 beforeEach(() => {
   vi.clearAllMocks();
+  requests.list
+    .mockReset()
+    .mockResolvedValue({ items: entries, nextCursor: null });
+  requests.get.mockReset().mockImplementation(async (id: string) => ({
+    entry: entries.find((entry) => entry.id === id),
+  }));
   window.history.replaceState(null, "", "/all?filter=unread&sort=asc");
   store = createStore();
   store.set(streamPresentationAtom, "cards");
@@ -270,5 +298,130 @@ describe("Cards reader navigation", () => {
     expect(screen.queryByLabelText("cards", { selector: "input" })).toBeNull();
     expect(store.get(streamPresentationAtom)).toBe("cards");
     expect(mutations.read).not.toHaveBeenCalled();
+  });
+});
+
+describe("Channel end view", () => {
+  it.each([
+    ["all", "All"],
+    ["unread", "Unread"],
+    ["today", "Today"],
+  ])(
+    "opens the %s end without a mutation and returns to the same cards",
+    async (path, name) => {
+      window.history.replaceState(null, "", `/${path}?filter=unread&sort=asc`);
+      mount();
+      fireEvent.click(await screen.findByText("Card 3"));
+      await screen.findByText("Reading 3");
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      const heading = await screen.findByRole("heading", {
+        name: "You’re at the end!",
+      });
+      expect(heading).toHaveFocus();
+      expect(mutations.read).toHaveBeenCalledTimes(1);
+      fireEvent.keyDown(window, { key: "m" });
+      fireEvent.keyDown(window, { key: "A", shiftKey: true });
+      expect(mutations.read).toHaveBeenCalledTimes(1);
+      fireEvent.keyDown(window, { key: "k" });
+      await screen.findByText("Reading 3");
+      fireEvent.keyDown(window, { key: "j" });
+      fireEvent.click(
+        await screen.findByRole("link", { name: `Back to ${name}` }),
+      );
+      await waitFor(() => expect(window.location.pathname).toBe(`/${path}`));
+      expect(window.location.search).toBe("?filter=unread&sort=asc");
+      expect(document.querySelector("[data-restored-card]")).toHaveAttribute(
+        "data-restored-card",
+        "3",
+      );
+      window.history.forward();
+      await screen.findByRole("heading", { name: "You’re at the end!" });
+    },
+  );
+
+  it("returns safely when the previous article no longer exists", async () => {
+    window.history.replaceState(null, "", "/unread/e/9/end");
+    requests.get.mockImplementation(async () => {
+      throw new ApiError(404, "missing");
+    });
+    mount();
+    fireEvent.click(await screen.findByRole("button", { name: /previous/ }));
+    await screen.findByText("The previous story is unavailable.");
+    fireEvent.click(screen.getByRole("link", { name: "Back to Unread" }));
+    expect(window.location.pathname).toBe("/unread");
+    expect(mutations.read).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])(
+    "loads available cursor pages before deciding whether to finish (%s)",
+    async (hasSuccessor) => {
+      requests.list.mockImplementation(async (_stream, options) => {
+        if (!options.cursor)
+          return { items: entries.slice(0, 1), nextCursor: "second" };
+        if (options.cursor === "second")
+          return { items: [], nextCursor: "third" };
+        return {
+          items: hasSuccessor ? entries.slice(1) : [],
+          nextCursor: null,
+        };
+      });
+      mount();
+      fireEvent.click(await screen.findByText("Card 1"));
+      fireEvent.keyDown(window, { key: "j" });
+      if (hasSuccessor) await screen.findByText("Reading 2");
+      else await screen.findByRole("heading", { name: "You’re at the end!" });
+    },
+  );
+
+  it("retries a failed page, coalesces repeated steps, and stays closed after leaving", async () => {
+    const pending = Promise.withResolvers<{
+      items: Entry[];
+      nextCursor: null;
+    }>();
+    const nextPage = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockReturnValue(pending.promise);
+    requests.list.mockImplementation(async (_stream, options) =>
+      options.cursor
+        ? nextPage()
+        : { items: entries.slice(0, 1), nextCursor: "second" },
+    );
+    mount();
+    fireEvent.click(await screen.findByText("Card 1"));
+    fireEvent.keyDown(window, { key: "j" });
+    fireEvent.click(await screen.findByRole("button", { name: "Retry next" }));
+    fireEvent.keyDown(window, { key: "j" });
+    await waitFor(() => expect(nextPage).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("Reading 1")).toBeInTheDocument();
+    expect(screen.getByText("loading")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(window.location.pathname).toBe("/all"));
+    await act(async () => {
+      pending.resolve({ items: entries.slice(1), nextCursor: null });
+    });
+    await screen.findByText("Card 2");
+    expect(window.location.pathname).toBe("/all");
+    expect(mutations.read).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the boundary behavior for other streams and empty channels", async () => {
+    window.history.replaceState(null, "", "/feed/5");
+    const { unmount } = mount();
+    fireEvent.click(await screen.findByText("Card 3"));
+    fireEvent.keyDown(window, { key: "j" });
+    expect(window.location.pathname).toBe("/feed/5/e/3");
+    unmount();
+    requests.list.mockResolvedValue({ items: [], nextCursor: null });
+    window.history.replaceState(null, "", "/today");
+    mount();
+    await waitFor(() =>
+      expect(requests.list).toHaveBeenCalledWith(
+        { kind: "today" },
+        expect.anything(),
+      ),
+    );
+    fireEvent.keyDown(window, { key: "j" });
+    expect(window.location.pathname).toBe("/today");
   });
 });

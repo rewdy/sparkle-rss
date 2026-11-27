@@ -1,11 +1,25 @@
 import { AppShell, Center, Loader } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ReactElement } from "react";
-import { lazy, Suspense, useCallback, useEffect, useMemo } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useSearch } from "wouter";
 import { useSearch as useRawSearch } from "wouter/use-browser-location";
+import { ChannelEndPane } from "../components/ChannelEndPane";
 import { PageTitle } from "../components/PageTitle";
 import { ReaderPane } from "../components/ReaderPane";
 import { SavedImagePane } from "../components/SavedImagePane";
@@ -141,6 +155,41 @@ export function Shell(): ReactElement {
   const descriptor = route?.stream ?? null;
   const routeEntryId = route?.entryId ?? null;
   const imageId = route?.imageId ?? null;
+  const endAfterId = route?.endAfterId ?? null;
+  const queryClient = useQueryClient();
+  const readerView = `${location}?${search}:${localDateKey()}`;
+  const pendingStep = useRef<object | null>(null);
+  const [step, setStepStatus] = useState<{
+    view: string;
+    status: "idle" | "loading" | "error" | "unavailable";
+  }>({ view: readerView, status: "idle" });
+  const stepStatus = step.view === readerView ? step.status : "idle";
+  useLayoutEffect(() => {
+    setStepStatus({ view: readerView, status: "idle" });
+    return () => {
+      pendingStep.current = null;
+    };
+  }, [readerView]);
+
+  const runStep = useCallback(
+    (run: (isCurrent: () => boolean) => Promise<void>) => {
+      if (pendingStep.current) return;
+      const token = {};
+      const href = window.location.href;
+      pendingStep.current = token;
+      const isCurrent = () =>
+        pendingStep.current === token && window.location.href === href;
+      setStepStatus({ view: readerView, status: "loading" });
+      void run(isCurrent)
+        .catch(() => {
+          if (isCurrent()) setStepStatus({ view: readerView, status: "error" });
+        })
+        .finally(() => {
+          if (pendingStep.current === token) pendingStep.current = null;
+        });
+    },
+    [readerView],
+  );
 
   const subsQ = useQuery({
     queryKey: qk.subscriptions,
@@ -163,7 +212,7 @@ export function Shell(): ReactElement {
 
   // Flat entry list for keyboard navigation / seeding the reader. Reads the
   // same infinite entries cache all stream views share (react-query coalesces
-  // identical keys), flattened via `select` — no local duplicate of server state.
+  // identical keys), without a local duplicate of server state.
   const activeStream = descriptor ?? { kind: "all" as const };
   const entriesQ = useInfiniteQuery({
     queryKey: qk.entries(activeStream, filter, sort),
@@ -176,7 +225,6 @@ export function Shell(): ReactElement {
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
-    select: (data) => data.pages.flatMap((p) => p.items),
     enabled: descriptor !== null && descriptor.kind !== "starred",
   });
   const savedQ = useSavedLibrary(sort, descriptor?.kind === "starred");
@@ -188,7 +236,7 @@ export function Shell(): ReactElement {
               item.kind === "article" ? [item.entry] : [],
             ),
           ) ?? [])
-        : (entriesQ.data ?? []),
+        : (entriesQ.data?.pages.flatMap((page) => page.items) ?? []),
     [descriptor?.kind, savedQ.data, entriesQ.data],
   );
 
@@ -256,6 +304,7 @@ export function Shell(): ReactElement {
   const openEntry = useCallback(
     (entry: Entry) => {
       if (!descriptor) return;
+      pendingStep.current = null;
       markOpened(entry);
       readerNav.open(
         `${streamPath(descriptor)}/e/${entry.id}${viewSearch(filter, sort)}`,
@@ -266,36 +315,101 @@ export function Shell(): ReactElement {
 
   const closeReader = useCallback((): void => {
     if (!descriptor) return;
+    pendingStep.current = null;
     readerNav.close(`${streamPath(descriptor)}${viewSearch(filter, sort)}`);
   }, [descriptor, filter, sort, readerNav]);
 
   const move = useCallback(
     (delta: 1 | -1): void => {
-      if (!descriptor || entriesCache.length === 0) return;
+      if (!descriptor || (delta === 1 && pendingStep.current)) return;
+      if (endAfterId) {
+        if (delta === 1 || stepStatus === "unavailable") return;
+        runStep(async (isCurrent) => {
+          try {
+            const result = await queryClient.fetchQuery({
+              queryKey: qk.entry(endAfterId),
+              queryFn: () => api.entries.get(endAfterId),
+              retry: false,
+            });
+            if (isCurrent()) openEntry(result.entry);
+          } catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 404)
+              throw error;
+            if (isCurrent())
+              setStepStatus({ view: readerView, status: "unavailable" });
+          }
+        });
+        return;
+      }
       const idx = routeEntryId
         ? entriesCache.findIndex((e) => e.id === routeEntryId)
         : -1;
       const next =
-        idx === -1
-          ? delta === 1
-            ? 0
-            : entriesCache.length - 1
-          : Math.min(Math.max(idx + delta, 0), entriesCache.length - 1);
+        idx === -1 ? (delta === 1 ? 0 : entriesCache.length - 1) : idx + delta;
       const target = entriesCache[next];
-      if (!target || target.id === routeEntryId) return;
-      markOpened(target);
-      readerNav.open(
-        `${streamPath(descriptor)}/e/${target.id}${viewSearch(filter, sort)}`,
-      );
+      if (target && target.id !== routeEntryId) {
+        openEntry(target);
+        return;
+      }
+      if (
+        delta !== 1 ||
+        !routeEntryId ||
+        idx < 0 ||
+        !["all", "unread", "today"].includes(descriptor.kind)
+      )
+        return;
+
+      runStep(async (isCurrent) => {
+        let pageResult =
+          entriesQ.isFetching ||
+          (entriesQ.isError && !entriesQ.isFetchNextPageError)
+            ? await entriesQ.refetch({
+                throwOnError: true,
+                cancelRefetch: false,
+              })
+            : entriesQ;
+        while (isCurrent()) {
+          const pages = pageResult.data?.pages ?? [];
+          const entries = pages.flatMap((page) => page.items);
+          const anchor = entries.findIndex(
+            (entry) => entry.id === routeEntryId,
+          );
+          const successor = anchor >= 0 ? entries[anchor + 1] : undefined;
+          if (successor) {
+            openEntry(successor);
+            return;
+          }
+          if (pages.at(-1)?.nextCursor == null) {
+            if (anchor >= 0 && !pageResult.isError) {
+              readerNav.open(
+                `${streamPath(descriptor)}/e/${routeEntryId}/end${viewSearch(filter, sort)}`,
+              );
+            } else {
+              setStepStatus({ view: readerView, status: "idle" });
+            }
+            return;
+          }
+          pageResult = await entriesQ.fetchNextPage({
+            throwOnError: true,
+            cancelRefetch: false,
+          });
+        }
+      });
     },
     [
       descriptor,
+      endAfterId,
       entriesCache,
+      entriesQ,
       filter,
-      markOpened,
+      openEntry,
+      queryClient,
       readerNav,
+      readerView,
       routeEntryId,
+      runStep,
       sort,
+      stepStatus,
     ],
   );
 
@@ -322,7 +436,8 @@ export function Shell(): ReactElement {
           target.kind === "today" ||
           target.kind === "starred" ||
           !isEntryStream(target) ||
-          imageId
+          imageId ||
+          endAfterId
         )
           return;
         void api.entries.markAllRead(target).catch(() => undefined);
@@ -333,7 +448,8 @@ export function Shell(): ReactElement {
           setShortcutsOpen((open) => !open);
           break;
         case "Escape":
-          if (routeEntryId !== null || imageId !== null) closeReader();
+          if (routeEntryId !== null || imageId !== null || endAfterId !== null)
+            closeReader();
           break;
         case "j":
           if (imageId) break;
@@ -377,6 +493,7 @@ export function Shell(): ReactElement {
     [
       descriptor,
       imageId,
+      endAfterId,
       routeEntryId,
       activeEntry,
       move,
@@ -516,7 +633,21 @@ export function Shell(): ReactElement {
             <SaveArticleForm variant="page" />
           </Suspense>
         ) : descriptor ? (
-          imageId !== null ? (
+          endAfterId !== null ? (
+            <ChannelEndPane
+              channel={
+                descriptor.kind === "today"
+                  ? "Today"
+                  : descriptor.kind === "unread"
+                    ? "Unread"
+                    : "All"
+              }
+              channelHref={`${streamPath(descriptor)}${viewSearch(filter, sort)}`}
+              onClose={closeReader}
+              onPrevious={() => move(-1)}
+              previousStatus={stepStatus}
+            />
+          ) : imageId !== null ? (
             <SavedImagePane
               id={imageId}
               sort={sort}
@@ -539,6 +670,7 @@ export function Shell(): ReactElement {
                 onClose={closeReader}
                 onNext={() => move(1)}
                 onPrev={() => move(-1)}
+                nextStatus={stepStatus === "unavailable" ? "idle" : stepStatus}
               />
             ) : null
           ) : null
@@ -554,10 +686,10 @@ export function Shell(): ReactElement {
               stream={descriptor}
               filter={filter}
               sort={sort}
-              activeEntryId={routeEntryId}
+              activeEntryId={routeEntryId ?? endAfterId}
               onSelect={openEntry}
               presentation={presentation}
-              hidden={routeEntryId !== null}
+              hidden={routeEntryId !== null || endAfterId !== null}
             />
           )}
       </AppShell.Main>

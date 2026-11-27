@@ -1158,3 +1158,11 @@ Forward can reopen the last article. Saved keeps its mixed library and sort-only
 
 The pending OpenSpec `add-image-focal-point` task 4.2 names StoryView. If applied after
 Swipe removal, reconcile that task to cover the surviving List and Cards surfaces.
+
+## 2026-11-27 — Finish a channel inside the reader
+
+Today, Unread, and All use a dedicated completion route within the existing reader
+history entry. It gives Next and Previous a natural sequence and keeps the return
+link on the same surface as the message. The route carries the last article ID for
+Previous after refresh. Reader-driven pagination shares the channel's infinite
+query and requires successful cursor exhaustion before showing completion.

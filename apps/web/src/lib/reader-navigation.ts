@@ -23,7 +23,7 @@ function surface(url: string, allowLegacy = false): string | null {
   }
   if (parsed.origin !== window.location.origin || parsed.hash) return null;
   const route = parseRoute(parsed.pathname);
-  if (route && route.entryId === null && !route.imageId) {
+  if (route && route.entryId === null && !route.imageId && !route.endAfterId) {
     return streamPath(route.stream);
   }
   const legacy = allowLegacy ? legacyStoryStream(parsed.pathname) : null;
@@ -38,7 +38,7 @@ function origin(state: unknown, url: string): string | null {
     data.surfaceId.length > 0 &&
     typeof data.origin === "string" &&
     route &&
-    (route.entryId !== null || route.imageId) &&
+    (route.entryId !== null || route.imageId || route.endAfterId) &&
     surface(data.origin, true) === streamPath(route.stream)
     ? data.origin
     : null;

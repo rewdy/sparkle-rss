@@ -41,12 +41,14 @@ export function ReaderPane({
   onClose,
   onNext,
   onPrev,
+  nextStatus = "idle",
 }: {
   entry: Entry;
   readLater?: boolean;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
+  nextStatus?: "idle" | "loading" | "error";
 }): ReactElement {
   const feedMeta = useSubscriptionMap();
   const sub = feedMeta.get(entry.feedId);
@@ -303,12 +305,24 @@ export function ReaderPane({
             </Group>
           )}
 
+          {nextStatus !== "idle" && (
+            <Text role="status" size="sm">
+              {nextStatus === "loading"
+                ? "Loading more stories…"
+                : "Couldn’t load more stories. Try again."}
+            </Text>
+          )}
           <Group justify="flex-start" py="md" gap="sm">
             <Button variant="default" size="compact-sm" onClick={onPrev}>
               ↑ previous (k)
             </Button>
-            <Button variant="default" size="compact-sm" onClick={onNext}>
-              ↓ next (j)
+            <Button
+              variant="default"
+              size="compact-sm"
+              disabled={nextStatus === "loading"}
+              onClick={onNext}
+            >
+              {nextStatus === "error" ? "Retry next (j)" : "↓ next (j)"}
             </Button>
             <Divider orientation="vertical" c="dimmed" />
             {readLater ? (

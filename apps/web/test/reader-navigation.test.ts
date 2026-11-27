@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, expect, it, vi } from "vitest";
 import { navigate } from "wouter/use-browser-location";
+import { parseRoute } from "../src/lib/keys";
 import { readerNavigation } from "../src/lib/reader-navigation";
 
 const key = "sparkle.readerNavigation";
@@ -98,5 +99,44 @@ it("opens articles without the secure-context-only randomUUID API", () => {
   } finally {
     if (descriptor) Object.defineProperty(crypto, "randomUUID", descriptor);
     else Reflect.deleteProperty(crypto, "randomUUID");
+  }
+});
+
+it.each(["all", "today", "unread"])(
+  "replaces the reader with the %s end and restores it via Forward",
+  async (channel) => {
+    const surface = `/${channel}?filter=unread&sort=asc`;
+    const end = `/${channel}/e/9/end?filter=unread&sort=asc`;
+    window.history.replaceState(null, "", surface);
+    readerNavigation(navigate).open(`/${channel}/e/9?filter=unread&sort=asc`);
+    const length = window.history.length;
+    readerNavigation(navigate).open(end);
+    expect(window.history.length).toBe(length);
+    expect(parseRoute(window.location.pathname)?.endAfterId).toBe("9");
+    const back = new Promise<void>((resolve) =>
+      window.addEventListener("popstate", () => resolve(), { once: true }),
+    );
+    readerNavigation(navigate).close(surface);
+    await back;
+    expect(window.location.pathname + window.location.search).toBe(surface);
+    const forward = new Promise<void>((resolve) =>
+      window.addEventListener("popstate", () => resolve(), { once: true }),
+    );
+    window.history.forward();
+    await forward;
+    expect(window.location.pathname + window.location.search).toBe(end);
+  },
+);
+
+it("direct end links replace to their parent and unsupported streams reject end routes", () => {
+  window.history.replaceState(null, "", "/today/e/9/end?sort=asc");
+  const length = window.history.length;
+  readerNavigation(navigate).close("/today?sort=asc");
+  expect(window.location.pathname + window.location.search).toBe(
+    "/today?sort=asc",
+  );
+  expect(window.history.length).toBe(length);
+  for (const stream of ["feed/5", "folder/5", "read-later", "starred"]) {
+    expect(parseRoute(`/${stream}/e/9/end`)).toBeNull();
   }
 });

@@ -53,6 +53,7 @@ review.
 | `/folder/:id` | Folder stream |
 | `/feed/:id` | Feed stream |
 | `<stream>/e/:id` | Reading pane for entry `:id` (e.g. `/all/e/123`, `/feed/5/e/123`) |
+| `<channel>/e/:id/end` | Reader completion screen for Today, Unread, and All |
 | `/settings` | Profile, appearance, API tokens (revocation requires a confirmation modal), OPML import/export |
 
 All stream routes share one component parameterized by stream descriptor
@@ -68,7 +69,13 @@ opening/closing the reading pane, switching streams, stepping between entries â€
 implemented as a URL route change via wouter `navigate`, so browser back/forward always
 works: selecting an entry pushes `<stream>/e/:id`, `j`/`k` and next/previous inside the reader replace that session's article route.
 Browser Back, reader Back, and Escape return directly to the originating stream surface;
-Forward reopens the last article in the session. Namespaced, validated history-entry
+Forward reopens the last reader view in the session. In Today, Unread, and All, Next
+or `j` from the last article replaces the current reader URL with the completion route.
+The channel link and Escape close the reader, and Previous or `k` reopens the last
+article when available. A directly opened completion route returns to its parent
+channel with the current filter and sort. The completion screen keeps the List or
+Cards surface mounted, with focus on the completion heading.
+Namespaced, validated history-entry
 metadata preserves the origin across refresh. Old `<stream>/story/:index` URLs for known
 streams are replaced in place with the parent stream and its applicable filter and sort.
 This also works when returning through browser history, so Forward can reopen the last
@@ -79,7 +86,11 @@ Back keeps its normal behavior for direct links. The shell owns this policy thro
 fetch it via `GET /api/v1/entries/:id`; a 404 closes back to the stream. View preferences
 (`filter`, `sort`) live in the query string (`?filter=unread&sort=asc`) as of a later
 cleanup, so views are shareable deep links and back/forward restores them; the reader URL
-carries the same params so they survive opening and closing an article.
+carries the same params so they survive opening and closing an article. At the loaded
+boundary in Today, Unread, and All, the reader requests remaining cursor pages with
+the same filter and sort. The article stays visible while loading. Next can be
+retried on failure, and the completion route opens only after cursor exhaustion.
+Leaving the reader discards any pending navigation from the request.
 
 ## Layout: "minimal reader"
 
