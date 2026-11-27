@@ -92,7 +92,7 @@ export function Topbar({
           }}
           className="site-title"
         >
-          <LuSparkles size={15} />
+          <LuSparkles size={15} className="site-sparkles" aria-hidden="true" />
           <span className="site-wordmark">Sparkle RSS</span>
         </Text>
         <Divider
