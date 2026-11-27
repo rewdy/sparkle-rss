@@ -7,6 +7,7 @@ import { useSubscriptionMap } from "../lib/feed-titles";
 import type { Entry } from "../lib/types";
 import { useVirtualizerScrollBinding } from "../lib/virtual-list";
 import { fonts } from "../themes";
+import { EmptyArticles } from "./EmptyArticles";
 import { EntryMeta } from "./EntryMeta";
 
 type Row =
@@ -88,13 +89,7 @@ export function EntryList({
 
   if (loading) return <SkeletonList />;
 
-  if (entries.length === 0) {
-    return (
-      <Text ta="center" c="dimmed" py="xl" size="sm">
-        nothing here yet.
-      </Text>
-    );
-  }
+  if (entries.length === 0) return <EmptyArticles />;
 
   return (
     <Box pb="xl">

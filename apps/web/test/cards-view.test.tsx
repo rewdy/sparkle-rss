@@ -246,12 +246,19 @@ describe("card grid", () => {
     );
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(document.querySelectorAll(".card-media")).toHaveLength(9);
-    rerender(
-      <Providers>
-        <Harness entries={[]} />
-      </Providers>,
-    );
-    expect(screen.getByText("nothing here yet.")).toBeInTheDocument();
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
+    try {
+      rerender(
+        <Providers>
+          <Harness entries={[]} />
+        </Providers>,
+      );
+    } finally {
+      random.mockRestore();
+    }
+    expect(
+      screen.getByText("All quiet on the reading front."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
   });
 });

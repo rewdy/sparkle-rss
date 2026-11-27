@@ -117,6 +117,8 @@ export function StreamInner({
       right={hidden ? 0 : undefined}
       pb="env(safe-area-inset-bottom)"
       style={{
+        display: entries.length === 0 && !query.isPending ? "flex" : undefined,
+        flexDirection: "column",
         visibility: hidden ? "hidden" : undefined,
         overflowY: "auto",
       }}

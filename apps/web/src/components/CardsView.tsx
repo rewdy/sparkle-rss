@@ -17,6 +17,7 @@ import { useSubscriptionMap } from "../lib/feed-titles";
 import type { Entry } from "../lib/types";
 import { useVirtualizerScrollBinding } from "../lib/virtual-list";
 import { fonts } from "../themes";
+import { EmptyArticles } from "./EmptyArticles";
 import { EntryMeta } from "./EntryMeta";
 
 export type CardRow =
@@ -312,12 +313,8 @@ export function CardsView({
         </div>
       </Box>
     );
-  if (!entries.length)
-    return (
-      <Text ta="center" c="dimmed" py="xl" size="sm">
-        nothing here yet.
-      </Text>
-    );
+  if (entries.length === 0) return <EmptyArticles />;
+
   return (
     <Box
       px="md"
