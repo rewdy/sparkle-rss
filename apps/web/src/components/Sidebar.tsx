@@ -422,7 +422,7 @@ export function Sidebar({
           <Group gap="xs" wrap="nowrap">
             <LuSettings size={15} style={{ flexShrink: 0 }} />
             <Text size="sm" c="dimmed">
-              settings
+              Settings
             </Text>
           </Group>
         </UnstyledButton>

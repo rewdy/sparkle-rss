@@ -39,6 +39,9 @@ container (`ff={fonts.sans}`) so labels, section headings, and actions inherit i
 unread-count badges stay monospace. Approved by the user on 2026-11-04 after a local
 review.
 
+Settings uses the same sans-serif face for section headings and small, dimmed
+helper text, with the Mantine large spacing token between sections.
+
 ## Routes
 
 | Path | View |

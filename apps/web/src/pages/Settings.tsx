@@ -22,6 +22,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import type { ReactElement } from "react";
 import { useId, useState } from "react";
+import { LuDownload, LuUpload } from "react-icons/lu";
 import { BookmarkletLink } from "../components/BookmarkletLink";
 import { api } from "../lib/api";
 import { logout } from "../lib/auth";
@@ -33,7 +34,7 @@ import {
   useColorSchemeValue,
   useThemeValue,
 } from "../lib/ui-state";
-import { presetEmphasisColor, THEME_DEFS } from "../themes";
+import { fonts, presetEmphasisColor, THEME_DEFS } from "../themes";
 
 export function SettingsPage(): ReactElement {
   const settingsQ = useQuery({
@@ -65,16 +66,16 @@ export function SettingsPage(): ReactElement {
   }
 
   return (
-    <Stack gap="md" p="lg" maw={720} mx="auto">
-      <Title order={2}>settings</Title>
+    <Stack gap="lg" p="lg" maw={720} mx="auto" ff={fonts.sans}>
+      <Title order={2}>Settings</Title>
 
       <Card withBorder padding="lg">
         <Stack gap="sm">
-          <Text fw={700} size="sm">
-            appearance
-          </Text>
+          <Title order={3} size="md">
+            Appearance
+          </Title>
           <Text size="sm" fw={600}>
-            color scheme
+            Color scheme
           </Text>
           <SegmentedControl
             value={scheme}
@@ -84,14 +85,15 @@ export function SettingsPage(): ReactElement {
               setScheme(next as "light" | "dark" | "system");
             }}
             data={[
-              { value: "dark", label: "dark" },
-              { value: "light", label: "light" },
-              { value: "system", label: "system" },
+              { value: "dark", label: "Dark" },
+              { value: "light", label: "Light" },
+              { value: "system", label: "System" },
             ]}
             w={300}
+            maw="100%"
           />
           <Text size="sm" fw={600}>
-            theme
+            Theme
           </Text>
           <Group gap="sm">
             {Object.values(THEME_DEFS).map((def) => (
@@ -125,7 +127,7 @@ export function SettingsPage(): ReactElement {
             ))}
           </Group>
           <Switch
-            label="mark items read when opened"
+            label="Mark items read when opened"
             checked={markOnOpen}
             onChange={(e) => {
               setMarkOnOpen(e.currentTarget.checked);
@@ -133,7 +135,7 @@ export function SettingsPage(): ReactElement {
             }}
           />
           <Switch
-            label="sidebar: show only feeds with unread items"
+            label="Sidebar: show only feeds with unread items"
             checked={unreadOnly}
             onChange={(e) => {
               setUnreadOnly(e.currentTarget.checked);
@@ -145,10 +147,10 @@ export function SettingsPage(): ReactElement {
 
       <Card withBorder padding="lg">
         <Stack gap="xs" align="flex-start">
-          <Text id={homeViewId} size="sm" fw={600}>
+          <Title id={homeViewId} order={3} size="md">
             Home view
-          </Text>
-          <Text id={`${homeViewId}-description`} size="sm" c="dimmed">
+          </Title>
+          <Text id={`${homeViewId}-description`} size="xs" c="dimmed">
             The view that opens by default when you go home.
           </Text>
           <SegmentedControl
@@ -179,11 +181,11 @@ export function SettingsPage(): ReactElement {
 
       <Divider my="xs" />
       <Group justify="space-between">
-        <Text size="sm" c="dimmed">
-          session
-        </Text>
+        <Title order={3} size="md">
+          Session
+        </Title>
         <Button variant="default" size="sm" onClick={() => void logout()}>
-          sign out
+          Sign out
         </Button>
       </Group>
     </Stack>
@@ -222,11 +224,11 @@ function ApiTokensCard(): ReactElement {
   return (
     <Card withBorder padding="lg">
       <Stack gap="sm">
-        <Text fw={700} size="sm">
+        <Title order={3} size="md">
           API tokens
-        </Text>
+        </Title>
         <Text size="xs" c="dimmed">
-          used by native clients (NetNewsWire etc.) — password field in the
+          Used by native clients (NetNewsWire etc.) — password field in the
           client, not your login.
         </Text>
 
@@ -234,7 +236,7 @@ function ApiTokensCard(): ReactElement {
 
         <Group gap="xs">
           <TextInput
-            placeholder="label (e.g. netnewswire-mac)"
+            placeholder="Label (e.g. netnewswire-mac)"
             value={label}
             onChange={(e) => setLabel(e.currentTarget.value)}
             w={260}
@@ -249,7 +251,7 @@ function ApiTokensCard(): ReactElement {
             }
             loading={mint.isPending}
           >
-            generate token
+            Generate token
           </Button>
         </Group>
 
@@ -265,7 +267,7 @@ function ApiTokensCard(): ReactElement {
                 >
                   {t.id.slice(0, 8)}
                 </Badge>
-                <Text size="sm">{t.label || "(unlabeled)"}</Text>
+                <Text size="sm">{t.label || "(Unlabeled)"}</Text>
                 <Text size="xs" c="dimmed">
                   {new Date(t.createdAtMs).toLocaleDateString()}
                 </Text>
@@ -276,7 +278,7 @@ function ApiTokensCard(): ReactElement {
                 color="red"
                 onClick={() => setPendingRevoke({ id: t.id, label: t.label })}
               >
-                revoke
+                Revoke
               </Button>
             </Group>
           ))}
@@ -285,7 +287,7 @@ function ApiTokensCard(): ReactElement {
         <Modal
           opened={pendingRevoke !== null}
           onClose={() => setPendingRevoke(null)}
-          title="revoke token"
+          title="Revoke token"
           size="sm"
         >
           {pendingRevoke && (
@@ -293,7 +295,7 @@ function ApiTokensCard(): ReactElement {
               <Text size="sm">
                 Revoke{" "}
                 <Text component="span" ff="monospace">
-                  {pendingRevoke.label || "(unlabeled)"}
+                  {pendingRevoke.label || "(Unlabeled)"}
                 </Text>
                 ? Any client using it (e.g. NetNewsWire) is disconnected
                 immediately.
@@ -303,14 +305,14 @@ function ApiTokensCard(): ReactElement {
                   variant="default"
                   onClick={() => setPendingRevoke(null)}
                 >
-                  cancel
+                  Cancel
                 </Button>
                 <Button
                   color="red"
                   loading={revoke.isPending}
                   onClick={() => void confirmRevoke()}
                 >
-                  revoke
+                  Revoke
                 </Button>
               </Group>
             </Stack>
@@ -330,13 +332,13 @@ function mintedTokenBanner(token: string | null): ReactElement | null {
         <CopyButton value={token}>
           {(props) => (
             <Button size="compact-xs" variant="light" {...props}>
-              copy
+              Copy
             </Button>
           )}
         </CopyButton>
       </Group>
       <Text size="xs" c="dimmed" mt={4}>
-        shown once — store it now
+        Shown once — store it now
       </Text>
     </Box>
   );
@@ -345,15 +347,19 @@ function mintedTokenBanner(token: string | null): ReactElement | null {
 function BookmarkletCard(): ReactElement {
   return (
     <Card withBorder padding="lg">
-      <Stack gap="sm">
-        <Text fw={700} size="sm">
-          read later bookmarklet
-        </Text>
-        <BookmarkletLink showCode={true} />
-        <Text fw={700} size="sm">
-          subscribe bookmarklet
-        </Text>
-        <BookmarkletLink kind="subscribe" showCode={true} />
+      <Stack gap="lg">
+        <Stack gap="sm">
+          <Title order={3} size="md">
+            Read later bookmarklet
+          </Title>
+          <BookmarkletLink showCode={true} />
+        </Stack>
+        <Stack gap="sm">
+          <Title order={3} size="md">
+            Subscribe bookmarklet
+          </Title>
+          <BookmarkletLink kind="subscribe" showCode={true} />
+        </Stack>
       </Stack>
     </Card>
   );
@@ -374,27 +380,32 @@ function OpmlCard(): ReactElement {
   }
 
   async function doImport(file: File): Promise<void> {
-    setStatus("importing…");
+    setStatus("Importing…");
     const xml = await file.text();
     try {
       const result = await api.opml.importText(xml);
-      setStatus(`imported ${result.imported}/${result.found}`);
+      setStatus(`Imported ${result.imported}/${result.found}`);
       void qc.invalidateQueries({ queryKey: qk.subscriptions });
       void qc.invalidateQueries({ queryKey: qk.folders });
     } catch (e) {
-      setStatus(`error: ${(e as Error).message}`);
+      setStatus(`Error: ${(e as Error).message}`);
     }
   }
 
   return (
     <Card withBorder padding="lg">
       <Stack gap="sm">
-        <Text fw={700} size="sm">
+        <Title order={3} size="md">
           OPML subscriptions
-        </Text>
+        </Title>
         <Group gap="xs">
-          <Button size="sm" variant="default" onClick={() => void doExport()}>
-            export .opml
+          <Button
+            size="sm"
+            variant="default"
+            leftSection={<LuDownload size={14} aria-hidden="true" />}
+            onClick={() => void doExport()}
+          >
+            Export .opml
           </Button>
           <input
             type="file"
@@ -409,10 +420,11 @@ function OpmlCard(): ReactElement {
           <Button
             size="sm"
             variant="default"
+            leftSection={<LuUpload size={14} aria-hidden="true" />}
             component="label"
             htmlFor="opml-file-input"
           >
-            import .opml
+            Import .opml
           </Button>
           {status && (
             <Text size="xs" ff="monospace" c="dimmed">

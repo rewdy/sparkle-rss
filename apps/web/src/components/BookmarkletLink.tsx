@@ -48,7 +48,7 @@ export function BookmarkletLink({
         <CopyButton value={snippet}>
           {({ copied, copy }) => (
             <Button size="sm" variant="subtle" type="button" onClick={copy}>
-              {copied ? "copied" : "copy code"}
+              {copied ? "Copied" : "Copy code"}
             </Button>
           )}
         </CopyButton>
@@ -63,7 +63,7 @@ export function BookmarkletLink({
           "Drag the “Subscribe” button onto your bookmarks bar. On a blog page, it opens a small window to find its feed and confirm your subscription."
         ) : (
           <>
-            drag the “Read later” button onto your bookmarks bar. On any page,
+            Drag the “Read later” button onto your bookmarks bar. On any page,
             it opens this form in a small window with the address, title, and
             any selected text prefilled.
           </>

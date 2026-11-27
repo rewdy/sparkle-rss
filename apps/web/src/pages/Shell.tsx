@@ -590,7 +590,7 @@ export function Shell(): ReactElement {
           stream={descriptor ?? { kind: "all" }}
           title={
             isSettings
-              ? "settings"
+              ? "Settings"
               : isSaveArticle
                 ? "read later"
                 : descriptor

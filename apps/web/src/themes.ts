@@ -57,7 +57,7 @@ export interface ThemeDef {
 const themes: Record<ThemeId, ThemeDef> = {
   blue: {
     id: "blue",
-    label: "blue",
+    label: "Blue",
     accent: [
       "#eef6ff",
       "#d9ebff",
@@ -73,7 +73,7 @@ const themes: Record<ThemeId, ThemeDef> = {
   },
   scarlet: {
     id: "scarlet",
-    label: "scarlet",
+    label: "Scarlet",
     accent: [
       "#fdf2f2",
       "#f8dddd",
@@ -89,7 +89,7 @@ const themes: Record<ThemeId, ThemeDef> = {
   },
   steel: {
     id: "steel",
-    label: "steel",
+    label: "Steel",
     accent: [
       "#eef2f5",
       "#dbe5ea",
@@ -105,7 +105,7 @@ const themes: Record<ThemeId, ThemeDef> = {
   },
   persimmon: {
     id: "persimmon",
-    label: "persimmon",
+    label: "Persimmon",
     accent: [
       "#fff5eb",
       "#ffe8d1",
@@ -121,7 +121,7 @@ const themes: Record<ThemeId, ThemeDef> = {
   },
   magenta: {
     id: "magenta",
-    label: "magenta",
+    label: "Magenta",
     accent: [
       "#fdf1f7",
       "#f9dcec",
@@ -137,7 +137,7 @@ const themes: Record<ThemeId, ThemeDef> = {
   },
   purple: {
     id: "purple",
-    label: "purple",
+    label: "Purple",
     accent: [
       "#f8f1fb",
       "#eadcf4",
