@@ -20,8 +20,8 @@ breaking it silently is the worst class of bug in this repo.
 7. `docs/06-roadmap.md` — phases & exit criteria
 8. `docs/07-local-development.md` — local dev workflow (Docker Postgres, dev auth, ingest)
 
-Feature design/plan docs, read when working on them: `docs/08-article-images.md` (media),
-`docs/09-swipe-story-view.md` (swipe presentation), `docs/10-read-later.md` (read later).
+Feature design/plan docs, read when working on them: `docs/08-article-images.md` (media)
+and `docs/10-read-later.md` (read later).
 `docs/decisions.md` is the dated decision log those docs link into.
 
 Web-only features (e.g. read later) live on `/api/v1` only — never on `/api/greader.php`.

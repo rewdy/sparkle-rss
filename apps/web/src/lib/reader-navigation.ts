@@ -1,4 +1,4 @@
-import { parseRoute, streamPath } from "./keys";
+import { legacyStoryStream, parseRoute, streamPath } from "./keys";
 
 type Navigate = (
   to: string,
@@ -13,7 +13,7 @@ function record(value: unknown): Record<string, unknown> {
 function currentUrl(): string {
   return window.location.pathname + window.location.search;
 }
-function surface(url: string): string | null {
+function surface(url: string, allowLegacy = false): string | null {
   if (!url.startsWith("/") || url.startsWith("//")) return null;
   let parsed: URL;
   try {
@@ -23,9 +23,11 @@ function surface(url: string): string | null {
   }
   if (parsed.origin !== window.location.origin || parsed.hash) return null;
   const route = parseRoute(parsed.pathname);
-  return route && !route.entryId && !route.imageId
-    ? streamPath(route.stream)
-    : null;
+  if (route && route.entryId === null && !route.imageId) {
+    return streamPath(route.stream);
+  }
+  const legacy = allowLegacy ? legacyStoryStream(parsed.pathname) : null;
+  return legacy ? streamPath(legacy) : null;
 }
 function origin(state: unknown, url: string): string | null {
   const data = record(record(state)[KEY]);
@@ -37,7 +39,7 @@ function origin(state: unknown, url: string): string | null {
     typeof data.origin === "string" &&
     route &&
     (route.entryId !== null || route.imageId) &&
-    surface(data.origin) === streamPath(route.stream)
+    surface(data.origin, true) === streamPath(route.stream)
     ? data.origin
     : null;
 }
@@ -69,7 +71,7 @@ export function readerNavigation(navigate: Navigate) {
           },
         });
       } else {
-        // Stepping within a reader keeps its original surface, including Swipe index.
+        // Stepping within a reader keeps its original surface.
         navigate(to, { replace: true, state });
       }
     },

@@ -19,11 +19,12 @@ Opening an article from a stream surface SHALL create one browser history entry.
 - **THEN** Back returns directly to the originating stream with no duplicate reader entries
 
 ### Requirement: Restore the originating browsing surface
-Return SHALL preserve stream identity, filter, sort, and selected presentation. Swipe SHALL return to the story position from which the session was opened, even after article steps. List and Saved SHALL retain their existing scroll restoration; Cards SHALL retain its existing behavior of bringing the last viewed article into view when still loaded. Missing or removed articles SHALL NOT prevent returning to a usable surface.
+Return SHALL preserve stream identity, filter, sort, and selected presentation. List and Saved SHALL retain their existing scroll restoration; Cards SHALL retain its existing behavior of bringing the last viewed article into view when still loaded. Missing or removed articles SHALL NOT prevent returning to a usable surface. A legacy numeric story URL for a recognized stream SHALL be replaced with its parent stream URL while preserving the applicable filter and sort. This SHALL also apply when browser history returns to a legacy story URL.
 
 #### Scenario: Swipe origin
-- **WHEN** a user opens an article at story 12 in a feed with ascending sort, steps through articles, and returns
-- **THEN** the same feed, sort, and Swipe presentation show story 12
+- **WHEN** a user opens `/feed/5/story/12?filter=unread&sort=asc`
+- **THEN** the current URL is replaced with `/feed/5?filter=unread&sort=asc`
+- **AND** the feed opens in the device's supported presentation
 
 #### Scenario: Cards and changing membership
 - **WHEN** a user returns to Cards after reading several articles
@@ -38,8 +39,13 @@ For a directly opened article or image preview without a known in-app surface or
 - **THEN** its parent stream replaces the article route without navigating to the external website
 
 #### Scenario: Refresh during a session
-- **WHEN** a user reloads a reader opened from Swipe and then closes it
-- **THEN** the known originating story route is restored
+- **WHEN** a user reloads a reader opened from Cards and then closes it
+- **THEN** the known originating stream route is restored
+
+#### Scenario: Legacy reader origin
+- **WHEN** a user reloads a reader opened before the update from a story URL and then uses reader Back or Escape
+- **THEN** the browser returns through the existing history entry and replaces the story URL with its parent stream, preserving applicable filter and sort
+- **AND** browser Forward reopens the last article in the session
 
 ### Requirement: Shared preview policy and navigation isolation
 Saved image previews SHALL use the same origin-aware close behavior. Article stepping SHALL continue to skip image rows; image previews SHALL NOT acquire article shortcuts or mark-on-open behavior. Leaving a reader for another stream or Settings SHALL NOT carry its origin into a newly opened reader. Existing read/star/read-later actions and mark-on-open SHALL remain unchanged.

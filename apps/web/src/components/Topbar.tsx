@@ -22,8 +22,8 @@ import { useMarkAllRead } from "../lib/mutations";
 import type { StreamDescriptor } from "../lib/types";
 import { isEntryStream } from "../lib/types";
 import {
-  isStoryPresentation,
-  type StoryPresentation,
+  isStreamPresentation,
+  type StreamPresentation,
   useColorSchemeValue,
 } from "../lib/ui-state";
 
@@ -43,8 +43,8 @@ export function Topbar({
   onFilterChange: (f: "all" | "unread") => void;
   navOpened: boolean;
   onToggleNav: () => void;
-  presentation: StoryPresentation;
-  onPresentationChange: (value: StoryPresentation) => void;
+  presentation: StreamPresentation;
+  onPresentationChange: (value: StreamPresentation) => void;
 }): ReactElement {
   const qc = useQueryClient();
   // Read later is a queue of saved items, not a subscription stream: the
@@ -112,12 +112,11 @@ export function Topbar({
             size="xs"
             value={presentation}
             onChange={(value) => {
-              if (isStoryPresentation(value)) onPresentationChange(value);
+              if (isStreamPresentation(value)) onPresentationChange(value);
             }}
             data={[
               { label: "list", value: "list" },
               { label: "cards", value: "cards" },
-              { label: "swipe", value: "swipe" },
             ]}
           />
         )}

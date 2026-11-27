@@ -92,6 +92,5 @@ sparkle-rss/
 | [06-roadmap.md](06-roadmap.md) | Build phases with exit criteria |
 | [07-local-development.md](07-local-development.md) | Local dev workflow (Docker Postgres, dev auth, ingest, tests) |
 | [08-article-images.md](08-article-images.md) | Article splash-image selection, storage, and future media API plan |
-| [09-swipe-story-view.md](09-swipe-story-view.md) | Full-screen swipe story-view interaction and implementation plan |
 | [10-read-later.md](10-read-later.md) | Read later queue: storage, API, article extraction, bookmarklet |
 | [decisions.md](decisions.md) | Dated decision/outcome log referenced from the docs above |

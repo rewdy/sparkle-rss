@@ -3,12 +3,12 @@ import { DEFAULT_THEME_ID, isThemeId, type ThemeId } from "../themes";
 import { localDateKey } from "./keys";
 
 export type ColorSchemePref = "light" | "dark" | "system";
-export type StoryPresentation = "list" | "cards" | "swipe";
+export type StreamPresentation = "list" | "cards";
 
-export function isStoryPresentation(
+export function isStreamPresentation(
   value: unknown,
-): value is StoryPresentation {
-  return value === "list" || value === "cards" || value === "swipe";
+): value is StreamPresentation {
+  return value === "list" || value === "cards";
 }
 
 export function loadLocalUi(): Record<string, unknown> {
@@ -48,19 +48,19 @@ function asStringArray(v: unknown): string[] {
 export const appStore = createStore();
 
 const local = loadLocalUi();
-if (local.storyPresentation === "feed") {
+if (local.storyPresentation === "feed" || local.storyPresentation === "swipe") {
   local.storyPresentation = "list";
   persistUiPatch({ storyPresentation: "list" });
 }
-const storyPresentationBaseAtom = atom<StoryPresentation>(
-  isStoryPresentation(local.storyPresentation)
+const streamPresentationBaseAtom = atom<StreamPresentation>(
+  isStreamPresentation(local.storyPresentation)
     ? local.storyPresentation
     : "list",
 );
-export const storyPresentationAtom = atom(
-  (get) => get(storyPresentationBaseAtom),
-  (_get, set, next: StoryPresentation) => {
-    set(storyPresentationBaseAtom, next);
+export const streamPresentationAtom = atom(
+  (get) => get(streamPresentationBaseAtom),
+  (_get, set, next: StreamPresentation) => {
+    set(streamPresentationBaseAtom, next);
     persistUiPatch({ storyPresentation: next });
   },
 );

@@ -16,7 +16,7 @@ more characters skips automatic fetching. `AUTOMATIC_FULL_CONTENT_TEXT_LIMIT` in
 policy ignores markup and script/style/template text, separates block text, decodes
 entities, normalizes whitespace, trims, and counts Unicode characters. At or above the threshold, the reader shows only original feed content and hides
 all content tabs and fetch/retry controls, even if an older fetched copy exists.
-List hydration, prefetching, pagination, and scrolling Swipe stories do not fetch.
+Rendering, prefetching, paginating, and scrolling List or Cards do not fetch.
 Opening the full reader from a story does. Off-feed URL items keep their existing
 Read Later extraction behavior.
 

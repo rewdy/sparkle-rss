@@ -3,34 +3,27 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "../lib/api";
-import { qk, streamPath, viewSearch } from "../lib/keys";
-import type { Entry, StreamDescriptor, Subscription } from "../lib/types";
-import type { StoryPresentation } from "../lib/ui-state";
+import { qk } from "../lib/keys";
+import type { Entry, StreamDescriptor } from "../lib/types";
+import type { StreamPresentation } from "../lib/ui-state";
 import { CardsView } from "./CardsView";
 import { EntryList } from "./EntryList";
-import { StoryView } from "./StoryView";
 
 export function StreamInner({
   stream,
   filter,
   sort,
   activeEntryId,
-  storyIndex,
-  onStoryIndexChange,
   onSelect,
   presentation,
-  subscriptions,
   hidden = false,
 }: {
   stream: StreamDescriptor;
   filter: "all" | "unread";
   sort: "asc" | "desc";
   activeEntryId: string | null;
-  storyIndex: number;
-  onStoryIndexChange: (index: number) => void;
   onSelect: (entry: Entry) => void;
-  presentation: StoryPresentation;
-  subscriptions: Subscription[];
+  presentation: StreamPresentation;
   hidden?: boolean;
 }): ReactElement {
   const query = useInfiniteQuery({
@@ -80,7 +73,6 @@ export function StreamInner({
     }, delay);
     return () => window.clearTimeout(timer);
   }, [earliestMediaExpiryMs, query.refetch]);
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastActiveId = useRef<string | null>(null);
@@ -115,39 +107,6 @@ export function StreamInner({
     return () => io.disconnect();
   }, [query.hasNextPage, query.isFetchingNextPage, query, hidden]);
 
-  useEffect(() => {
-    if (
-      presentation === "swipe" &&
-      storyIndex >= entries.length &&
-      hasNextPage &&
-      !isFetchingNextPage
-    ) {
-      void fetchNextPage();
-    }
-  }, [
-    entries.length,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    presentation,
-    storyIndex,
-  ]);
-
-  const handleStoryIndexChange = useCallback(
-    (index: number) => {
-      onStoryIndexChange(index);
-      if (index >= entries.length - 5 && hasNextPage && !isFetchingNextPage)
-        void fetchNextPage();
-    },
-    [
-      entries.length,
-      fetchNextPage,
-      hasNextPage,
-      isFetchingNextPage,
-      onStoryIndexChange,
-    ],
-  );
-
   return (
     <Box
       ref={scrollRef}
@@ -159,25 +118,13 @@ export function StreamInner({
       pb="env(safe-area-inset-bottom)"
       style={{
         visibility: hidden ? "hidden" : undefined,
-        overflowY: presentation === "swipe" ? "hidden" : "auto",
+        overflowY: "auto",
       }}
       data-stream-scroll
       aria-hidden={hidden || undefined}
       inert={hidden || undefined}
     >
-      {presentation === "swipe" ? (
-        <StoryView
-          entries={entries}
-          subscriptions={subscriptions}
-          loading={query.isPending}
-          onRead={selectEntry}
-          readHref={(entry) =>
-            `${streamPath(stream)}/e/${entry.id}${viewSearch(filter, sort)}`
-          }
-          activeIndex={storyIndex}
-          onActiveIndexChange={handleStoryIndexChange}
-        />
-      ) : presentation === "cards" ? (
+      {presentation === "cards" ? (
         <CardsView
           entries={entries}
           loading={query.isPending}
@@ -196,7 +143,7 @@ export function StreamInner({
         />
       )}
       <div ref={sentinelRef} style={{ height: 1 }} />
-      {presentation !== "swipe" && !query.hasNextPage && entries.length > 0 && (
+      {!query.hasNextPage && entries.length > 0 && (
         <Text ta="center" c="dimmed" size="xs" py="md" ff="monospace">
           ∎ end of stream
         </Text>

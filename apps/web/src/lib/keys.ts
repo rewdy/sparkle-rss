@@ -101,16 +101,14 @@ export function viewSearch(
 export interface RouteInfo {
   stream: StreamDescriptor;
   entryId: string | null;
-  storyIndex: number | null;
   imageId?: string;
 }
 
 const ENTRY_SUFFIX = /\/e\/([^/]+)$/;
-const STORY_SUFFIX = /\/story\/(\d+)$/;
 
 /**
- * Parse a location into stream + optional story position/open entry.
- * Handles story routes like /all/story/3 and entry routes like /all/e/123,
+ * Parse a location into stream + optional open entry or saved image.
+ * Handles entry routes like /all/e/123 and
  * /feed/5/e/123.
  * Returns null for /settings, /read-later/new, and unknown paths.
  */
@@ -120,37 +118,34 @@ export function parseRoute(pathname: string): RouteInfo | null {
     return {
       stream: { kind: "starred" },
       entryId: null,
-      storyIndex: null,
       imageId: image[1],
     };
   const suffix = ENTRY_SUFFIX.exec(pathname);
-  const storySuffix = STORY_SUFFIX.exec(pathname);
-  const base = suffix
-    ? pathname.slice(0, pathname.length - suffix[0].length)
-    : storySuffix
-      ? pathname.slice(0, pathname.length - storySuffix[0].length)
-      : pathname;
+  const base = suffix ? pathname.slice(0, -suffix[0].length) : pathname;
   const entryId = suffix?.[1] ?? null;
-  const storyIndex = storySuffix
-    ? Number.parseInt(storySuffix[1] ?? "0", 10)
-    : null;
   if (base === "/" || base === "/all")
-    return { stream: { kind: "all" }, entryId, storyIndex };
-  if (base === "/starred")
-    return { stream: { kind: "starred" }, entryId, storyIndex };
-  if (base === "/read-later")
-    return { stream: { kind: "readLater" }, entryId, storyIndex };
-  if (base === "/today")
-    return { stream: { kind: "today" }, entryId, storyIndex };
-  if (base === "/unread")
-    return { stream: { kind: "unread" }, entryId, storyIndex };
+    return { stream: { kind: "all" }, entryId };
+  if (base === "/starred") return { stream: { kind: "starred" }, entryId };
+  if (base === "/read-later") return { stream: { kind: "readLater" }, entryId };
+  if (base === "/today") return { stream: { kind: "today" }, entryId };
+  if (base === "/unread") return { stream: { kind: "unread" }, entryId };
   const feed = /^\/feed\/(\d+)$/.exec(base);
   const feedId = feed?.[1];
   if (feedId !== undefined)
-    return { stream: { kind: "feed", id: feedId }, entryId, storyIndex };
+    return { stream: { kind: "feed", id: feedId }, entryId };
   const folder = /^\/folder\/(\d+)$/.exec(base);
   const folderId = folder?.[1];
   if (folderId !== undefined)
-    return { stream: { kind: "folder", id: folderId }, entryId, storyIndex };
+    return { stream: { kind: "folder", id: folderId }, entryId };
   return null;
+}
+
+/** Resolve retired story links without admitting them as reader routes. */
+export function legacyStoryStream(pathname: string): StreamDescriptor | null {
+  const suffix = /\/story\/\d+$/.exec(pathname);
+  if (!suffix) return null;
+  const route = parseRoute(pathname.slice(0, suffix.index));
+  return route && route.entryId === null && !route.imageId
+    ? route.stream
+    : null;
 }

@@ -1147,3 +1147,14 @@ Release `126b340` deployed successfully through [CI](https://github.com/rewdy/sp
 Migration 0007 completed before Lambda updates, then web assets were published.
 The live production shell and JavaScript returned 200; the deployed bundle contains
 both Fetch full articles and View full post controls. No manual production apply.
+
+## 2026-11-27 — Retire Swipe presentation
+
+The stream selector offers List and Cards. The device-local presentation key is
+retained and legacy Swipe and Feed values are rewritten to List. Old numeric story
+URLs for recognized streams are replaced with their parent URLs, preserving applicable
+filter, sort, and history state. Legacy reader origins still use browser Back so
+Forward can reopen the last article. Saved keeps its mixed library and sort-only URL.
+
+The pending OpenSpec `add-image-focal-point` task 4.2 names StoryView. If applied after
+Swipe removal, reconcile that task to cover the surviving List and Cards surfaces.

@@ -5,21 +5,38 @@ import { readerNavigation } from "../src/lib/reader-navigation";
 
 const key = "sparkle.readerNavigation";
 beforeEach(() =>
-  window.history.replaceState(
-    { other: "retained" },
-    "",
-    "/feed/5/story/12?sort=asc",
-  ),
+  window.history.replaceState({ other: "retained" }, "", "/feed/5?sort=asc"),
 );
 it("retains the full origin and unrelated state through steps and a new helper instance", () => {
   readerNavigation(navigate).open("/feed/5/e/1?sort=asc");
   readerNavigation(navigate).open("/feed/5/e/2?sort=asc");
   expect(window.history.state.other).toBe("retained");
-  expect(window.history.state[key].origin).toBe("/feed/5/story/12?sort=asc");
+  expect(window.history.state[key].origin).toBe("/feed/5?sort=asc");
   const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
   readerNavigation(navigate).close("/feed/5?sort=asc");
   expect(back).toHaveBeenCalledOnce();
   back.mockRestore();
+});
+it("recognizes a legacy story origin in existing reader history", () => {
+  window.history.replaceState(
+    {
+      [key]: {
+        version: 1,
+        kind: "reader",
+        surfaceId: "legacy",
+        origin: "/feed/5/story/12?sort=asc",
+      },
+    },
+    "",
+    "/feed/5/e/2?sort=asc",
+  );
+  const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+  try {
+    readerNavigation(navigate).close("/feed/5?sort=asc");
+    expect(back).toHaveBeenCalledOnce();
+  } finally {
+    back.mockRestore();
+  }
 });
 it.each([
   null,
@@ -74,7 +91,7 @@ it("opens articles without the secure-context-only randomUUID API", () => {
     expect(window.location.pathname).toBe("/feed/5/e/1");
     const first = window.history.state[key].surfaceId;
     expect(first).toMatch(/^[0-9a-f]{8}(?:-[0-9a-f]{8}){3}$/);
-    expect(window.history.state[key].origin).toBe("/feed/5/story/12?sort=asc");
+    expect(window.history.state[key].origin).toBe("/feed/5?sort=asc");
     navigate("/all");
     readerNavigation(navigate).open("/all/e/2");
     expect(window.history.state[key].surfaceId).not.toBe(first);

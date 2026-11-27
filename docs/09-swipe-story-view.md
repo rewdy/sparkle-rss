@@ -1,4 +1,7 @@
-# 09 — Swipe Story View (Planning)
+# 09 — Swipe Story View (Historical)
+
+Swipe was retired on 2026-11-27. See [frontend architecture](05-frontend.md) for current
+presentations and legacy story URL handling. This document preserves the original design.
 
 This document plans an alternative presentation for stream/listing pages. Users can
 switch between the image-enhanced List, a responsive Cards grid, and a full-screen,

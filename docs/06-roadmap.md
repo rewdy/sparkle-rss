@@ -3,7 +3,15 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-20, feed fetching opt-out deployed)
+## Current state (updated 2026-11-27, Swipe removal implemented locally)
+
+The web reader offers List and Cards. Existing Swipe preferences migrate to List, and
+old story links and browser history entries resolve to their parent streams with the
+applicable filter and sort. All 533 tests pass against Docker Postgres, including
+Google Reader conformance. Lint, package typechecks, and the web build pass.
+Chromium acceptance covers the mobile selector, List and Cards pagination and
+reader return, and legacy history. OpenSpec `2026-11-27-remove-swipe-view` is
+archived with the main specs synced.
 
 LAN dev testing also uncovered a pre-existing `crypto.randomUUID` dependency that
 prevented article clicks over HTTP network addresses. Reader history IDs now use
@@ -72,7 +80,7 @@ No production deployment in this session.
 
 List now uses the former Feed thumbnail layout; the separate Feed choice is removed.
 Cards adds a distinct date-grouped 3/2/1-column grid with themed image placeholders;
-Swipe remains its own full-screen experience. Legacy local Feed preferences migrate
+At that release, Swipe retained its full-screen experience. Legacy local Feed preferences migrate
 to List. All 141 web tests, typecheck, lint, and web build pass, with fixture-backed
 browser checks for breakpoints, image renewal, pagination, keyboard focus, and reader
 restoration. OpenSpec `replace-feed-with-list-and-cards` is implemented locally and archived
@@ -340,7 +348,9 @@ session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lan
 - [x] **Swipe story view** — optional device-local full-screen story presentation with
       native touch/mouse/trackpad scroll snapping, route-backed story position,
       hero-image rendering, favicon fallback, read-state styling, and unchanged
-      standard-list behavior. Plan: [09-swipe-story-view.md](09-swipe-story-view.md). ✅
+      standard-list behavior. Retired 2026-11-27.
+- [x] **Remove Swipe** — remove the renderer, selector option, and index-based pagination.
+      Migrate the local preference and preserve legacy story URLs and reader history.
 - [x] **Feed and entry lifecycle cleanup** — unsubscribe deletes dependent
       user-scoped data in the correct order, feeds with no subscribers stop refreshing
       and enter grace-period cleanup, and future media associations have explicit

@@ -80,9 +80,6 @@ vi.mock("../src/components/CardsView", () => ({
     </div>
   ),
 }));
-vi.mock("../src/components/StoryView", () => ({
-  StoryView: () => <div>Rendered swipe</div>,
-}));
 
 function Providers({ children }: { children: ReactNode }) {
   return (
@@ -113,7 +110,7 @@ afterEach(() => {
 });
 
 describe("Presentation integration", () => {
-  it.each(["list", "cards", "swipe"] as const)(
+  it.each(["list", "cards"] as const)(
     "selects %s through the header",
     (mode) => {
       const change = vi.fn();
@@ -133,6 +130,9 @@ describe("Presentation integration", () => {
       );
       fireEvent.click(screen.getByLabelText(mode, { selector: "input" }));
       if (mode !== "list") expect(change).toHaveBeenCalledWith(mode);
+      expect(
+        screen.queryByLabelText("swipe", { selector: "input" }),
+      ).toBeNull();
       expect(
         screen.getByLabelText("cards", { selector: "input" }),
       ).toBeInTheDocument();
@@ -157,7 +157,7 @@ describe("Presentation integration", () => {
     expect(screen.queryByLabelText("cards", { selector: "input" })).toBeNull();
   });
 
-  it.each(["list", "cards", "swipe"] as const)(
+  it.each(["list", "cards"] as const)(
     "renders %s and its correct end state",
     async (mode) => {
       render(
@@ -167,18 +167,13 @@ describe("Presentation integration", () => {
             filter="all"
             sort="desc"
             activeEntryId={null}
-            storyIndex={0}
-            onStoryIndexChange={vi.fn()}
             onSelect={vi.fn()}
             presentation={mode}
-            subscriptions={[]}
           />
         </Providers>,
       );
       expect(await screen.findByText(`Rendered ${mode}`)).toBeInTheDocument();
-      if (mode !== "swipe")
-        expect(await screen.findByText("∎ end of stream")).toBeInTheDocument();
-      else expect(screen.queryByText("∎ end of stream")).toBeNull();
+      expect(await screen.findByText("∎ end of stream")).toBeInTheDocument();
     },
   );
 
@@ -194,11 +189,8 @@ describe("Presentation integration", () => {
             filter="all"
             sort="desc"
             activeEntryId={null}
-            storyIndex={3}
-            onStoryIndexChange={vi.fn()}
             onSelect={select}
             presentation="cards"
-            subscriptions={[]}
           />
         </Providers>,
       );
@@ -215,11 +207,8 @@ describe("Cards query and restoration", () => {
     filter: "unread" as const,
     sort: "asc" as const,
     activeEntryId: null,
-    storyIndex: 0,
-    onStoryIndexChange: vi.fn(),
     onSelect: vi.fn(),
     presentation: "cards" as const,
-    subscriptions: [],
   };
   it.each(["asc", "desc"] as const)(
     "preserves %s sort and filters",
@@ -275,6 +264,7 @@ describe("Cards query and restoration", () => {
       expect.objectContaining({ cursor: "page2" }),
     );
     expect(screen.getByText("∎ end of stream")).toBeInTheDocument();
+    expect(props.onSelect).not.toHaveBeenCalled();
   });
   it("keeps the selected entry across hidden reader navigation", async () => {
     const client = new QueryClient({

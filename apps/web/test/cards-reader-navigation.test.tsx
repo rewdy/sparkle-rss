@@ -13,7 +13,10 @@ import { createStore, Provider } from "jotai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { qk } from "../src/lib/keys";
 import type { Entry } from "../src/lib/types";
-import { markReadOnOpenAtom, storyPresentationAtom } from "../src/lib/ui-state";
+import {
+  markReadOnOpenAtom,
+  streamPresentationAtom,
+} from "../src/lib/ui-state";
 import { Shell } from "../src/pages/Shell";
 
 const mutations = vi.hoisted(() => ({ read: vi.fn(), laterRead: vi.fn() }));
@@ -60,32 +63,6 @@ vi.mock("../src/components/CardsView", () => ({
     </div>
   ),
 }));
-vi.mock("../src/components/StoryView", () => ({
-  StoryView: ({
-    entries,
-    onRead,
-    onActiveIndexChange,
-    activeIndex,
-  }: {
-    entries: Entry[];
-    onRead: (entry: Entry) => void;
-    onActiveIndexChange: (index: number) => void;
-    activeIndex: number;
-  }) => (
-    <div data-story-position={activeIndex}>
-      <button
-        type="button"
-        disabled={!entries.length}
-        onClick={() => entries[0] && onRead(entries[0])}
-      >
-        read story
-      </button>
-      <button type="button" onClick={() => onActiveIndexChange(0)}>
-        observer callback
-      </button>
-    </div>
-  ),
-}));
 vi.mock("../src/components/SavedList", () => ({
   SavedList: () => <div>Dedicated saved layout</div>,
 }));
@@ -124,7 +101,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   window.history.replaceState(null, "", "/all?filter=unread&sort=asc");
   store = createStore();
-  store.set(storyPresentationAtom, "cards");
+  store.set(streamPresentationAtom, "cards");
   store.set(markReadOnOpenAtom, true);
 });
 afterEach(cleanup);
@@ -173,7 +150,7 @@ describe("Cards reader navigation", () => {
       else fireEvent.keyDown(window, { key: "Escape" });
       await waitFor(() => expect(window.location.pathname).toBe("/all"));
       expect(window.location.search).toBe("?filter=unread&sort=asc");
-      expect(store.get(storyPresentationAtom)).toBe("cards");
+      expect(store.get(streamPresentationAtom)).toBe("cards");
       expect(document.querySelector("[data-restored-card]")).toHaveAttribute(
         "data-restored-card",
         "2",
@@ -203,26 +180,52 @@ describe("Cards reader navigation", () => {
     await waitFor(() => expect(window.location.pathname).toBe("/all"));
     expect(window.location.search).toBe("?sort=asc");
   });
-  it("restores Swipe origin after stepping and remount", async () => {
-    window.history.replaceState(null, "", "/all/story/2?sort=asc");
-    store.set(storyPresentationAtom, "swipe");
-    const view = mount();
-    await waitFor(() => expect(screen.getByText("read story")).toBeEnabled());
-    fireEvent.click(screen.getByText("read story"));
-    await screen.findByText("Reading 1");
-    expect(window.location.pathname).toBe("/all/e/1");
-    fireEvent.keyDown(window, { key: "j" });
-    await screen.findByText("Reading 2");
-    view.unmount();
-    mount();
-    await screen.findByText("Reading 2");
-    fireEvent.keyDown(window, { key: "Escape" });
-    await waitFor(() => expect(window.location.pathname).toBe("/all/story/2"));
-    expect(window.location.search).toBe("?sort=asc");
-    expect(document.querySelector("[data-story-position]")).toHaveAttribute(
-      "data-story-position",
-      "2",
+  it.each(["browser", "button", "Escape"])(
+    "normalizes a reloaded legacy origin via %s and preserves Forward",
+    async (action) => {
+      const key = "sparkle.readerNavigation";
+      const origin = "/all/story/2?filter=unread&sort=asc";
+      const surfaceState = {
+        other: "retained",
+        [key]: { version: 1, kind: "surface", surfaceId: "legacy" },
+      };
+      window.history.replaceState(surfaceState, "", origin);
+      window.history.pushState(
+        { [key]: { version: 1, kind: "reader", surfaceId: "legacy", origin } },
+        "",
+        "/all/e/2?filter=unread&sort=asc",
+      );
+
+      mount();
+      await screen.findByText("Reading 2");
+      if (action === "browser") window.history.back();
+      else if (action === "button") fireEvent.click(screen.getByText("back"));
+      else fireEvent.keyDown(window, { key: "Escape" });
+
+      await waitFor(() => expect(window.location.pathname).toBe("/all"));
+      await screen.findByText("Card 1");
+      expect(window.location.search).toBe("?filter=unread&sort=asc");
+      expect(window.history.state).toEqual(surfaceState);
+      expect(mutations.read).not.toHaveBeenCalled();
+      window.history.forward();
+      await screen.findByText("Reading 2");
+    },
+  );
+
+  it.each([
+    ["/feed/5", "?filter=unread&sort=asc"],
+    ["/starred", "?sort=asc"],
+  ])("replaces a direct story URL for %s", async (parent, search) => {
+    window.history.replaceState(
+      null,
+      "",
+      `${parent}/story/4?filter=unread&sort=asc`,
     );
+    const length = window.history.length;
+    mount();
+    await waitFor(() => expect(window.location.pathname).toBe(parent));
+    expect(window.location.search).toBe(search);
+    expect(window.history.length).toBe(length);
   });
   it("can return when the last viewed article has left the loaded stream", async () => {
     const client = new QueryClient({
@@ -265,7 +268,7 @@ describe("Cards reader navigation", () => {
     mount();
     await screen.findByText("Dedicated saved layout");
     expect(screen.queryByLabelText("cards", { selector: "input" })).toBeNull();
-    expect(store.get(storyPresentationAtom)).toBe("cards");
+    expect(store.get(streamPresentationAtom)).toBe("cards");
     expect(mutations.read).not.toHaveBeenCalled();
   });
 });

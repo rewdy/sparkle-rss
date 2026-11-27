@@ -52,7 +52,6 @@ review.
 | `/unread` | All unread items (API stream `all`, filter forced to unread) |
 | `/folder/:id` | Folder stream |
 | `/feed/:id` | Feed stream |
-| `<stream>/story/:index` | Swipe presentation position (zero-based story index) |
 | `<stream>/e/:id` | Reading pane for entry `:id` (e.g. `/all/e/123`, `/feed/5/e/123`) |
 | `/settings` | Profile, appearance, API tokens (revocation requires a confirmation modal), OPML import/export |
 
@@ -70,7 +69,10 @@ implemented as a URL route change via wouter `navigate`, so browser back/forward
 works: selecting an entry pushes `<stream>/e/:id`, `j`/`k` and next/previous inside the reader replace that session's article route.
 Browser Back, reader Back, and Escape return directly to the originating stream surface;
 Forward reopens the last article in the session. Namespaced, validated history-entry
-metadata preserves the origin (including Swipe position) across refresh. Reader close
+metadata preserves the origin across refresh. Old `<stream>/story/:index` URLs for known
+streams are replaced in place with the parent stream and its applicable filter and sort.
+This also works when returning through browser history, so Forward can reopen the last
+article. Reader close
 without a known app origin replaces the route with its parent stream; native browser
 Back keeps its normal behavior for direct links. The shell owns this policy through
 `lib/reader-navigation.ts`, without a component back-handler registry. Deep links to an entry id render from the loaded list cache or
@@ -274,14 +276,9 @@ with `packages/core`; codegen is overkill at this size but noted as an option).
   update these together when the brand changes. The service-worker/offline shell
   remains deferred to Phase 6.
 
-The stream shell supports device-local `list`, `cards`, and `swipe` presentations. It is
-controlled by `storyPresentationAtom` and the header toggle, with separate `EntryList`,
-`CardsView`, and `StoryView` renderers. Swipe stories use the entry's authorized article image when
-available, or a theme background with the small feed favicon beside the source title;
-the favicon is never used as the hero image. The swipe surface is a native vertical
-scroll container with mandatory CSS scroll snapping; its settled story index is written
-to `<stream>/story/:index` so refresh and article back navigation preserve position.
-Read stories remain actionable but use a gray button, check icon, and muted headline.
+The stream shell supports device-local List and Cards presentations through
+`streamPresentationAtom` and the header selector. The two renderers share stream
+queries, cursor pagination, and authorized article images.
 
 ## Saved images and mixed Saved timeline (2026-10-10)
 
@@ -298,8 +295,8 @@ external source link, available internal article link, and independent removal.
 Browser routes own selection and retain `?sort=asc`; the Saved list stays mounted
 when its article/image reader opens to preserve scroll. Image previews do not apply
 article read state or article shortcuts. Article j/k navigation skips image rows.
-Saved always uses the mixed list, hides the swipe toggle, and normalizes its old
-story routes to the list; other streams keep their presentation preference.
+Saved always uses the mixed list and hides the presentation selector. Its old story
+routes retain sort when redirected to Saved.
 
 Reader content images have app-owned controls outside publisher links. Desktop
 hover/focus reveals the button; touch/coarse-pointer controls remain visible. Native
@@ -336,19 +333,19 @@ These are original image bytes displayed at thumbnail size, not generated deriva
 lazy loading and virtualization bound requests, but bandwidth remains a trade-off.
 Failed URLs hide their image slot; a renewed URL can load again.
 
-The header selector offers list/cards/swipe. The existing local
-sparkle.ui.storyPresentation key accepts all three; List remains the fallback. Legacy `feed` values migrate to
-`list` without changing other preferences; the former text-only List and separate Feed
-choice are removed.
-Saved keeps its dedicated mixed list and leaves the local preference intact.
-On phones the brand uses its sparkles mark to leave room for the three labeled modes,
-navigation, refresh, and theme. List rows are native buttons with visible keyboard focus;
-thumbnails are decorative and activate the same article as the row.
+The header selector offers List and Cards. The existing local
+`sparkle.ui.storyPresentation` key persists the device's choice. Legacy `feed` and
+`swipe` values migrate to `list` without changing other preferences. List is the
+fallback for missing or invalid values. Saved retains its dedicated mixed list.
+On phones the brand uses its sparkles mark to leave room for both presentation choices
+and the navigation, refresh, and theme controls. List rows are native buttons with
+visible keyboard focus.
+Thumbnails are decorative and activate the same article as the row.
 
 
 ### Cards presentation
 
-Cards is a distinct date-grouped grid, separate from the full-screen Swipe experience.
+Cards is a date-grouped grid.
 `CardsView` uses three columns at the active theme's viewport md breakpoint and above,
 two from sm to below md, and one below sm (currently 992/768 CSS pixels). Date headers
 span the grid. Stories retain their stream order across columns, rows, and pagination.
@@ -383,7 +380,7 @@ than the core 500-character readable-text constant. At or above that threshold,
 the reader hides the tabs and all fetch/retry actions and shows the original feed
 body, including when an older extracted copy exists.
 The manual retry/control uses the same mutation and owned entry ID, including the
-underlying `entryId` for feed-backed Read Later. List/Card/Swipe rendering and
+underlying `entryId` for feed-backed Read Later. List and Cards rendering and
 prefetching do not initiate extraction. Off-feed URL items are excluded.
 
 React Query owns `['article-content', entryId]` body/status data and mutations.

@@ -7,7 +7,7 @@ Provide an image-enhanced stream list that preserves consistent text alignment a
 ## Requirements
 
 ### Requirement: Device-local third presentation
-The web reader SHALL offer List, Cards, and Swipe on Today, All, Unread, individual subscription, folder, and Read later streams. Selection SHALL persist on the current device without changing account settings. Existing List and Swipe preferences SHALL remain valid, stored legacy Feed (`feed`) preferences SHALL migrate to List (`list`), Cards (`cards`) SHALL be a valid selection, and missing or invalid preferences SHALL default to List. The former text-only List layout and separate Feed selection SHALL no longer be offered. Saved SHALL retain its dedicated mixed list without changing the stored preference.
+The web reader SHALL offer only List and Cards on Today, All, Unread, individual subscription, folder, and Read later streams. Selection SHALL persist on the current device without changing account settings. Existing List and Cards preferences SHALL remain valid. Stored Swipe (`swipe`) and legacy Feed (`feed`) preferences SHALL migrate to List (`list`). Missing or invalid preferences SHALL default to List. The former text-only List layout and separate Feed selection SHALL no longer be offered. Saved SHALL retain its dedicated mixed list without changing the stored preference.
 
 #### Scenario: Reload selected List
 - **WHEN** a user selects List and reloads an eligible stream
@@ -29,9 +29,14 @@ The web reader SHALL offer List, Cards, and Swipe on Today, All, Unread, individ
 - **WHEN** a user loads with a stored `feed` preference
 - **THEN** List is selected with the former Feed layout and the normalized `list` preference is persisted without changing other local preferences
 
+#### Scenario: Legacy Swipe preference
+- **WHEN** a user loads with a stored `swipe` preference
+- **THEN** List is selected and persisted without changing other local preferences
+- **AND** the selector offers only List and Cards
+
 #### Scenario: Existing preference
-- **WHEN** a user loads with an existing List or Swipe preference or an invalid preference
-- **THEN** valid selections remain unchanged and invalid selections fall back to List
+- **WHEN** a user loads with a missing or invalid presentation preference
+- **THEN** List is selected
 
 ### Requirement: Consistent text alignment
 List SHALL keep the headline and source metadata at the same left inset for every article at a given viewport width, whether an image is present, absent, loading, or failed. Thumbnails SHALL appear to the right of the text. Image-free rows SHALL use the available text width without an empty thumbnail placeholder. Headline wrapping SHALL remain readable without horizontal page overflow.
@@ -71,7 +76,7 @@ List SHALL preserve the existing stream order, date groups and counts, filters, 
 - **THEN** the note remains visible and the row remains text-only
 
 ### Requirement: Accessible controls and loading states
-The presentation selector and List article activation SHALL support keyboard operation and visible focus. Thumbnails SHALL NOT introduce a duplicate focus target or repeat the headline as redundant accessible text. Initial loading SHALL show a List-appropriate skeleton with the same left text inset and reserved thumbnail dimensions. Empty and end-of-stream states SHALL remain available. The three-way selector SHALL fit narrow mobile headers while preserving navigation, refresh, and theme controls.
+The presentation selector and List article activation SHALL support keyboard operation and visible focus. Thumbnails SHALL NOT introduce a duplicate focus target or repeat the headline as redundant accessible text. Initial loading SHALL show a List-appropriate skeleton with the same left text inset and reserved thumbnail dimensions. Empty and end-of-stream states SHALL remain available. The two-option selector SHALL fit narrow mobile headers while preserving navigation, refresh, and theme controls.
 
 #### Scenario: Keyboard activation
 - **WHEN** a keyboard user focuses a List article and activates it

@@ -16,6 +16,7 @@ import { Topbar } from "../components/Topbar";
 import { ApiError, api } from "../lib/api";
 import {
   filterFromSearch,
+  legacyStoryStream,
   localDateKey,
   parseRoute,
   qk,
@@ -38,7 +39,7 @@ import {
   applySettings,
   markReadOnOpenAtom,
   shortcutsOpenAtom,
-  storyPresentationAtom,
+  streamPresentationAtom,
   todayRolloverAtom,
 } from "../lib/ui-state";
 import { FullscreenLoader, SessionRestoreError, useAuthGuard } from "./guard";
@@ -128,8 +129,8 @@ export function Shell(): ReactElement {
   const setShortcutsOpen = useSetAtom(shortcutsOpenAtom);
   const shortcutsOpen = useAtomValue(shortcutsOpenAtom);
   const markReadOnOpen = useAtomValue(markReadOnOpenAtom);
-  const presentation = useAtomValue(storyPresentationAtom);
-  const setPresentation = useSetAtom(storyPresentationAtom);
+  const presentation = useAtomValue(streamPresentationAtom);
+  const setPresentation = useSetAtom(streamPresentationAtom);
   const markRead = useMarkRead();
   const toggleStar = useToggleStar();
   const markReadLater = useMarkReadLater();
@@ -140,7 +141,6 @@ export function Shell(): ReactElement {
   const descriptor = route?.stream ?? null;
   const routeEntryId = route?.entryId ?? null;
   const imageId = route?.imageId ?? null;
-  const storyIndex = route?.storyIndex ?? 0;
 
   const subsQ = useQuery({
     queryKey: qk.subscriptions,
@@ -193,13 +193,14 @@ export function Shell(): ReactElement {
   );
 
   useEffect(() => {
-    if (
-      descriptor?.kind === "starred" &&
-      route?.storyIndex !== null &&
-      route?.storyIndex !== undefined
-    )
-      navigate(`/starred${viewSearch("all", sort)}`, { replace: true });
-  }, [descriptor?.kind, route?.storyIndex, sort, navigate]);
+    const legacyStream = legacyStoryStream(location);
+    if (!legacyStream) return;
+    const legacyFilter = legacyStream.kind === "starred" ? "all" : filter;
+    navigate(`${streamPath(legacyStream)}${viewSearch(legacyFilter, sort)}`, {
+      replace: true,
+      state: window.history.state,
+    });
+  }, [location, filter, sort, navigate]);
 
   // Source of truth for the open entry is the react-query cache (mutations
   // patch it optimistically); seed it from the stream cache to avoid a flash.
@@ -267,15 +268,6 @@ export function Shell(): ReactElement {
     if (!descriptor) return;
     readerNav.close(`${streamPath(descriptor)}${viewSearch(filter, sort)}`);
   }, [descriptor, filter, sort, readerNav]);
-
-  const onStoryIndexChange = useCallback(
-    (index: number): void => {
-      if (!descriptor || routeEntryId !== null || imageId !== null) return;
-      const suffix = index > 0 ? `/story/${index}` : "";
-      navigate(`${streamPath(descriptor)}${suffix}${viewSearch(filter, sort)}`);
-    },
-    [descriptor, filter, navigate, sort, routeEntryId, imageId],
-  );
 
   const move = useCallback(
     (delta: 1 | -1): void => {
@@ -556,19 +548,15 @@ export function Shell(): ReactElement {
         {descriptor &&
           descriptor.kind !== "starred" &&
           !isSettings &&
-          !isSaveArticle &&
-          (routeEntryId === null || presentation !== "swipe") && (
+          !isSaveArticle && (
             <StreamInner
               key={`${streamPath(descriptor)}:${filter}:${sort}`}
               stream={descriptor}
               filter={filter}
               sort={sort}
               activeEntryId={routeEntryId}
-              storyIndex={storyIndex}
-              onStoryIndexChange={onStoryIndexChange}
               onSelect={openEntry}
               presentation={presentation}
-              subscriptions={subsQ.data?.subscriptions ?? []}
               hidden={routeEntryId !== null}
             />
           )}

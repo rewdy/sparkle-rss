@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { dayGroup, groupByDay, timeLabel } from "../src/lib/date-grouping";
 import {
   filterFromSearch,
+  legacyStoryStream,
   localDateKey,
   localMidnightIso,
   parseRoute,
@@ -16,27 +17,22 @@ describe("parseRoute", () => {
     expect(parseRoute("/all")).toEqual({
       stream: { kind: "all" },
       entryId: null,
-      storyIndex: null,
     });
     expect(parseRoute("/starred")).toEqual({
       stream: { kind: "starred" },
       entryId: null,
-      storyIndex: null,
     });
     expect(parseRoute("/today")).toEqual({
       stream: { kind: "today" },
       entryId: null,
-      storyIndex: null,
     });
     expect(parseRoute("/unread")).toEqual({
       stream: { kind: "unread" },
       entryId: null,
-      storyIndex: null,
     });
     expect(parseRoute("/read-later")).toEqual({
       stream: { kind: "readLater" },
       entryId: null,
-      storyIndex: null,
     });
   });
 
@@ -44,12 +40,10 @@ describe("parseRoute", () => {
     expect(parseRoute("/feed/5")).toEqual({
       stream: { kind: "feed", id: "5" },
       entryId: null,
-      storyIndex: null,
     });
     expect(parseRoute("/folder/2")).toEqual({
       stream: { kind: "folder", id: "2" },
       entryId: null,
-      storyIndex: null,
     });
   });
 
@@ -57,38 +51,50 @@ describe("parseRoute", () => {
     expect(parseRoute("/all/e/123")).toEqual({
       stream: { kind: "all" },
       entryId: "123",
-      storyIndex: null,
     });
     expect(parseRoute("/feed/5/e/123")).toEqual({
       stream: { kind: "feed", id: "5" },
       entryId: "123",
-      storyIndex: null,
     });
     expect(parseRoute("/today/e/9")).toEqual({
       stream: { kind: "today" },
       entryId: "9",
-      storyIndex: null,
     });
   });
 
-  it("parses story presentation routes", () => {
-    expect(parseRoute("/all/story/3")).toEqual({
-      stream: { kind: "all" },
-      entryId: null,
-      storyIndex: 3,
-    });
-    expect(parseRoute("/feed/5/story/0")).toEqual({
-      stream: { kind: "feed", id: "5" },
-      entryId: null,
-      storyIndex: 0,
-    });
-  });
+  it.each([
+    "/all",
+    "/today",
+    "/unread",
+    "/feed/5",
+    "/folder/2",
+    "/read-later",
+    "/starred",
+  ])(
+    "recognizes retired story links for %s independently of normal routing",
+    (path) => {
+      expect(parseRoute(`${path}/story/3`)).toBeNull();
+      expect(legacyStoryStream(`${path}/story/3`)).toEqual(
+        parseRoute(path)?.stream,
+      );
+    },
+  );
+
+  it.each([
+    "/all/story/-1",
+    "/all/story/nope",
+    "/all/story/1/e/2",
+    "/all/e/1/story/2",
+    "/unknown/story/1",
+    "/starred/images/12345678-1234-1234-1234-123456789012/story/0",
+  ])("does not rewrite unrelated or malformed path %s", (path) =>
+    expect(legacyStoryStream(path)).toBeNull(),
+  );
 
   it("parses read-later item routes but not the save form", () => {
     expect(parseRoute("/read-later/e/item-uuid")).toEqual({
       stream: { kind: "readLater" },
       entryId: "item-uuid",
-      storyIndex: null,
     });
     expect(parseRoute("/read-later/new")).toBeNull();
   });
@@ -99,7 +105,6 @@ describe("parseRoute", () => {
     expect(parseRoute("/")).toEqual({
       stream: { kind: "all" },
       entryId: null,
-      storyIndex: null,
     });
   });
 });
@@ -193,7 +198,6 @@ it("parses a saved-image deep link without treating it as an article", () => {
   ).toEqual({
     stream: { kind: "starred" },
     entryId: null,
-    storyIndex: null,
     imageId: "12345678-1234-1234-1234-123456789012",
   });
 });
