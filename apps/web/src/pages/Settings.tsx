@@ -21,10 +21,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAtom } from "jotai";
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { BookmarkletLink } from "../components/BookmarkletLink";
 import { api } from "../lib/api";
 import { logout } from "../lib/auth";
+import { homeViewFromSettings } from "../lib/home-view";
 import { qk } from "../lib/keys";
 import {
   markReadOnOpenAtom,
@@ -38,6 +39,15 @@ export function SettingsPage(): ReactElement {
   const settingsQ = useQuery({
     queryKey: qk.settings,
     queryFn: api.settings.get,
+  });
+  const queryClient = useQueryClient();
+  const homeViewId = useId();
+  const homeViewSave = useMutation({
+    mutationFn: (homeView: string) => api.settings.put({ homeView }),
+    onSuccess: async (settings) => {
+      await queryClient.cancelQueries({ queryKey: qk.settings, exact: true });
+      queryClient.setQueryData(qk.settings, settings);
+    },
   });
   const [scheme, setScheme] = useColorSchemeValue();
   const [themeId, setThemeId] = useThemeValue();
@@ -130,6 +140,34 @@ export function SettingsPage(): ReactElement {
               void saveSetting({ sidebarUnreadOnly: e.currentTarget.checked });
             }}
           />
+        </Stack>
+      </Card>
+
+      <Card withBorder padding="lg">
+        <Stack gap="xs" align="flex-start">
+          <Text id={homeViewId} size="sm" fw={600}>
+            Home view
+          </Text>
+          <Text id={`${homeViewId}-description`} size="sm" c="dimmed">
+            The view that opens by default when you go home.
+          </Text>
+          <SegmentedControl
+            aria-labelledby={homeViewId}
+            aria-describedby={`${homeViewId}-description`}
+            value={homeViewFromSettings(settingsQ.data?.data.homeView)}
+            data={[
+              { value: "all", label: "All" },
+              { value: "unread", label: "Unread" },
+              { value: "today", label: "Today" },
+            ]}
+            disabled={settingsQ.isPending || homeViewSave.isPending}
+            onChange={(value) => homeViewSave.mutate(value)}
+          />
+          {homeViewSave.isError && (
+            <Text role="alert" size="sm" c="red">
+              Could not save home view. Try again.
+            </Text>
+          )}
         </Stack>
       </Card>
 

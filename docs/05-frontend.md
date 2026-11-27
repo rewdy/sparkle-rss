@@ -44,6 +44,7 @@ review.
 | Path | View |
 | --- | --- |
 | `/login` | First-party sign-in, temporary-password setup, and password recovery/reset |
+| `/` | Account home redirect to All (default), Unread, or Today |
 | `/all` | Reading list (all subscriptions) |
 | `/starred` | Saved items |
 | `/read-later` | Read later queue (feed entries marked for later plus saved URLs) |
@@ -61,8 +62,10 @@ All stream routes share one component parameterized by stream descriptor
 stream semantics. `today` and `unread` are the API stream `all` plus extra params
 (`pubFrom` = local midnight / `filter=unread`); they keep distinct query keys. `readLater`
 is not an entry stream: the API client routes it to `/api/v1/read-later`, whose items are
-`Entry`-shaped so the same list and reading-pane components render them. Unknown routes →
-redirect `/all`.
+`Entry`-shaped so the same list and reading-pane components render them. The authenticated
+root waits for settings, then replaces itself with the canonical home stream URL. App-wide
+home links target `/`, and explicit stream links and reader returns target their own streams.
+If settings are unavailable, home falls back to All.
 
 **Routing is the view state (standing requirement).** Every view change in the SPA —
 opening/closing the reading pane, switching streams, stepping between entries — must be
@@ -114,7 +117,7 @@ Leaving the reader discards any pending navigation from the request.
 ```
 
 - Sidebar has three uppercase-headed sections separated by exactly one divider each:
-  **Streams** (the smart groupings All items / Today / All unread / Saved / Read later),
+  **Streams** (the smart groupings All items / Today / Unread / Saved / Read later),
   **Folders**, and **Feeds** (the loose subscriptions). The Folders section — heading,
   rows, and its divider — is omitted entirely when the user has no folders, so no empty
   band or doubled rule appears. The `+ add` button sits beside the **Streams** heading
@@ -210,7 +213,9 @@ rationale: [10-read-later.md](10-read-later.md)).
   `todayRolloverAtom` (a midnight tick). Preference ownership is split on purpose:
   **account-level** prefs (`themeId`, `markReadOnOpen`, `sidebarUnreadOnly`) are written to
   `user_settings.data` via `PUT /api/v1/settings` and are the source of truth across
-  devices, while **device-level** prefs (`colorScheme`, `storyPresentation`, `sidebarOpen`,
+  devices. The account-level `homeView` also uses this endpoint and stays in the React Query
+  settings cache. It promotes the selected stream to the top of the sidebar on save.
+  **Device-level** prefs (`colorScheme`, `storyPresentation`, `sidebarOpen`,
   `collapsedFolders`) stay in the `sparkle.ui` localStorage entry. `applySettings` mirrors
   account settings into the atoms after the first settings fetch and deliberately ignores
   `colorScheme`, so a server value can never override the local light/dark choice — that

@@ -9,6 +9,8 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { qk } from "../src/lib/keys";
+import { queryClient } from "../src/lib/query-client";
 import { Login } from "../src/pages/Login";
 
 function renderLogin(): void {
@@ -171,6 +173,7 @@ it("keeps ordinary and untrusted-return sign-in on the normal landing page", asy
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ accessToken: "token" })),
     );
+    queryClient.setQueryData(qk.settings, { data: { homeView: "today" } });
     renderLogin();
     fireEvent.change(inputFor("username"), { target: { value: "reader" } });
     fireEvent.change(inputFor("current-password"), {
@@ -178,6 +181,7 @@ it("keeps ordinary and untrusted-return sign-in on the normal landing page", asy
     });
     fireEvent.click(screen.getByRole("button", { name: "sign in" }));
     await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(queryClient.getQueryData(qk.settings)).toBeUndefined();
     cleanup();
     vi.restoreAllMocks();
   }

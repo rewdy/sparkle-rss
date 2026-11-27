@@ -111,7 +111,7 @@ const ENTRY_SUFFIX = /\/e\/([^/]+)$/;
  * Parse a location into stream + optional open entry or saved image.
  * Handles entry routes like /all/e/123 and
  * /feed/5/e/123.
- * Returns null for /settings, /read-later/new, and unknown paths.
+ * Returns null for /, /settings, /read-later/new, and unknown paths.
  */
 export function parseRoute(pathname: string): RouteInfo | null {
   const end = /^\/(all|today|unread)\/e\/(\d+)\/end$/.exec(pathname);
@@ -130,8 +130,7 @@ export function parseRoute(pathname: string): RouteInfo | null {
   const suffix = ENTRY_SUFFIX.exec(pathname);
   const base = suffix ? pathname.slice(0, -suffix[0].length) : pathname;
   const entryId = suffix?.[1] ?? null;
-  if (base === "/" || base === "/all")
-    return { stream: { kind: "all" }, entryId };
+  if (base === "/all") return { stream: { kind: "all" }, entryId };
   if (base === "/starred") return { stream: { kind: "starred" }, entryId };
   if (base === "/read-later") return { stream: { kind: "readLater" }, entryId };
   if (base === "/today") return { stream: { kind: "today" }, entryId };

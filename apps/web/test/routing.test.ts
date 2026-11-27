@@ -13,6 +13,10 @@ import {
 } from "../src/lib/keys";
 
 describe("parseRoute", () => {
+  it("leaves the root to account home resolution", () => {
+    expect(parseRoute("/")).toBeNull();
+  });
+
   it("parses fixed streams", () => {
     expect(parseRoute("/all")).toEqual({
       stream: { kind: "all" },
@@ -102,10 +106,6 @@ describe("parseRoute", () => {
   it("rejects unknown and settings paths", () => {
     expect(parseRoute("/settings")).toBeNull();
     expect(parseRoute("/nope")).toBeNull();
-    expect(parseRoute("/")).toEqual({
-      stream: { kind: "all" },
-      entryId: null,
-    });
   });
 });
 

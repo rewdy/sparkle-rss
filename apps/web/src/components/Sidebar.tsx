@@ -35,6 +35,7 @@ import {
 import { Link, useLocation } from "wouter";
 import { api } from "../lib/api";
 import { logout } from "../lib/auth";
+import type { HomeView } from "../lib/home-view";
 import { parseRoute, qk, streamPath } from "../lib/keys";
 import type { Folder, StreamDescriptor, Subscription } from "../lib/types";
 import { collapsedFoldersAtom, sidebarUnreadOnlyAtom } from "../lib/ui-state";
@@ -63,9 +64,17 @@ function isActive(
   return stream !== undefined && test(stream);
 }
 
+const homeLinks = [
+  { kind: "all", label: "All items", icon: LuInbox, showUnread: true },
+  { kind: "today", label: "Today", icon: LuCalendarDays, showUnread: false },
+  { kind: "unread", label: "Unread", icon: LuMailOpen, showUnread: true },
+] as const;
+
 export function Sidebar({
+  homeView = "all",
   onNavigate,
 }: {
+  homeView?: HomeView;
   onNavigate?: () => void;
 }): ReactElement {
   const [location] = useLocation();
@@ -121,6 +130,10 @@ export function Sidebar({
     );
   }
 
+  const orderedHomeLinks = [
+    ...homeLinks.filter((link) => link.kind === homeView),
+    ...homeLinks.filter((link) => link.kind !== homeView),
+  ];
   const totalUnread = countsQ.data?.total ?? 0;
   const readLaterUnread = readLaterQ.data?.unread ?? 0;
 
@@ -192,48 +205,24 @@ export function Sidebar({
         </Menu>
       </Group>
 
-      <NavLink
-        component={Link}
-        href="/all"
-        active={isActive(activeStream, (s) => s.kind === "all")}
-        label={
-          <Group justify="space-between" w="100%">
-            <Group gap="xs" wrap="nowrap">
-              <LuInbox size={15} style={{ flexShrink: 0 }} />
-              <Text size="sm">All items</Text>
+      {orderedHomeLinks.map(({ kind, label, icon: Icon, showUnread }) => (
+        <NavLink
+          key={kind}
+          component={Link}
+          href={streamPath({ kind })}
+          active={activeStream?.kind === kind}
+          label={
+            <Group justify="space-between" w="100%">
+              <Group gap="xs" wrap="nowrap">
+                <Icon size={15} style={{ flexShrink: 0 }} />
+                <Text size="sm">{label}</Text>
+              </Group>
+              {showUnread && unreadBadge(totalUnread)}
             </Group>
-            {unreadBadge(totalUnread)}
-          </Group>
-        }
-        onClick={() => nav("/all")}
-      />
-      <NavLink
-        component={Link}
-        href="/today"
-        active={isActive(activeStream, (s) => s.kind === "today")}
-        label={
-          <Group gap="xs" wrap="nowrap">
-            <LuCalendarDays size={15} style={{ flexShrink: 0 }} />
-            <Text size="sm">Today</Text>
-          </Group>
-        }
-        onClick={() => nav("/today")}
-      />
-      <NavLink
-        component={Link}
-        href="/unread"
-        active={isActive(activeStream, (s) => s.kind === "unread")}
-        label={
-          <Group justify="space-between" w="100%">
-            <Group gap="xs" wrap="nowrap">
-              <LuMailOpen size={15} style={{ flexShrink: 0 }} />
-              <Text size="sm">All unread</Text>
-            </Group>
-            {unreadBadge(totalUnread)}
-          </Group>
-        }
-        onClick={() => nav("/unread")}
-      />
+          }
+          onClick={onNavigate}
+        />
+      ))}
       <NavLink
         component={Link}
         href="/starred"

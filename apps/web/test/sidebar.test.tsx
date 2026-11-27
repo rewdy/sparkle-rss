@@ -223,3 +223,36 @@ describe("Sidebar sections", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("Sidebar home order", () => {
+  it("promotes the saved home stream while preserving explicit link destinations", async () => {
+    const { rerender } = render(
+      <Providers>
+        <Sidebar />
+      </Providers>,
+    );
+    await screen.findByText("Unread Feed");
+    const streamPaths = () =>
+      screen
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href"))
+        .filter(
+          (href) => href === "/all" || href === "/today" || href === "/unread",
+        );
+    expect(streamPaths()).toEqual(["/all", "/today", "/unread"]);
+
+    rerender(
+      <Providers>
+        <Sidebar homeView="unread" />
+      </Providers>,
+    );
+    expect(streamPaths()).toEqual(["/unread", "/all", "/today"]);
+
+    rerender(
+      <Providers>
+        <Sidebar homeView="today" />
+      </Providers>,
+    );
+    expect(streamPaths()).toEqual(["/today", "/all", "/unread"]);
+  });
+});

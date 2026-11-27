@@ -85,8 +85,9 @@ differs from a vanilla-PG design:
 
 - `user_settings` is a single `data` jsonb blob keyed by `user_id`; per-user preferences
   (currently `colorScheme` (`light`, `dark`, or `system`), `themeId`, `markReadOnOpen`, `sidebarOpen`) are
-  plain keys merged by `packages/core/src/services/settings.ts`. Adding a preference is a
-  new key, never a migration.
+  plain keys merged by `packages/core/src/services/settings.ts`. The web settings API
+  accepts the optional `homeView` key with values `all`, `unread`, or `today`. The preference
+  fits in the existing JSON column without a migration.
 
 - `read_later_items` is the read-later queue ([10-read-later.md](10-read-later.md)). It is
   the one table the Google Reader surface never reads: off-feed saved articles have no feed

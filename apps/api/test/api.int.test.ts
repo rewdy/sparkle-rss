@@ -483,16 +483,30 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("api v1 http surface", () => {
     expect(xml).not.toContain("ExportFolder"); // no active subscription in that folder anymore
   });
 
-  it("round-trips settings", async () => {
-    await app.request("/api/v1/settings", {
-      method: "PUT",
-      headers: { ...H, "Content-Type": "application/json" },
-      body: JSON.stringify({ data: { theme: "dark" } }),
-    });
+  it("validates and round-trips account settings", async () => {
+    const put = (data: Record<string, unknown>) =>
+      app.request("/api/v1/settings", {
+        method: "PUT",
+        headers: { ...H, "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      });
+    for (const homeView of ["all", "today", "unread"]) {
+      const res = await put({ homeView });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ data: { homeView } });
+    }
+    expect((await put({ homeView: "starred" })).status).toBe(400);
+    expect((await put({ homeView: null })).status).toBe(400);
+    expect((await put({ theme: "dark" })).status).toBe(200);
     const res = await app.request("/api/v1/settings", { headers: H });
-    expect(((await res.json()) as { data: { theme: string } }).data.theme).toBe(
-      "dark",
-    );
+    expect(await res.json()).toMatchObject({
+      data: { theme: "dark", homeView: "unread" },
+    });
+    const other = await app.request("/api/v1/settings", {
+      headers: { "X-Dev-User": "other-home-view-user" },
+    });
+    expect(other.status).toBe(200);
+    expect(await other.json()).toEqual({ data: {} });
   });
 
   it("mints and revokes api tokens", async () => {

@@ -28,6 +28,7 @@ import { Sidebar } from "../components/Sidebar";
 import { StreamInner } from "../components/StreamInner";
 import { Topbar } from "../components/Topbar";
 import { ApiError, api } from "../lib/api";
+import { homeViewFromSettings } from "../lib/home-view";
 import {
   filterFromSearch,
   legacyStoryStream,
@@ -97,7 +98,7 @@ function streamTitle(
     case "today":
       return "Today";
     case "unread":
-      return "All unread";
+      return "Unread";
     case "feed":
       return (
         subs.find((s) => s.feedId === d.id)?.displayTitle ?? `feed ${d.id}`
@@ -151,6 +152,7 @@ export function Shell(): ReactElement {
   const toggleReadLater = useToggleReadLater();
   const removeReadLater = useRemoveReadLater();
 
+  const isHome = location === "/";
   const route = useMemo(() => parseRoute(location), [location]);
   const descriptor = route?.stream ?? null;
   const routeEntryId = route?.entryId ?? null;
@@ -202,7 +204,16 @@ export function Shell(): ReactElement {
   const settingsQ = useQuery({
     queryKey: qk.settings,
     queryFn: api.settings.get,
+    enabled: authState === "authed",
   });
+  const homeView = homeViewFromSettings(settingsQ.data?.data.homeView);
+  const homeReady = settingsQ.data !== undefined || settingsQ.isError;
+
+  useEffect(() => {
+    if (authState !== "authed" || !isHome || !homeReady) return;
+    const params = viewSearch(homeView === "unread" ? "all" : filter, sort);
+    navigate(`${streamPath({ kind: homeView })}${params}`, { replace: true });
+  }, [authState, isHome, homeReady, homeView, filter, sort, navigate]);
 
   // Reconcile account-level settings (source of truth) into the atoms once the
   // fetch lands; `applySettings` ignores device-local keys such as colorScheme.
@@ -516,6 +527,8 @@ export function Shell(): ReactElement {
     return <FullscreenLoader label="checking session…" />;
   }
 
+  if (isHome) return <FullscreenLoader label="loading home…" />;
+
   const APP_NAME = "Sparkle RSS";
   if (location === "/subscribe") {
     return (
@@ -598,7 +611,7 @@ export function Shell(): ReactElement {
       </AppShell.Header>
 
       <AppShell.Navbar p={0} style={{ overflow: "hidden" }}>
-        <Sidebar onNavigate={closeNav} />
+        <Sidebar homeView={homeView} onNavigate={closeNav} />
       </AppShell.Navbar>
 
       <AppShell.Main style={{ position: "relative" }}>

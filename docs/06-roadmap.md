@@ -3,7 +3,18 @@
 Phases are ordered by dependency and risk retirement, not by calendar. Each phase has
 explicit exit criteria — do not start the next phase until they pass.
 
-## Current state (updated 2026-11-27, channel end view implemented locally)
+## Current state (updated 2026-11-27, configurable home implemented locally)
+
+Settings lets each account choose All, Unread, or Today as its home view. The
+selected stream moves to the top of the sidebar, and the logo and ordinary sign-in
+reach it through `/`. Existing accounts default to All. Desktop and 320px browser
+checks against local Postgres covered save and reload, account isolation, sidebar
+order, direct stream links, and browser Back. All 547 tests passed, including
+Google Reader conformance. Lint, workspace typecheck, and the web build passed.
+OpenSpec `2026-11-27-configurable-home-view` is archived with the reader navigation
+spec synced.
+
+### Channel end view (2026-11-27)
 
 Today, Unread, and All now show **You’re at the end!** when the reader advances past
 the last article. Next and j load remaining cursor pages and offer retry on failure.
@@ -270,6 +281,9 @@ usage window; design direction: terminal-inspired, colors adjustable.
 
 This is the working backlog. Items are ordered by value/risk; each is a good
 session-sized chunk. Check one off (and log it in `docs/decisions.md`) as it lands.
+
+- [x] **Configurable home view** — account Settings controls the root redirect and sidebar
+      ordering for All, Unread, and Today.
 
 **Landed 2026-08-24** (see decisions.md):- [x] Feed favicon pipeline: icon extracted at ingest (RSS `<image>`, Atom
       `<logo>`/`<icon>`) into `feeds.icon_url` (GReader `iconUrl` populates

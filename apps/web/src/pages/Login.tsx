@@ -21,7 +21,9 @@ import {
   requestPasswordReset,
   signIn,
 } from "../lib/auth";
+import { qk } from "../lib/keys";
 import { subscriptionReturnTo } from "../lib/login-return";
+import { queryClient } from "../lib/query-client";
 
 type Mode = "sign-in" | "new-password" | "forgot" | "confirm-reset";
 
@@ -54,9 +56,11 @@ export function Login(): ReactElement {
           setMode("new-password");
           return;
         }
+        queryClient.removeQueries({ queryKey: qk.settings, exact: true });
         navigate(destination, { replace: true });
       } else if (mode === "new-password") {
         await completeNewPassword(username.trim(), newPassword, challenge);
+        queryClient.removeQueries({ queryKey: qk.settings, exact: true });
         navigate(destination, { replace: true });
       } else if (mode === "forgot") {
         await requestPasswordReset(username.trim());

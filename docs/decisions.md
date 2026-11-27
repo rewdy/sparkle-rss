@@ -1166,3 +1166,12 @@ history entry. It gives Next and Previous a natural sequence and keeps the retur
 link on the same surface as the message. The route carries the last article ID for
 Previous after refresh. Reader-driven pagination shares the channel's infinite
 query and requires successful cursor exhaustion before showing completion.
+
+## 2026-11-27 — Account home view
+
+The web settings endpoint stores `homeView` in the existing per-user JSON.
+The authenticated root waits for settings and replaces itself with the chosen
+stream's canonical URL so reader history can record a concrete origin.
+The sidebar promotes that stream while preserving the relative order of other
+links. A successful save updates the shared settings cache immediately, and
+successful sign-in clears any settings cached before the new session.

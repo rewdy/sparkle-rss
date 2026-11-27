@@ -671,7 +671,11 @@ export function createWebApiApp(): Hono<Env> {
 
   app.put("/settings", async (c) => {
     const body = z
-      .object({ data: z.record(z.string(), z.unknown()) })
+      .object({
+        data: z.looseObject({
+          homeView: z.enum(["all", "unread", "today"]).optional(),
+        }),
+      })
       .parse(await c.req.json());
     const s = await getServices();
     return c.json({
