@@ -1,5 +1,5 @@
 name: live Terraform plan
-run-name: Terraform plan for PR #${{ inputs.pr }} at ${{ inputs.sha }}
+run-name: 'Terraform plan for PR ${{ inputs.pr }} at ${{ inputs.sha }}'
 
 on:
   workflow_dispatch:
