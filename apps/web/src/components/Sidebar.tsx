@@ -7,7 +7,6 @@ import {
   Group,
   Menu,
   NavLink,
-  ScrollArea,
   Stack,
   Switch,
   Text,
@@ -380,7 +379,14 @@ export function Sidebar({
         </Menu>
       </Group>
 
-      <ScrollArea type="hover" style={{ flex: 1, minHeight: 0 }}>
+      <Box
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowX: "hidden",
+          overflowY: "auto",
+        }}
+      >
         <Stack gap={2}>
           {loose.length > 0 &&
             loose.map((sub) => (
@@ -407,7 +413,7 @@ export function Sidebar({
             </Text>
           )}
         </Stack>
-      </ScrollArea>
+      </Box>
 
       <Divider my="xs" flex="none" />
       <Stack gap={2} flex="none">
