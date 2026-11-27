@@ -58,10 +58,31 @@ Conventions:
 
 ## CI/CD (GitHub Actions)
 
-Live pull request plans are suspended during the plan-role handoff. After the
-trust closure deploy completes, allow existing role sessions to expire before
-transferring ownership to the shared infrastructure stack. Ordinary pull request
-checks continue with offline Terraform validation.
+Ordinary pull request checks use offline Terraform validation with no AWS
+credentials. The shared `gitlab-aws-infra` stack owns the live plan role.
+The default production state key remains the same. If Terraform reports a
+backend configuration change after the handoff, run `terraform -chdir=tf init
+-reconfigure` to adopt the new workspace discovery prefix.
+
+### Reviewing a live Terraform plan
+
+Live planning stays unavailable until the central role and the GitHub
+`terraform-plan` environment are configured. Dispatch **live Terraform plan**
+from protected `main` with the PR number and its full head commit SHA. Review the
+SHA in the run summary and review the candidate Terraform, providers and modules
+before approving the environment deployment. Paste only the full SHA into the
+approval comment. The job checks that GitHub recorded that approval from the
+configured operator before it requests AWS credentials, since Terraform
+processes the candidate with access to sensitive production state. It checks out the
+approved SHA even if the PR branch moves later.
+
+Configure `TF_PLAN_ROLE_ARN` and the operator's age or SSH public key in
+`TF_PLAN_DIAGNOSTICS_RECIPIENT` as environment variables. The job summary
+reports the Terraform exit code. Download the encrypted diagnostics artifact
+and run `age --decrypt -i <identity> <diagnostics.age>` locally for details.
+Terraform failures still fail the job. Keep the decryption identity with
+authorized operators. To pause live planning, close OIDC trust from the shared
+infrastructure stack.
 
 OIDC role per repo (`gh-oidc/sparkle-rss-deploy`) with permissions limited to the
 resources Terraform manages; no static AWS keys anywhere.

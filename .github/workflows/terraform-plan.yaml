@@ -1,0 +1,172 @@
+name: live Terraform plan
+run-name: Terraform plan for PR #${{ inputs.pr }} at ${{ inputs.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Open Sparkle pull request number
+        type: string
+        required: true
+      sha:
+        description: Full candidate commit SHA to review
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  candidate:
+    if: github.ref == 'refs/heads/main' && github.repository == 'rewdy/sparkle-rss'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      repository: ${{ steps.resolve.outputs.repository }}
+    steps:
+      - name: Confirm the requested PR revision
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$PR" =~ ^[1-9][0-9]*$ && "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          candidate=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR")
+          repository=$(jq -er --arg sha "$SHA" '
+            select(.state == "open" and .base.ref == "main" and .head.sha == $sha)
+            | .head.repo.full_name
+          ' <<< "$candidate")
+          [[ "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+          {
+            echo "sha=$SHA"
+            echo "repository=$repository"
+          } >> "$GITHUB_OUTPUT"
+          echo "Review PR #$PR at commit \`$SHA\` from \`$repository\` before approving the plan." >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.candidate.outputs.repository }}
+          ref: ${{ needs.candidate.outputs.sha }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build:lambdas
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lambdas-${{ needs.candidate.outputs.sha }}
+          path: |
+            dist/api.zip
+            dist/ingest-orchestrator.zip
+            dist/ingest-worker.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  plan:
+    name: Plan approved commit ${{ needs.candidate.outputs.sha }}
+    needs: [candidate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: terraform-plan
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      PLAN_ROLE: ${{ vars.TF_PLAN_ROLE_ARN }}
+      DIAGNOSTICS_RECIPIENT: ${{ vars.TF_PLAN_DIAGNOSTICS_RECIPIENT }}
+    steps:
+      - name: Verify the recorded approval for this SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.candidate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/approvals" |
+            jq -e --arg sha "$SHA" 'any(.[];
+              .state == "approved" and .user.id == 412050 and .comment == $sha
+              and any(.environments[]; .name == "terraform-plan")
+            )' >/dev/null
+
+      - name: Verify the protected job configuration
+        run: |
+          set -euo pipefail
+          [[ "$PLAN_ROLE" == arn:aws:iam::390847857761:role/sparkle-rss-github-plan ]]
+          [[ "$AWS_REGION" == us-east-1 ]]
+          test -n "$DIAGNOSTICS_RECIPIENT"
+          sudo apt-get update -qq
+          sudo apt-get install -y age
+          age --encrypt --recipient "$DIAGNOSTICS_RECIPIENT" </dev/null >/dev/null
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.candidate.outputs.repository }}
+          ref: ${{ needs.candidate.outputs.sha }}
+          persist-credentials: false
+
+      - name: Verify the approved checkout
+        env:
+          SHA: ${{ needs.candidate.outputs.sha }}
+        run: test "$(git rev-parse HEAD)" = "$SHA"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: lambdas-${{ needs.candidate.outputs.sha }}
+          path: ${{ runner.temp }}/sparkle-plan-lambdas
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '~> 1.15'
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.PLAN_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-duration-seconds: 900
+
+      - name: Run Terraform and encrypt diagnostics
+        id: terraform
+        env:
+          TF_IN_AUTOMATION: 'true'
+          TF_WORKSPACE: default
+          TF_VAR_lambda_zip_dir: ${{ runner.temp }}/sparkle-plan-lambdas
+          SHA: ${{ needs.candidate.outputs.sha }}
+          DIAGNOSTICS_PATH: ${{ runner.temp }}/sparkle-plan-${{ github.run_id }}-${{ github.run_attempt }}.age
+        run: |
+          set -euo pipefail
+          log_dir=$(mktemp -d)
+          trap 'unlink "$log_dir/terraform.log"; rmdir "$log_dir"' EXIT
+          status=0
+          terraform -chdir=tf init -input=false -no-color > "$log_dir/terraform.log" 2>&1 &&
+            terraform -chdir=tf plan -input=false -no-color >> "$log_dir/terraform.log" 2>&1 || status=$?
+          age --encrypt --recipient "$DIAGNOSTICS_RECIPIENT" --output "$DIAGNOSTICS_PATH" "$log_dir/terraform.log"
+          echo "encrypted=true" >> "$GITHUB_OUTPUT"
+          echo "Terraform exited with code $status for commit \`$SHA\`. See the encrypted diagnostics artifact." >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.terraform.outputs.encrypted == 'true'
+        with:
+          name: encrypted-terraform-diagnostics
+          path: ${{ runner.temp }}/sparkle-plan-${{ github.run_id }}-${{ github.run_attempt }}.age
+          if-no-files-found: error
+          retention-days: 3
